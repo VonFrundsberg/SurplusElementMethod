@@ -12,71 +12,71 @@ class mesh():
     def __init__(self, n):
         self.n = n
         return
-    def gen_mesh(self, K, n=10, p=3, split=None):
-        """Old function used for generating uniform rectangular mesh
-        """
-        n = np.atleast_1d(n)
-        K = np.atleast_2d(K)
-        x = []
-        self.box = K.copy()
-        if split is None:
-            for i in range(K.shape[0]):
-                x.append(np.linspace(K[i, 0], K[i, 1], n[i]))
-        else:
-            for i in range(K.shape[0]):
-                x.append(split)
-        l = []
-        neigh = []
-        ind = np.zeros(len(n), dtype=np.int)
-        def get_l(ind):
-            tmp = []
-            for i in range(len(ind)):
-                tmp.append([x[i][ind[i]], x[i][ind[i] + 1]])
-            return tmp
-        def intersection(e1, e2):
-            start = np.max(np.vstack([e1[:, 0], e2[:, 0]]), axis=0)
-            end = np.min(np.vstack([e1[:, 1], e2[:, 1]]), axis=0)
-
-            tmp = start - end
-            args2 = np.where(tmp == 0)
-            args1 = np.where(tmp < 0)
-            inter = np.zeros(len(n))
-            inter[args1] = 1
-            inter[args2] = 2
-            return inter
-
-        ns = np.product(n - 1)
-        s = 0; i = 0
-        while i < ns:
-            if s == 0:
-                for k in range(n[0] - 1):
-                    ind[0] = k
-                    a = get_l(ind)
-                    l.append([i, np.array(a), p])
-                    i += 1
-
-                s += 1
-            else:
-                while(ind[s] >= n[s] - 2):
-                    s += 1
-                ind[s] += 1
-                ind[:s] = 0
-                s = 0
-        l = np.array(l, dtype=object)
-        self.l = l
-        self.neigh = neigh
-        for i in range(len(self.l)):
-            tmp = []
-            for j in range(len(self.l)):
-                if i != j:
-                    intr = intersection(self.l[i][1], self.l[j][1])
-                    if np.size(np.where(intr == 0)) == 0 and\
-                                np.size(np.where(intr == 2)) == 1:
-                        if (np.size(np.where(intr == 1)) > 0 and self.n > 1) or self.n == 1:
-                            tmp.append([self.l[i][0], self.l[j][0]])
-            if len(tmp) > 0:
-                self.neigh.append(tmp)
-        self.l = np.array(self.l)
+    # def gen_mesh(self, K, n=10, p=3, split=None):
+    #     """Old function used for generating uniform rectangular mesh
+    #     """
+    #     n = np.atleast_1d(n)
+    #     K = np.atleast_2d(K)
+    #     x = []
+    #     self.box = K.copy()
+    #     if split is None:
+    #         for i in range(K.shape[0]):
+    #             x.append(np.linspace(K[i, 0], K[i, 1], n[i]))
+    #     else:
+    #         for i in range(K.shape[0]):
+    #             x.append(split)
+    #     l = []
+    #     neigh = []
+    #     ind = np.zeros(len(n), dtype=np.int)
+    #     def get_l(ind):
+    #         tmp = []
+    #         for i in range(len(ind)):
+    #             tmp.append([x[i][ind[i]], x[i][ind[i] + 1]])
+    #         return tmp
+    #     def intersection(e1, e2):
+    #         start = np.max(np.vstack([e1[:, 0], e2[:, 0]]), axis=0)
+    #         end = np.min(np.vstack([e1[:, 1], e2[:, 1]]), axis=0)
+    #
+    #         tmp = start - end
+    #         args2 = np.where(tmp == 0)
+    #         args1 = np.where(tmp < 0)
+    #         inter = np.zeros(len(n))
+    #         inter[args1] = 1
+    #         inter[args2] = 2
+    #         return inter
+    #
+    #     ns = np.product(n - 1)
+    #     s = 0; i = 0
+    #     while i < ns:
+    #         if s == 0:
+    #             for k in range(n[0] - 1):
+    #                 ind[0] = k
+    #                 a = get_l(ind)
+    #                 l.append([i, np.array(a), p])
+    #                 i += 1
+    #
+    #             s += 1
+    #         else:
+    #             while(ind[s] >= n[s] - 2):
+    #                 s += 1
+    #             ind[s] += 1
+    #             ind[:s] = 0
+    #             s = 0
+    #     l = np.array(l, dtype=object)
+    #     self.l = l
+    #     self.neigh = neigh
+    #     for i in range(len(self.l)):
+    #         tmp = []
+    #         for j in range(len(self.l)):
+    #             if i != j:
+    #                 intr = intersection(self.l[i][1], self.l[j][1])
+    #                 if np.size(np.where(intr == 0)) == 0 and\
+    #                             np.size(np.where(intr == 2)) == 1:
+    #                     if (np.size(np.where(intr == 1)) > 0 and self.n > 1) or self.n == 1:
+    #                         tmp.append([self.l[i][0], self.l[j][0]])
+    #         if len(tmp) > 0:
+    #             self.neigh.append(tmp)
+    #     self.l = np.array(self.l)
     def generateUniformMeshOnRectange(self, rectangle, divisions, polynomialOrder):
         """Generate uniform rectangular mesh on finite rectangle.
         Rectangles are closed and are represented as
@@ -150,34 +150,34 @@ class mesh():
             elementsIntersections.append(intersectionOfAllDimensions)
         self.neighbours = elementsIntersections
 
-    def file_write(self, lname, nname):
-        f = open(lname, "w+")
-
-        for it in self.l:
-            it = np.hstack(([it[0], it[1].flatten(), np.array(it[2])]))
-            f.writelines(list(map(lambda x: str(x) + ' ', it)))
-            f.write('\n')
-        f.close()
-        f = open(nname, "w+")
-        for it in self.neigh:
-            f.writelines(list(map(lambda x: str(x) + ' ', it)))
-            f.write('\n')
-        f.close()
-        return
-    def file_read(self, lname, nname):
-        self.l = np.genfromtxt(lname)
-        tmp = []
-        for it in self.l:
-            tmp.append([it[0], np.reshape(it[1:2*self.n + 1], [self.n, 2]), np.array(it[2*self.n + 1:], dtype=np.int)])
-        self.l = tmp
-        f = open(nname, "r+")
-        self.neigh = f.readlines()
-        for i in range(len(self.neigh)):
-            self.neigh[i] = list(filter(None, re.split(r'\[|\]| |,', self.neigh[i])))[:-1]
-            self.neigh[i] = np.array(self.neigh[i], dtype=np.int)
-            self.neigh[i] = np.reshape(self.neigh[i], [int(self.neigh[i].size/2), 2])
-        f.close()
-        return
+    # def file_write(self, lname, nname):
+    #     f = open(lname, "w+")
+    #
+    #     for it in self.l:
+    #         it = np.hstack(([it[0], it[1].flatten(), np.array(it[2])]))
+    #         f.writelines(list(map(lambda x: str(x) + ' ', it)))
+    #         f.write('\n')
+    #     f.close()
+    #     f = open(nname, "w+")
+    #     for it in self.neigh:
+    #         f.writelines(list(map(lambda x: str(x) + ' ', it)))
+    #         f.write('\n')
+    #     f.close()
+    #     return
+    # def file_read(self, lname, nname):
+    #     self.l = np.genfromtxt(lname)
+    #     tmp = []
+    #     for it in self.l:
+    #         tmp.append([it[0], np.reshape(it[1:2*self.n + 1], [self.n, 2]), np.array(it[2*self.n + 1:], dtype=np.int)])
+    #     self.l = tmp
+    #     f = open(nname, "r+")
+    #     self.neigh = f.readlines()
+    #     for i in range(len(self.neigh)):
+    #         self.neigh[i] = list(filter(None, re.split(r'\[|\]| |,', self.neigh[i])))[:-1]
+    #         self.neigh[i] = np.array(self.neigh[i], dtype=np.int)
+    #         self.neigh[i] = np.reshape(self.neigh[i], [int(self.neigh[i].size/2), 2])
+    #     f.close()
+    #     return
     def fileWrite(self, elementsFileName, neighboursFileName):
         """Creates two files: one with the elements info in the form a_1, b_1, p_1, ..., a_n, b_n, p_n,
          where a_i, b_i, p_i are left and right ends of an interval, p_i is approximation order for i's component.
