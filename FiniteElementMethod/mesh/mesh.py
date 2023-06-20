@@ -7,12 +7,14 @@ from matplotlib.patches import Rectangle
 import sympy as symp
 import numpy as np
 import re
-### self.l contains info about K from domain decomposition [№, rectangle, deg]
+
 class mesh():
     def __init__(self, n):
         self.n = n
         return
     def gen_mesh(self, K, n=10, p=3, split=None):
+        """Old function used for generating uniform rectangular mesh
+        """
         n = np.atleast_1d(n)
         K = np.atleast_2d(K)
         x = []
@@ -111,8 +113,6 @@ class mesh():
         #take outer product of lists and we're done
         elementsList = np.array(list(itertools.product(*listOfElementBoundariesOrders)))
         self.elements = elementsList
-
-
     def checkIntersectionOfIntervals(self, intervals, query):
         """Find intersections between intervals.
         Intervals are closed and are represented as pairs (lower bound,
@@ -127,7 +127,6 @@ class mesh():
         """
         lower, upper = query
         return np.argwhere(((lower <= intervals[:, 1]) & (intervals[:, 0] <= upper)))
-
     def establishNeighbours(self):
         """Find neighbours of elements, i.e. elements, such that at least one point is shared between two of them
 
@@ -150,8 +149,6 @@ class mesh():
             intersectionOfAllDimensions = reduce(np.intersect1d, intersectionsPerDimension)
             elementsIntersections.append(intersectionOfAllDimensions)
         self.neighbours = elementsIntersections
-
-
 
     def file_write(self, lname, nname):
         f = open(lname, "w+")
@@ -182,18 +179,47 @@ class mesh():
         f.close()
         return
     def fileWrite(self, elementsFileName, neighboursFileName):
-        f = open(elementsFileName, "w+")
+        """Creates two files: one with the elements info in the form a_1, b_1, p_1, ..., a_n, b_n, p_n,
+         where a_i, b_i, p_i are left and right ends of an interval, p_i is approximation order for i's component.
+         Second file contains rows of neighbouring elements numbers
 
-        for it in self.elements:
-            it = np.hstack(([it[0], it[1].flatten(), np.array(it[2])]))
-            f.writelines(list(map(lambda x: str(x) + ' ', it)))
-            f.write('\n')
-        f.close()
+        Arguments:
+        elementsFileName:
+        neighboursFileName:
+
+        Returns:
+        Nothing
+        """
+        toElementsFile = open(elementsFileName, "w+")
+        for element in self.elements:
+            for axisInfo in element:
+                toElementsFile.writelines(list(map(lambda x: str(x) + ' ', axisInfo)))
+            toElementsFile.write('\n')
+        toElementsFile.close()
         f = open(neighboursFileName, "w+")
         for it in self.neighbours:
             f.writelines(list(map(lambda x: str(x) + ' ', it)))
             f.write('\n')
         f.close()
+    def fileRead(self, elementsFileName, neighboursFileName):
+        """
+        Arguments:
+        elementsFileName:
+        neighboursFileName:
+
+        Returns:
+        Nothing
+        """
+        elements = np.genfromtxt(elementsFileName)
+        amountOfElements, elementRowLength = elements.shape
+        self.elements = np.reshape(elements, [amountOfElements, int(elementRowLength/3), 3])
+        fromNeighboursFile = open(neighboursFileName, "r+")
+        neigbours = fromNeighboursFile.readlines()
+        for i in range(len(neigbours)):
+            neigbours[i] = list(filter(None, re.split(r'\[|\]| |,', neigbours[i])))[:-1]
+            neigbours[i] = np.array(neigbours[i], dtype=int)
+        self.neighbours = neigbours
+        fromNeighboursFile.close()
         return
     def extendBox(self, s, i, p):
         l1 = np.array(self.box, dtype=np.float)
@@ -494,6 +520,8 @@ class mesh():
             sigma_l.append(Cs/(1/2*fn/fd))
         return sigma_l
 
-meshObj = mesh(1)
-meshObj.generateUniformMeshOnRectange(rectangle=[[0, 1], [0, 1]], divisions=[3, 3], polynomialOrder=[5, 6])
-meshObj.establishNeighbours()
+meshObj = mesh(2)
+# meshObj.generateUniformMeshOnRectange(rectangle=[[0, 1], [0, 1]], divisions=[3, 3], polynomialOrder=[5, 6])
+# meshObj.establishNeighbours()
+# meshObj.fileRead("elements.txt", "neighbours.txt")
+# meshObj.fileWrite("elements.txt", "neighbours.txt")
