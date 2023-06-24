@@ -1,13 +1,14 @@
-from FiniteElementMethod.elem.basis_elem import *
+from FiniteElementMethod.element.basis_elem import *
 
-class elem():
-    def __init__(self, K, n, bc=None, Id=None, infMap="linear"):
-        self.dims = []
-        for i in range(len(n)):
-            if bc[i] is not None:
-                self.dims.append(b_elem(K[i, :], n[i], bc=bc[i], infMap=infMap))
-            else:
-                self.dims.append(b_elem(K[i, :], n[i], infMap=infMap))
+class element():
+    def __init__(self, rectangle, polynomialOrder, boundaryConditions=None, mappingType=0):
+        self.axes = []
+        dimensionality = len(polynomialOrder)
+        # for i in range(len(n)):
+        #     if bc[i] is not None:
+        #         self.dims.append(b_elem(K[i, :], n[i], bc=bc[i], infMap=infMap))
+        #     else:
+        #         self.dims.append(b_elem(K[i, :], n[i], infMap=infMap))
     def get_K(self):
         return self.dims[0].I
     def get_n(self):

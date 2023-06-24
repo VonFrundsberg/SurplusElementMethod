@@ -1,25 +1,30 @@
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
-from scipy.interpolate import *
-from FiniteElementMethod.elem.elem_func import *
-from FiniteElementMethod.elem.elem import *
+import FiniteElementMethod.mesh.mesh as MeshClass
 import FiniteElementMethod.main as fem
 import matplotlib.pyplot as plt
 import time as time
 
 def fun(N, infN, a, nn):
-    gen_obj = fem.FEM()
-    msh = mesh(1)
-    f = func()
-    msh.gen_mesh(np.array([[0.0, a]]), n=[nn], p=[N])
+    finiteElementObject = fem.FEM()
+    mesh = MeshClass.mesh(1)
+    mesh.generateUniformMeshOnRectange([0, a], nn, N)
+    mesh.establishNeighbours()
+    mesh.fileWrite("elementsData.txt", "neighboursData.txt")
+    mesh.fileRead("elementsData.txt", "neighboursData.txt")
+    finiteElementObject.initializeMesh(mesh)
+    finiteElementObject.initializeElements()
+    print("operations done")
 
-    msh.extendBox(1, 0, [infN])
-    msh.file_write('1.txt', '2.txt')
-    msh.file_read('1.txt', '2.txt')
-    gen_obj.initMesh(msh)
-    # msh.CtCg()
-    Ca, Cs = msh.CaCs()
+    time.sleep(500)
+
+    # msh.extendBox(1, 0, [infN])
+    # msh.file_write('1.txt', '2.txt')
+    # msh.file_read('1.txt', '2.txt')
+    # gen_obj.initMesh(msh)
+    # # msh.CtCg()
+    # Ca, Cs = msh.CaCs()
     # print(Ca, Cs)
     # s_list = np.array(msh.sigma_list(Cs))*(10**2)
     # print("s list ", s_list)
@@ -263,8 +268,8 @@ def schroedinger(N, a, nn):
         # print('hey')
     time.sleep(500)
 
-for i in range(32, 200):
-    fun
+for i in range(2, 200):
+    fun(i, i, 5, 2)
     # fun2d(i, i, 5, 2)
     # time.sleep(500)
 # schroedinger(150, 15, 3)

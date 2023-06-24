@@ -2,8 +2,8 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
 from scipy.interpolate import *
-from FiniteElementMethod.elem.elem_func import *
-from FiniteElementMethod.elem.elem import *
+from FiniteElementMethod.element.elem_func import *
+from FiniteElementMethod.element.element import *
 import FiniteElementMethod.main as fem
 import matplotlib.pyplot as plt
 import time as time

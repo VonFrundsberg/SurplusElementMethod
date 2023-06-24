@@ -1,5 +1,5 @@
 import numpy as np
-from FiniteElementMethod.elem.basis_elem import *
+from FiniteElementMethod.element.basis_elem import *
 from misc import integrate as intg
 from misc import approximate as approx
 from misc import spectral as spect

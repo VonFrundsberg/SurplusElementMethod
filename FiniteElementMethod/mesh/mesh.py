@@ -80,7 +80,7 @@ class mesh():
     def generateUniformMeshOnRectange(self, rectangle, divisions, polynomialOrder):
         """Generate uniform rectangular mesh on finite rectangle.
         Rectangles are closed and are represented as
-         lists of 3-tuples(lower bound, upper bound, polynomial order) for every dimension.
+         lists of 4-tuples(lower bound, upper bound, polynomial order, mapping type = 0) for every dimension.
 
         Arguments:
         rectangle: array_like, shape=(N, 2) -- Array of intervals that constitute a general rectangle.
@@ -88,10 +88,12 @@ class mesh():
         polynomialOrder array_like, shape=(N,) -- polynomial/approximation order for every dimension
 
         Returns:
-        Nothing, creates self.elements array_like object with shape=(product(divisions), dimension, 3)
+        Nothing, creates self.elements array_like object with shape=(product(divisions), dimension, 4) and sets the size
+        of elements "list"
         """
 
         divisions = np.atleast_1d(divisions)
+        polynomialOrder = np.atleast_1d(polynomialOrder)
         rectangle = np.atleast_2d(rectangle)
         numberOfDimensions = rectangle.shape[0]
         listOfElementBoundariesOrders = []
@@ -107,12 +109,19 @@ class mesh():
             elementBoundaries = np.reshape((elementBoundaries[1: -1]), [int((elementBoundaries.size - 2)/2), 2])
             #now we add information about order of approximating space in i's dimension
             polynomialOrders = polynomialOrder[i]*np.ones(divisions[i])
-            elementBoundariesOrders = np.hstack([elementBoundaries, polynomialOrders[:, None]])
+            mappingType = np.zeros(divisions[i])
+            elementBoundariesOrders = np.hstack([elementBoundaries, polynomialOrders[:, None], mappingType[:, None]])
             listOfElementBoundariesOrders.append(elementBoundariesOrders)
 
         #take outer product of lists and we're done
         elementsList = np.array(list(itertools.product(*listOfElementBoundariesOrders)))
         self.elements = elementsList
+        self.setElementsAmount()
+
+
+    def setElementsAmount(self):
+        self.elementsAmount = np.shape(self.elements)[0]
+
     def checkIntersectionOfIntervals(self, intervals, query):
         """Find intersections between intervals.
         Intervals are closed and are represented as pairs (lower bound,
@@ -144,11 +153,20 @@ class mesh():
         for i in range(elementsAmount):
             intersectionsPerDimension = []
             for d in range(dimension):
-                intersections = np.array(self.checkIntersectionOfIntervals(self.elements[:, d, : -1], self.elements[i, d, :-1]))
+                intersections = np.array(self.checkIntersectionOfIntervals(self.elements[:, d, : -2], self.elements[i, d, :-2]))
                 intersectionsPerDimension.append(intersections[intersections != i])
             intersectionOfAllDimensions = reduce(np.intersect1d, intersectionsPerDimension)
             elementsIntersections.append(intersectionOfAllDimensions)
         self.neighbours = elementsIntersections
+    def getElementsAmount(self):
+        """
+        Arguments:
+        None
+
+        Returns:
+        Amount of element domains
+        """
+        return self.elementsAmount
 
     # def file_write(self, lname, nname):
     #     f = open(lname, "w+")
@@ -208,17 +226,19 @@ class mesh():
         neighboursFileName:
 
         Returns:
-        Nothing
+        None
+        Creates self.elements, self.neighbours and sets self.elementsAmount
         """
         elements = np.genfromtxt(elementsFileName)
         amountOfElements, elementRowLength = elements.shape
-        self.elements = np.reshape(elements, [amountOfElements, int(elementRowLength/3), 3])
+        self.elements = np.reshape(elements, [amountOfElements, int(elementRowLength/4), 4])
         fromNeighboursFile = open(neighboursFileName, "r+")
         neigbours = fromNeighboursFile.readlines()
         for i in range(len(neigbours)):
             neigbours[i] = list(filter(None, re.split(r'\[|\]| |,', neigbours[i])))[:-1]
             neigbours[i] = np.array(neigbours[i], dtype=int)
         self.neighbours = neigbours
+        self.setElementsAmount()
         fromNeighboursFile.close()
         return
     def extendBox(self, s, i, p):
@@ -520,8 +540,9 @@ class mesh():
             sigma_l.append(Cs/(1/2*fn/fd))
         return sigma_l
 
-meshObj = mesh(2)
+# meshObj = mesh(2)
 # meshObj.generateUniformMeshOnRectange(rectangle=[[0, 1], [0, 1]], divisions=[3, 3], polynomialOrder=[5, 6])
 # meshObj.establishNeighbours()
-# meshObj.fileRead("elements.txt", "neighbours.txt")
 # meshObj.fileWrite("elements.txt", "neighbours.txt")
+# meshObj.fileRead("elements.txt", "neighbours.txt")
+

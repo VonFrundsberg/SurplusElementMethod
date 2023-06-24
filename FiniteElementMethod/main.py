@@ -2,13 +2,70 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
 import scipy.linalg as sp_lin
-from scipy.interpolate import *
-from FiniteElementMethod.elem.elem_func import *
-from FiniteElementMethod.elem.elem import *
-
+from FiniteElementMethod.element import element as element
+import time as time
 class FEM:
-    def initMesh(self, mesh):
+
+    def setBilinearForm(self):
+        return None
+    def setDirichletBoundaryConditions(self):
+        return None
+    def initializeMesh(self, mesh):
+        """Set up already made rectangular mesh, which is an object of SurplusElementMethod/FiniteElementMethod/mesh class
+
+        Arguments:
+        mesh: list of 2 objects [mesh.elements, mesh.neighbours]. Elements contain info about domain decomposition and
+        order of polynomial approximation, neighbours contain info about neighbouring elements. More information in the
+        corresponding class
+
+        Returns:
+        Nothing, creates self.mesh field in FEM class
+        """
         self.mesh = mesh
+
+    def initializeElements(self):
+        """
+        """
+        elementsAmount = self.mesh.getElementsAmount()
+        self.elements = [None] * elementsAmount
+        for i in range(elementsAmount):
+            tmpElement = self.mesh.elements[i]
+            self.elements[i] = element.element(tmpElement[:, -2], polynomialOrder=tmpElement[:, 2],
+                                               mappingType=tmpElement[-1])
+            print('done @ initializeElements')
+            time.sleep(500)
+
+    def calculateFiniteElementMatrix(self):
+        return None
+
+    def solveSLAE(self):
+        return None
+
+    def solutionToFunctionFormat(self):
+        return None
+
+
+    def initElems(self, infMap):
+        N = len(self.mesh.l)
+        self.elems = [None] * N
+        for i in range(N):
+            x = self.mesh[i][0]
+            args = [None] * self.mesh.n
+
+            for j in range(len(self.bc)):
+
+                arg = np.argwhere(self.mesh[i][0][self.bc[j][0], :] == self.bc[j][1])
+
+
+                if len(arg) > 0:
+                    if args[self.bc[j][0]] is not None:
+                        args[self.bc[j][0]].append(np.hstack([-np.squeeze(arg), self.bc[j][2]]))
+                    else:
+                        args[self.bc[j][0]] = [np.hstack([-np.squeeze(arg), self.bc[j][2]])]
+
+            args = np.array(args)
+            self.elems[i] = FEM.elem(*self.mesh[i], bc=args, infMap=infMap)
+
     def bilinearForm(self, I):
         self.iform = I[0]
         self.bform1 = I[1]
@@ -94,26 +151,7 @@ class FEM:
                                              #            F=lambda x, y: F(x, y)*sigma(x))
             return I, bI1, bI2
 
-    def initElems(self, infMap):
-        N = len(self.mesh.l)
-        self.elems = [None] * N
-        for i in range(N):
-            x = self.mesh[i][0]
-            args = [None] * self.mesh.n
 
-            for j in range(len(self.bc)):
-
-                arg = np.argwhere(self.mesh[i][0][self.bc[j][0], :] == self.bc[j][1])
-
-
-                if len(arg) > 0:
-                    if args[self.bc[j][0]] is not None:
-                        args[self.bc[j][0]].append(np.hstack([-np.squeeze(arg), self.bc[j][2]]))
-                    else:
-                        args[self.bc[j][0]] = [np.hstack([-np.squeeze(arg), self.bc[j][2]])]
-
-            args = np.array(args)
-            self.elems[i] = elem(*self.mesh[i], bc=args, infMap=infMap)
 
     def nonZero(self):
         A = sparse.bmat(self.matrixElems)

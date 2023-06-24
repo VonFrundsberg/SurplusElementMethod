@@ -56,3 +56,13 @@ def contraction(u, a):
     for i in range(1, len(u)):
         res = np.dot(res, v[i])
     return np.squeeze(np.array(res))
+
+# n = 100
+# x = np.linspace(0, 1, n)
+# y = np.linspace(0, 1, n)
+# z = np.linspace(0, 1, n)
+# xx, yy, zz = np.meshgrid(x, y, z)
+# f = np.sqrt(xx**2 + yy**2 + zz**2)
+# ttF = vectorTTsvd(f, tol=1e-3)
+# for it in ttF:
+#     print(it.shape)
