@@ -29,7 +29,7 @@ def bary(f, x, a=-1, b=1, cx=None):
 
 def chebDiff(n, a=-1, b=1):
         x = chebNodes(n, a, b)
-        X = np.ones([n, n], dtype=np.float)
+        X = np.ones([n, n], dtype=float)
         X = ((X.T)*x).T
         dX = X - X.T
         C = np.append([2], np.ones(n - 2))

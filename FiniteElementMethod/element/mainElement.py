@@ -1,4 +1,4 @@
-from FiniteElementMethod.element.basis_elem import *
+from FiniteElementMethod.element.basicElement import *
 
 class element():
     def __init__(self, rectangle, polynomialOrder, boundaryConditions=None, mappingType=0):

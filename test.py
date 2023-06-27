@@ -8,6 +8,18 @@ import time as time
 
 def fun(N, infN, a, nn):
     finiteElementObject = fem.FEM()
+
+    gradForm = "integral w(x) grad(u).grad(v)"
+    boundaryForm1 = "boundaryIntegral w(x) [u] <grad(v).n>"
+    boundaryForm2 = "boundaryIntegral w(x) [v] <grad(u).n>"
+    functional = "integral w(x) u f"
+
+    finiteElementObject.setBilinearForm([gradForm, boundaryForm1, boundaryForm2])
+    finiteElementObject.setRHSFunctional(functional)
+
+    boundaryConditions = "1+ = 0"
+    finiteElementObject.setDirichletBoundaryConditions(boundaryConditions)
+
     mesh = MeshClass.mesh(1)
     mesh.generateUniformMeshOnRectange([0, a], nn, N)
     mesh.establishNeighbours()
@@ -15,10 +27,8 @@ def fun(N, infN, a, nn):
     mesh.fileRead("elementsData.txt", "neighboursData.txt")
     finiteElementObject.initializeMesh(mesh)
     finiteElementObject.initializeElements()
-    print("operations done")
-
+    print('done')
     time.sleep(500)
-
     # msh.extendBox(1, 0, [infN])
     # msh.file_write('1.txt', '2.txt')
     # msh.file_read('1.txt', '2.txt')

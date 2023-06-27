@@ -2,13 +2,20 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
 import scipy.linalg as sp_lin
-from FiniteElementMethod.element import element as element
+from FiniteElementMethod.element import mainElement as element
 import time as time
 class FEM:
 
-    def setBilinearForm(self):
+    def setBilinearForm(self, bilinearFormsList):
+        self.innerForms = []
+        self.boundaryForms = []
+        self.functional = []
         return None
-    def setDirichletBoundaryConditions(self):
+
+    def setRHSFunctional(self, functional):
+
+        return None
+    def setDirichletBoundaryConditions(self, boundaryConditions):
         return None
     def initializeMesh(self, mesh):
         """Set up already made rectangular mesh, which is an object of SurplusElementMethod/FiniteElementMethod/mesh class
@@ -32,11 +39,40 @@ class FEM:
             tmpElement = self.mesh.elements[i]
             self.elements[i] = element.element(tmpElement[:, -2], polynomialOrder=tmpElement[:, 2],
                                                mappingType=tmpElement[-1])
-            print('done @ initializeElements')
-            time.sleep(500)
 
     def calculateFiniteElementMatrix(self):
-        return None
+        elementsAmount = self.mesh.getElementsAmount()
+        self.matrixElements = [None] * elementsAmount
+        for i in range(elementsAmount):
+            self.matrixElements[i] = [None] * elementsAmount
+        self.functionalElements = [None] * elementsAmount
+
+        innerFormsAmount = len(self.innerForms)
+        boundaryFormsAmount = len(self.boundaryForms)
+        for i in range(elementsAmount):
+            innerMatrix = self.innerForms[0](self.elems[i], self.elems[i], K=self.mesh[i][0])
+            for j in range(1, innerFormsAmount):
+                innerMatrix += self.innerForms[0](self.elems[i], self.elems[i], K=self.mesh[i][0])
+            innerMatrix = self.mreshape(self.mesh[i][1], self.mesh[i][1], innerMatrix)
+            self.matrixElems[i][i] = sparse.csr_matrix(innerMatrix)
+
+            self.functionalElements[i] = (self.functional[0](self.elems[i], K=self.mesh[i][0])).flatten()
+
+            print(str(i) + ' \'s element calculated')
+
+            for it in self.mesh.neigh[i]:
+                K1 = self.mesh[i][0]
+                K2 = self.mesh[it[1]][0]
+
+                self.matrixElems[i][i] += self.mreshape(self.mesh[i][1], self.mesh[i][1],
+                                                        self.bform1(self.elems[i], self.elems[i], K1=K1, K2=K2))
+
+
+                if i < it[1]:
+                    self.matrixElems[i][it[1]] = sparse.csr_matrix(self.mreshape(self.mesh[i][1], self.mesh[it[1]][1],
+                                                            self.bform2(self.elems[i], self.elems[it[1]], K1=K1, K2=K2)))
+                else:
+                    self.matrixElems[i][it[1]] = self.matrixElems[it[1]][i].T
 
     def solveSLAE(self):
         return None
