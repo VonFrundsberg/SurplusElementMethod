@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
 import scipy.linalg as sp_lin
-from FiniteElementMethod.element import mainElement as element
+from FiniteElementMethod.element import mainElementClass as element
 import time as time
 class FEM:
 

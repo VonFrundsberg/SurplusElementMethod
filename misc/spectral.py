@@ -3,32 +3,39 @@ import scipy.interpolate as sp_interp
 import scipy.fftpack as dft
 
 
-def chebTransform(f, axis=0):
+def chebyshevTransform(f, axis=0):
     n = f.shape[axis]
     a = 1 / (n - 1) * dft.dct(f[::-1], type=1, axis=axis)
     a[0] /= 2; a[-1] /= 2
     return a
 
-def chebNodes(n, a=-1, b=1):
-
-    nodes = (np.cos(np.arange(0, n) * np.pi / (n - 1))[::-1]) * (b - a) / 2
+def calcChebyshevPoints(pointsAmount, a, b):
+    nodes = (np.cos(np.arange(0, pointsAmount) * np.pi / (pointsAmount - 1))[::-1]) * (b - a) / 2
     nodes -= nodes[0]
     nodes += a
     return nodes
 
-def bary(f, x, a=-1, b=1, cx=None):
-    if cx is None:
-        if len(f.shape) > 1:
-            cx = chebNodes(n=f.shape[0], a=a, b=b)
-        else:
-            cx = chebNodes(n=f.size, a=a, b=b)
-    args0 = np.argwhere((x < a) | (x > b))
-    res = sp_interp.barycentric_interpolate(cx, f, x, axis=0)
-    res[args0] = 0
-    return res
+def barycentricChebyshevInterpolate(f, x, a, b, extrapolation=0):
+    """Calculates partial derivative of element basis functions along axis.
 
-def chebDiff(n, a=-1, b=1):
-        x = chebNodes(n, a, b)
+        Arguments:
+            f: values of function at chebyshev points, algebraically rescaled to an [a, b] interval
+            x: points at which interpolated function is evaluated
+            a, b: range of chebyshev points
+
+        Returns:
+            result: interpolated values of f at x
+    """
+    chebyshevPoints = calcChebyshevPoints(pointsAmount=f.size, a=a, b=b)
+    extrapolatedPoints = np.argwhere((x < a) | (x > b))
+    result = sp_interp.barycentric_interpolate(chebyshevPoints, f, x, axis=0)
+    match extrapolation:
+        case 0: result[extrapolatedPoints] = 0
+    return result
+
+def chebyshevDifferentialMatrix(matrixSize, a=-1, b=1):
+        n = matrixSize
+        x = calcChebyshevPoints(n, a, b)
         X = np.ones([n, n], dtype=float)
         X = ((X.T)*x).T
         dX = X - X.T

@@ -1,14 +1,67 @@
-import numpy as np
-from FiniteElementMethod.element.mainElement import element
-# from FiniteElementMethod.element.basicElement import *
-# from misc import integrate as intg
-# from misc import approximate as approx
-# from misc import spectral as spect
-# from FiniteElementMethod.mesh.mesh import *
+from FiniteElementMethod.element.mainElementClass import element
 
-# class func():
-#     def __init__(self):
-#         return
+
+def integrateBilinearForm0(elementU: element, integrationPointsAmount: int, weight):
+    """Integrates bilinear form of the type a(u, u) = int_K weight(x) u(x) v(x) dx,
+        where U(x) and v(x) are basis functions of elementU element
+        and K is a non-zero region of elementU functions.
+
+        Arguments:
+            elementU:
+            weight:
+            integrationPointsAmount:
+        Returns:
+            result: an integral of chosen bilinear form and elementU
+    """
+    
+    return None
+
+
+def integrateBilinearForm1(elementU: element, weight, integrationPointsAmount: int):
+    """(one-dimensional) Integrates bilinear form of the type a(u, u) = int_K weight(x) du(x) dv(x) dx,
+        where U(x) and v(x) are basis functions of elementU element
+        and K is a non-zero region of elementU functions.
+
+        Arguments:
+            elementU:
+            weight:
+            integrationPointsAmount:
+        Returns:
+            result: an integral of chosen bilinear form and elementU
+    """
+    return None
+
+
+def integrateBilinearForm2(elementU: element, weight, integrationPointsAmount: int):
+    """(two-dimensional) Integrates bilinear form of the type
+        a(u, u) = int_K weight(x) grad u(x) grad v(x) dx,
+        where U(x) and v(x) are basis functions of elementU element
+        and K is a non-zero region of elementU functions.
+
+        Arguments:
+            elementU:
+            weight:
+            integrationPointsAmount:
+        Returns:
+            result: an integral of chosen bilinear form and elementU
+    """
+    return None
+
+
+def integrateBilinearForm3(elementU: element, weight, integrationPointsAmount: int):
+    """4-dimensional Integrates bilinear form of the type
+        a(u, u) = int_K weight(x)(grad_1 u(x) grad_1 v(x) + grad_2 u(x) grad_2 v(x))dx,
+        where U(x) and v(x) are basis functions of elementU element
+        and K is a non-zero region of elementU functions.
+
+        Arguments:
+            elementU:
+            weight:
+            integrationPointsAmount:
+        Returns:
+            result: an integral of chosen bilinear form and elementU
+    """
+    return None
 
     # def calc_func1d(self, f, lims, grid):
     #
@@ -52,12 +105,11 @@ from FiniteElementMethod.element.mainElement import element
     #             res.append(tmp_res)
     #     return res
 
-
     def elementPartialDerivative(self, element: element, axis):
         """Calculates partial derivative of element basis functions along axis.
 
         Arguments:
-        element: object of FiniteElementMethod/element/mainElement.py element class
+        element: object of FiniteElementMethod/element/mainElementClass.py element class
         axis: number of axis/dimension over which differentiation is to be performed
 
         Returns:
@@ -65,10 +117,12 @@ from FiniteElementMethod.element.mainElement import element
         basisFunctions = lambda x: element.ev
         basisFunctionDerivativeAlongAxis = lambda x: element.d(x)
         return None
+
     def grad1D(self, element: element, axis):
 
         basisFunctions = lambda x: element(x)
         basisFunctionDerivatives = lambda x: element.d(x)
+
         def res(x):
             dsx = basisFunctionDerivatives(x)
             fsx = basisFunctions(x)
@@ -82,8 +136,8 @@ from FiniteElementMethod.element.mainElement import element
                         tmp.append(fsx[j])
                 arr.append(tmp)
             return arr
-        return res
 
+        return res
 
     # def integr(self, K, elemF, F=None, n=300, infMap="linear"):
     #         # n=2000

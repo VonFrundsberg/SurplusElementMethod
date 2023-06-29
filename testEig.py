@@ -3,7 +3,7 @@ import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
 from scipy.interpolate import *
 from FiniteElementMethod.element.elementOperations import *
-from FiniteElementMethod.element.mainElement import *
+from FiniteElementMethod.element.mainElementClass import *
 import FiniteElementMethod.main as fem
 import matplotlib.pyplot as plt
 import time as time

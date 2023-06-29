@@ -1,7 +1,7 @@
 import numpy as np
 from misc import spectral as sp
 
-class basicElem():
+class basicElement():
     def __init__(self, interval, polynomialOrder, mappingType, boundaryConditions=[]):
         """Constructor of basic (one-dimensional) element
 
@@ -16,14 +16,13 @@ class basicElem():
         self.interval = np.array(interval)
         self.polynomialOrder = polynomialOrder
         self.boundaryConditions = boundaryConditions
-        # if Id == None:
-        #     self.Id = np.eye(n)
-        # else:
-        #     self.Id = Id
-        # self.D = sp.chebDiff(self.polynomialOrder).dot(self.rp_eval())
-        self.functionAtReferencePoints = np.eye(polynomialOrder)
+        self.referencePointValues = np.eye(polynomialOrder)
         for it in self.boundaryConditions:
-            self.functionAtReferencePoints[it[0], it[0]] = it[1]
+            self.referencePointValues[it[0], it[0]] = it[1]
+
+        self.referencePointDerivativeValues = \
+            sp.chebyshevDifferentialMatrix(self.polynomialOrder, a=interval[0], b=interval[1]).\
+                dot(self.referencePointValues)
         match mappingType:
             case 0:
                 a = self.interval[0]; b = self.interval[1]
@@ -65,61 +64,52 @@ class basicElem():
                     self.derivativeMap = lambda x: (1.0 - x)
                     self.inverseDerivativeMap = lambda x: 1/(1.0 - x)
                     return
-
     def evaluateChebyshevPoints(self):
         return self.functionAtChebyshevPoints
-
     def evaluatePoints(self, x):
-        """Constructor of basic (one-dimensional) element
+        """ Evaluates basis functions at points x
 
-                Arguments:
-                    interval:
-                    polynomialOrder:
-                    mappingType: 0 is linear qx+p, 1 is rational (1+x)/(1-x), 2 is exponential ???
-                    boundaryConditions:
+            Arguments:
+                x: evaluation points
 
-                Returns: return shape: (*x.shape, deg of element)
-                """
+            Returns:
+                result: array with the shape: (*x.shape, degree of element)
+        """
         x = np.atleast_1d(x)
-        P = self.rp_eval()
+        basisMatrix = self.referencePointValues
         if x.size == 1:
-            if x[0] == self.I[0]:
-                return np.array([P[0, :]])
-            if x[0] == self.I[-1]:
-                return np.array([P[-1, :]])
-            # print('oops')
-        # xs = np.array(self.imap(x), dtype=np.float)
-        res = sp.bary(P, x)
-        return res
+            if x[0] == self.interval[0]:
+                return np.array([basisMatrix[0, :]])
+            if x[0] == self.interval[-1]:
+                return np.array([basisMatrix[-1, :]])
 
-    def xs(self):
+        result = sp.barycentricChebyshevInterpolate(basisMatrix, x, a=-1, b=1)
+        return result
+    def getMappedReferencePoins(self):
         x = sp.chebNodes(self.n)
         x = self.map(x)
         return x
+    def evaluateDerivativePoints(self, x):
+        """ Evaluates derivatives of basis functions at points x
 
-    def new_xs(self):
-        x = sp.chebNodes(self.n)
-        mx = self.imap
+            Arguments:
+                x: evaluation points
 
-        return x, mx
-
-    def evaluateDerivativePoints(self, x): ## return shape: (*x.shape, deg of element)
+            Returns:
+                result: array with the shape: (*x.shape, degree of element)
+        """
         x = np.atleast_1d(x)
-        P = self.D
+        derivativeBasisMatrix = self.referencePointDerivativeValues
         if x.size == 1:
             if x[0] == self.interval[0]:
-                return self.dmap(-1)*np.array([P[0, :]])
+                return self.derivativeMap(-1)*np.array([derivativeBasisMatrix[0, :]])
             if x[0] == self.interval[-1]:
-                return self.dmap(1)*np.array([P[-1, :]])
+                return self.derivativeMap(1)*np.array([derivativeBasisMatrix[-1, :]])
         # xs = np.array(self.imap(x), dtype=np.float)
-        res = sp.bary(f=P, x=x)*np.reshape(self.dmap(x), (*x.shape, 1))
-        return res
-    def gen_func(self):
-        return lambda x: self.p_eval(x)
-    def gen_funcd(self):
-        return lambda x: self.dp_eval(x)
-
-    def __call__(self, x):
-            return self.p_eval(x)
-    def d(self, x):
-            return self.dp_eval(x)
+        result = sp.barycentricChebyshevInterpolate(f=derivativeBasisMatrix, x=x)\
+                 *np.reshape(self.derivativeMap(x), (*x.shape, 1))
+        return result
+    def generateFunction(self):
+        return lambda x: self.evaluatePoints(x)
+    def generateDerivativeFunction(self):
+        return lambda x: self.evaluateDerivativePoints(x)
