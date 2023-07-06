@@ -16,13 +16,13 @@ class basicElement():
         self.interval = np.array(interval)
         self.polynomialOrder = polynomialOrder
         self.boundaryConditions = boundaryConditions
-        self.referencePointValues = np.eye(polynomialOrder)
+        self.refPointVal = np.eye(polynomialOrder)
         for it in self.boundaryConditions:
-            self.referencePointValues[it[0], it[0]] = it[1]
+            self.refPointVal[it[0], it[0]] = it[1]
 
-        self.referencePointDerivativeValues = \
-            sp.chebyshevDifferentialMatrix(self.polynomialOrder, a=interval[0], b=interval[1]).\
-                dot(self.referencePointValues)
+        self.refPointDiffVal = \
+            sp.ChebDiffMatrix(self.polynomialOrder, a=interval[0], b=interval[1]).\
+                dot(self.refPointVal)
         match mappingType:
             case 0:
                 a = self.interval[0]; b = self.interval[1]
@@ -64,8 +64,10 @@ class basicElement():
                     self.derivativeMap = lambda x: (1.0 - x)
                     self.inverseDerivativeMap = lambda x: 1/(1.0 - x)
                     return
-    def evaluateChebyshevPoints(self):
-        return self.functionAtChebyshevPoints
+    def evalAtChebPoints(self):
+        return self.refPointVal
+    def evalDiffAtChebPoints(self):
+        return self.refPointDiffVal
     def evaluatePoints(self, x):
         """ Evaluates basis functions at points x
 
@@ -76,20 +78,20 @@ class basicElement():
                 result: array with the shape: (*x.shape, degree of element)
         """
         x = np.atleast_1d(x)
-        basisMatrix = self.referencePointValues
+        basisMatrix = self.refPointVal
         if x.size == 1:
             if x[0] == self.interval[0]:
                 return np.array([basisMatrix[0, :]])
             if x[0] == self.interval[-1]:
                 return np.array([basisMatrix[-1, :]])
 
-        result = sp.barycentricChebyshevInterpolate(basisMatrix, x, a=-1, b=1)
+        result = sp.barycentricChebInterpolate(basisMatrix, x, a=-1, b=1)
         return result
-    def getMappedReferencePoins(self):
-        x = sp.chebNodes(self.n)
+    def getMappedRefPoints(self):
+        x = sp.calcChebPoints(self.polynomialOrder, -1, 1)
         x = self.map(x)
         return x
-    def evaluateDerivativePoints(self, x):
+    def evalDiff(self, x):
         """ Evaluates derivatives of basis functions at points x
 
             Arguments:
@@ -99,17 +101,17 @@ class basicElement():
                 result: array with the shape: (*x.shape, degree of element)
         """
         x = np.atleast_1d(x)
-        derivativeBasisMatrix = self.referencePointDerivativeValues
+        derivativeBasisMatrix = self.refPointDiffVal
         if x.size == 1:
             if x[0] == self.interval[0]:
                 return self.derivativeMap(-1)*np.array([derivativeBasisMatrix[0, :]])
             if x[0] == self.interval[-1]:
                 return self.derivativeMap(1)*np.array([derivativeBasisMatrix[-1, :]])
         # xs = np.array(self.imap(x), dtype=np.float)
-        result = sp.barycentricChebyshevInterpolate(f=derivativeBasisMatrix, x=x)\
+        result = sp.barycentricChebInterpolate(f=derivativeBasisMatrix, x=x)\
                  *np.reshape(self.derivativeMap(x), (*x.shape, 1))
         return result
     def generateFunction(self):
         return lambda x: self.evaluatePoints(x)
     def generateDerivativeFunction(self):
-        return lambda x: self.evaluateDerivativePoints(x)
+        return lambda x: self.evalDiff(x)

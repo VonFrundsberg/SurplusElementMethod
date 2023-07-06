@@ -1,6 +1,61 @@
 import numpy as np
 import scipy.linalg as sp_linalg
 
+
+def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
+    tensor = argTensor.copy()
+    shape = tensor.shape
+    dim = len(shape)
+    r = np.ones(dim, dtype=int)
+    leftShapeProd = np.prod(shape)
+    cores = []
+    for i in range(dim - 1, 0, -1):
+        tensor = np.reshape(tensor, [int(leftShapeProd/r[i]/shape[i]), shape[i]*r[i]])
+        u, s, v = sp_linalg.svd(tensor, full_matrices=False)
+        cumsum = np.cumsum(s)
+        r_delta = np.argmax(cumsum[-1] - cumsum < tol) + 1
+        r[i - 1] = min(R_MAX, r_delta)
+        if r[i-1] == R_MAX:
+            print(i, " rank exceeded R_MAX, TT approximation error may be high")
+        cores.append(np.reshape(v[: r[i - 1]], [r[i-1], shape[i], r[i]]))
+        leftShapeProd = leftShapeProd * r[i - 1]/shape[i]/r[i]
+        tensor = np.dot(u[:, : r[i - 1]], np.diag(s[:r[i-1]]))
+    cores.append(np.reshape(tensor, [1, shape[0], r[0]]))
+    cores = cores[::-1]
+    return cores
+def simpleQTTsvd(argTensor, tol=1e-6, makeCopy=True):
+    shape = argTensor.shape
+    dim = len(shape)
+    log2arr = np.log2(shape)
+    tensor = argTensor.copy()
+    if all(np.equal(np.mod(log2arr, 1), 0)):
+        pass
+    else:
+        print("some dimension is not a power of 2")
+        return ValueError
+    newshape = np.array(2 * np.ones(int(np.sum(log2arr))), dtype=int)
+    tensor = np.reshape(tensor, newshape)
+    shape = tensor.shape
+    dim = len(shape)
+    r = np.ones(dim, dtype=int)
+    leftShapeProd = np.prod(shape)
+    cores = []
+    R_MAX = 100
+    for i in range(dim - 1, 0, -1):
+        tensor = np.reshape(tensor, [int(leftShapeProd / r[i] / shape[i]), shape[i] * r[i]])
+        u, s, v = sp_linalg.svd(tensor, full_matrices=False)
+
+        cumsum = np.cumsum(s ** 2)
+        r_delta = np.argmax(cumsum[-1] - cumsum < tol**2) + 1
+        r[i - 1] = min(R_MAX, r_delta)
+
+        cores.append(np.reshape(v[: r[i - 1]], [r[i - 1], shape[i], r[i]]))
+        leftShapeProd = leftShapeProd * r[i - 1] / shape[i] / r[i]
+        tensor = np.dot(u[:, : r[i - 1]], np.diag(s[:r[i - 1]]))
+    cores.append(np.reshape(tensor, [1, shape[0], r[0]]))
+    cores = cores[::-1]
+
+    return cores
 def vectorTTsvd(f, tol=1e-6):
     shape = f.shape
     ls = len(shape)
@@ -15,7 +70,6 @@ def vectorTTsvd(f, tol=1e-6):
 
         psigma = sigma
         sigma = max(1, np.size(s[np.abs(s) > tol]))
-
         f = np.dot(u[:, :sigma], np.diag(np.sqrt(s[:sigma])))
         v = np.dot(np.diag(np.sqrt(s[:sigma])), v[:sigma, :])
 
@@ -36,7 +90,7 @@ def matrixTTsvd(A, shape, tol=1e-6, f=None):
     last = np.arange(shape.size, 2*shape.size)
     newAxes = np.zeros(2*shape.size)
     newAxes[::2] = first; newAxes[1::2] = last
-    newAxes = np.array(newAxes, dtype=np.int)
+    newAxes = np.array(newAxes, dtype=int)
     A = np.transpose(A, newAxes)
     A = np.reshape(A, shape**2)
     A = vectorTTsvd(A, tol)
@@ -57,6 +111,69 @@ def contraction(u, a):
         res = np.dot(res, v[i])
     return np.squeeze(np.array(res))
 
+def kronSumtoTT(A: list, B: list):
+    """Construct TT cores of matrix sum
+        [T_1, T_2, T_3] = B_1*A_2*A_3 + A_1*B_2*A_3 + A_1*A_2*B_3,
+        where * is a kronecker product.
+        Calculates for arbitrary list len (in example len(A) = 3). It must be that len(A) == len(B)
+        Arguments:
+            A:
+            B:
+        Returns:
+            cores:
+    """
+    dim = len(A)
+    if dim != len(B):
+        print("List length is not the same")
+        return None
+    cores = []
+    core = np.stack((B[0], A[0]), axis=2)[np.newaxis, :, :, :]
+    cores.append(core)
+    for i in range(1, dim - 1):
+        core = np.stack((A[i], 0*B[i], B[i], A[i]), axis=2)[np.newaxis, :, :, :]
+        core = np.reshape(core, [core.shape[1], core.shape[2], 2, 2])
+        core = np.transpose(core, [2, 0, 1, 3])
+        print(core[1, :, :, 0])
+        # time.sleep(500)
+        cores.append(core)
+    core = np.stack((A[-1], B[-1]), axis=0)[:, :, :, np.newaxis]
+    cores.append(core)
+    return cores
+# def vecRound(u, tol=1e-6):
+#     size = len(u)
+#     for i in range(size - 1, 1, -1):
+#         print(u[i].shape)
+#         a, n, b = u[i].shape
+#         # R, Q = sp_linalg.rq(np.reshape(u[i], [a, n*b]), mode='economic')
+#         Q, R = np.linalg.qr(np.reshape(u[i], [a, n*b]))
+#         # R, Q = sp_linalg.qr(np.reshape(u[i], [a, n * b]), mode='economic')
+#         # print(R.shape, Q.shape)
+#         u[i] = np.reshape(Q, [a, n, 1])
+#         # print('r', R.shape)
+#         # print(u[i - 1].shape, Q.shape, R.shape)
+#         u[i - 1] = np.tensordot(u[i - 1], R, axes=(2, 0))
+#         # print(Q.shape, R.shape)
+#     for i in range(size - 1):
+#         a, n, b = u[i].shape
+#         # print(a, n, b)
+#         U, S, V = sp_linalg.svd(np.reshape(u[i], [a*n, b]))
+#         # print(i, S)
+#         sigma = max(1, np.size(S[S > tol]))
+#         u[i] = U[:, :sigma]; V = np.dot(np.diag(S[:sigma]), V[:sigma, :])
+#         # print(V.shape, u[i + 1].shape)
+#         u[i + 1] = np.tensordot(V, u[i + 1], axes=(1, 0))
+#         u[i] = np.reshape(u[i], [a, n, sigma])
+
+    # a, n, b = u[-1].shape
+    # U, S, V = sp_linalg.svd(np.reshape(u[-1], [a * n, b]))
+    # sigma = np.size(S[S > tol])
+    # print(a, n, b)
+    # u[i] = U[:, :sigma];
+    # V = np.dot(np.diag(S[:sigma]), V[:sigma, :])
+    # # print(V.shape, u[i + 1].shape)
+    # u[i + 1] = np.tensordot(V, u[i + 1], axes=(1, 0))
+    # u[i] = np.reshape(u[i], [a, n, sigma])
+    # return u
 # n = 100
 # x = np.linspace(0, 1, n)
 # y = np.linspace(0, 1, n)

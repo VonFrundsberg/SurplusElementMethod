@@ -1,25 +1,27 @@
 import numpy as np
 
 from FiniteElementMethod.element.basicElement import basicElement
+import misc.approximate as approx
 
 class element():
     def __init__(self, rectangle, polynomialOrder, mappingType=0, boundaryConditions=None):
         self.axes = []
-        polynomialOrder = np.atleast_1d(polynomialOrder)
-        rectangle = np.atleast_2d(rectangle)
-        dimensionality = len(polynomialOrder)
+        self.approxOrder = np.atleast_1d(polynomialOrder)
+        self.rectangle = np.atleast_2d(rectangle)
+        self.dim = len(self.approxOrder)
         self.basicElements = []
-        for i in range(dimensionality):
+        for i in range(self.dim):
         #     if bc[i] is not None:
         #         self.dims.append(b_elem(K[i, :], n[i], bc=bc[i], infMap=infMap))
         #     else:
-                self.basicElements.append(basicElement(rectangle[i, :], polynomialOrder[i], mappingType))
+                self.basicElements.append(basicElement(self.rectangle[i, :], self.approxOrder[i], mappingType[i]))
     # def get_K(self):
     #     return self.dims[0].I
     # def get_n(self):
     #     return self.dims[0].n
 
-
+    def getDim(self):
+        return self.dim
     def evaluatePoints(self, x):
         """ Evaluates basis functions at points x
 
@@ -37,7 +39,7 @@ class element():
         return result
 
     def evaluateDerivativePointsAxis(self, x, axis):
-        result = self.basicElements[axis].evaluateDerivativePoints(np.unique(x[axis]))
+        result = self.basicElements[axis].evalDiff(np.unique(x[axis]))
         return result
     # def bcs(self):
     #     lists = np.zeros(len(self.dims))
@@ -53,11 +55,15 @@ class element():
     #             if it[0] == -1:
     #                 pad[i][1] = 1
     #     return lists, pad
-    # def grid(self):
-    #     grid = []
-    #     for i in range(len(self.dims)):
-    #         grid.append(self.dims[i].getMappedReferencePoins())
-    #     return grid
+    def getGrid(self):
+        coordsList = []
+        for i in range(self.dim):
+            coordsList.append(self.basicElements[i].getMappedRefPoints())
+        grid = approx.meshgrid(*coordsList)
+        return grid
+
+    def __getitem__(self, key):
+        return self.basicElements[key]
 
     # def new_grid(self):
     #     grid = []
@@ -73,5 +79,11 @@ class element():
     #         return self.p_eval(x)
     # def d(self, x):
     #         return self.dp_eval(x)
+# import matplotlib.pyplot as plt
 
-elem = element(np.array([0, 1]), 2, 0)
+# X, Y = grid
+# deg = np.arctan(Y**3 - 3*Y-X)
+# QP = plt.quiver(X, Y, np.cos(deg), np.sin(deg))
+# plt.grid()
+# plt.show()
+

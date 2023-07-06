@@ -8,7 +8,7 @@ import time as time
 
 N = 700; a=-10; b=10
 nodes = spectral.chebNodes(n=N, a=a, b=b)
-D = spectral.chebyshevDifferentialMatrix(n=N, a=a, b=b)
+D = spectral.ChebDiffMatrix(n=N, a=a, b=b)
 D = np.dot(D, D)
 n = 30
 V = lambda x: (n)*(n+1)*(2*np.exp(x)/(np.exp(2*x) + 1))**2
