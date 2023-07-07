@@ -23,7 +23,7 @@ def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
     cores.append(np.reshape(tensor, [1, shape[0], r[0]]))
     cores = cores[::-1]
     return cores
-def simpleQTTsvd(argTensor, flattenNewaxes, tol=1e-6, makeCopy=True, ):
+def simpleQTTsvd(argTensor, tol=1e-6, makeCopy=True, flattenNewaxes=None):
     """Calculates QTT approximation to argTensor, elements of shape of argTensor should be the same
     """
     shape = argTensor.shape
@@ -37,12 +37,13 @@ def simpleQTTsvd(argTensor, flattenNewaxes, tol=1e-6, makeCopy=True, ):
         return ValueError
     newshape = np.array(2 * np.ones(int(np.sum(log2arr))), dtype=int)
     tensor = np.reshape(tensor, newshape)
+    #######if we need reordering of axes, else keep commented
     # newaxes = np.arange(np.sum(log2arr))
     # flattenNewaxes = np.ones(newaxes.size, dtype=int)
     # newaxes = np.reshape(newaxes, [len(log2arr), int(log2arr[0])])
     # for i in range(newaxes.shape[1]):
     #     flattenNewaxes[(i)*len(log2arr): (i + 1)*len(log2arr)] = np.array(newaxes[:, i])
-    tensor = np.transpose(tensor, flattenNewaxes)
+    # tensor = np.transpose(tensor, flattenNewaxes)
     shape = tensor.shape
     dim = len(shape)
     r = np.ones(dim, dtype=int)
@@ -180,12 +181,3 @@ def kronSumtoTT(A: list, B: list):
     # u[i + 1] = np.tensordot(V, u[i + 1], axes=(1, 0))
     # u[i] = np.reshape(u[i], [a, n, sigma])
     # return u
-# n = 100
-# x = np.linspace(0, 1, n)
-# y = np.linspace(0, 1, n)
-# z = np.linspace(0, 1, n)
-# xx, yy, zz = np.meshgrid(x, y, z)
-# f = np.sqrt(xx**2 + yy**2 + zz**2)
-# ttF = vectorTTsvd(f, tol=1e-3)
-# for it in ttF:
-#     print(it.shape)

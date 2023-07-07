@@ -539,9 +539,3 @@ class mesh():
             sigma_l.append(Cs/(1/2*fn/fd))
         return sigma_l
 
-# meshObj = mesh(2)
-# meshObj.generateUniformMeshOnRectange(rectangle=[[0, 1], [0, 1]], divisions=[3, 3], polynomialOrder=[5, 6])
-# meshObj.establishNeighbours()
-# meshObj.fileWrite("elements.txt", "neighbours.txt")
-# meshObj.fileRead("elements.txt", "neighbours.txt")
-

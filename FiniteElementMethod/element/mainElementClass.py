@@ -14,11 +14,7 @@ class element():
         #     if bc[i] is not None:
         #         self.dims.append(b_elem(K[i, :], n[i], bc=bc[i], infMap=infMap))
         #     else:
-                self.basicElements.append(basicElement(self.rectangle[i, :], self.approxOrder[i], mappingType[i]))
-    # def get_K(self):
-    #     return self.dims[0].I
-    # def get_n(self):
-    #     return self.dims[0].n
+            self.basicElements.append(basicElement(self.rectangle[i, :], self.approxOrder[i], mappingType[i]))
 
     def getDim(self):
         return self.dim
@@ -65,11 +61,6 @@ class element():
     def __getitem__(self, key):
         return self.basicElements[key]
 
-    # def new_grid(self):
-    #     grid = []
-    #     for i in range(len(self.dims)):
-    #         grid.append(self.dims[i].new_xs())
-    #     return grid
     # def gen_func(self):
     #     return lambda x: self.p_eval(x)
     # def gen_funcd(self):
@@ -79,11 +70,5 @@ class element():
     #         return self.p_eval(x)
     # def d(self, x):
     #         return self.dp_eval(x)
-# import matplotlib.pyplot as plt
 
-# X, Y = grid
-# deg = np.arctan(Y**3 - 3*Y-X)
-# QP = plt.quiver(X, Y, np.cos(deg), np.sin(deg))
-# plt.grid()
-# plt.show()
 

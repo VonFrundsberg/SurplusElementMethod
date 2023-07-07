@@ -294,9 +294,4 @@ def integrateBilinearForm3(elementU: element, weight, integrationPointsAmount: i
     # #     return res
 
 
-elem = element(np.array([[-2, 2], [-4, 4], [-8, 8]]),
-               2**3*np.array([2, 2, 2], dtype=int), np.array([0, 0, 0]))
-def f(x):
-    return np.exp(-np.sqrt(4*x[0]**2 + 2*x[1]**2 + x[2]**2))
 
-integrateBilinearForm0(elem, 100, 1e-6, f)
