@@ -102,7 +102,7 @@ def matrixTTsvd(A, shape, tol=1e-6, f=None):
     newAxes = np.array(newAxes, dtype=int)
     A = np.transpose(A, newAxes)
     A = np.reshape(A, shape**2)
-    A = vectorTTsvd(A, tol)
+    A = simpleTTsvd(A, tol)
     for i in range(len(A)):
         a = A[i].shape[0]; b = A[i].shape[2]
         A[i] = np.reshape(A[i], [a, shape[i], shape[i], b])

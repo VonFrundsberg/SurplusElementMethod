@@ -2,6 +2,7 @@ from FiniteElementMethod.element.mainElementClass import element
 import FiniteElementMethod.element.elementOperations as elemOp
 from mathematics import approximate as approx
 import numpy as np
+import scipy.linalg as sp_lin
 
 
 def permutations(n):
@@ -108,12 +109,67 @@ def testTT_approximation(elementU, weight, TT_Tolerance):
     A = np.reshape(A, initShape)
     print(np.sum(np.abs(A - weightArr)))
     print("after binaryTT ", sum)
+def testLaplacianInverseTT(elementU):
+    basisFuncList = []
+    basisDiffFuncList = []
+    for i in range(elementU.getDim()):
+        basisFuncList.append(elementU[i].evalAtChebPoints()[1:-1, 1: -1])
+        basisDiffFuncList.append(elementU[i].evalDiffAtChebPoints()[1:-1, 1: -1])
+    C = np.kron(np.kron(np.dot(basisDiffFuncList[0], basisDiffFuncList[0]), basisFuncList[1]), basisFuncList[2])
+    C += np.kron(np.kron(basisFuncList[0], np.dot(basisDiffFuncList[1], basisDiffFuncList[1])), basisFuncList[2])
+    C += np.kron(np.kron(basisFuncList[0], basisFuncList[1]), np.dot(basisDiffFuncList[2], basisDiffFuncList[2]))
+    invC = sp_lin.inv(C)
+    shape = elementU.approxOrder
+    ttC = approx.matrixTTsvd(C, shape - 2, tol=1e-6)
+    ttInvC = approx.matrixTTsvd(invC, shape - 2, tol=1e-3)
+    print("nonzero amount in kron matrix: ", np.count_nonzero(C))
+    print("nonzero amount in inverse matrix: ", np.count_nonzero(invC))
+    sum = 0
+    for i in range(len(ttC)):
+        print("C core shape:", ttC[i].shape, "inverse C core shape ", ttInvC[i].shape, "with the total size"
+                                                                                       "of ", ttInvC[i].size)
+        sum += ttInvC[i].size
+    print("inverse and TT approximation nonzero elements magnitude difference (times):", np.count_nonzero(invC)/sum)
+    for i in range(3):
+        shape = ttInvC[i].shape
+        ttInvC[i] = np.reshape(ttInvC[i], [shape[0], shape[1]*shape[2], shape[3]])
 
+        shape = ttC[i].shape
+        ttC[i] = np.reshape(ttC[i], [shape[0], shape[1] * shape[2], shape[3]])
+
+    newCshape = np.array(elementU.approxOrder - 2, dtype=int)
+    invC = np.reshape(invC, [*newCshape, *newCshape])
+    invC = np.transpose(invC, axes=[0, 3, 1, 4, 2, 5])
+    invC = np.reshape(invC, newCshape**2)
+    A = np.reshape(ttInvC[0], [ttInvC[0].shape[1], ttInvC[0].shape[-1]])
+    initShape = invC.shape
+    for i in range(1, len(ttInvC)):
+        shape = ttInvC[i].shape
+        reshaped = np.reshape(ttInvC[i], [shape[0], shape[1] * shape[2]])
+        A = np.dot(A, reshaped)
+        A = np.reshape(A, [np.prod(initShape[:i + 1]), int(A.shape[-1]/initShape[i])])
+    A = np.reshape(A, initShape)
+    print("approximation error for inverse: ", np.sum((A - invC)**2))
+
+    newCshape = np.array(elementU.approxOrder - 2, dtype=int)
+    C = np.reshape(C, [*newCshape, *newCshape])
+    C = np.transpose(C, axes=[0, 3, 1, 4, 2, 5])
+    C = np.reshape(C, newCshape ** 2)
+    A = np.reshape(ttC[0], [ttC[0].shape[1], ttC[0].shape[-1]])
+    initShape = C.shape
+    for i in range(1, len(ttC)):
+        shape = ttC[i].shape
+        reshaped = np.reshape(ttC[i], [shape[0], shape[1] * shape[2]])
+        A = np.dot(A, reshaped)
+        A = np.reshape(A, [np.prod(initShape[:i + 1]), int(A.shape[-1] / initShape[i])])
+    A = np.reshape(A, initShape)
+    print("approximation error for original matrix: ", np.sum((A - C) ** 2))
 
 elem = element(np.array([[-2, 2], [-4, 4], [-8, 8]]),
-               2**2*np.array([2, 2, 2], dtype=int), np.array([0, 0, 0]))
+               7*np.array([2, 3, 4], dtype=int), np.array([0, 0, 0]))
 def f(x):
     return np.exp(-np.sqrt(4*x[0]**2 + 2*x[1]**2 + x[2]**2))
 
 # testKronSum(elem)
-testTT_approximation(elem, f, 1e-6)
+# testTT_approximation(elem, f, 1e-6)
+testLaplacianInverseTT(elem)
