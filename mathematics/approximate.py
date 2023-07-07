@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.linalg as sp_linalg
-
+import time as time
 
 def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
     tensor = argTensor.copy()
@@ -23,7 +23,9 @@ def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
     cores.append(np.reshape(tensor, [1, shape[0], r[0]]))
     cores = cores[::-1]
     return cores
-def simpleQTTsvd(argTensor, tol=1e-6, makeCopy=True):
+def simpleQTTsvd(argTensor, flattenNewaxes, tol=1e-6, makeCopy=True, ):
+    """Calculates QTT approximation to argTensor, elements of shape of argTensor should be the same
+    """
     shape = argTensor.shape
     dim = len(shape)
     log2arr = np.log2(shape)
@@ -35,6 +37,12 @@ def simpleQTTsvd(argTensor, tol=1e-6, makeCopy=True):
         return ValueError
     newshape = np.array(2 * np.ones(int(np.sum(log2arr))), dtype=int)
     tensor = np.reshape(tensor, newshape)
+    # newaxes = np.arange(np.sum(log2arr))
+    # flattenNewaxes = np.ones(newaxes.size, dtype=int)
+    # newaxes = np.reshape(newaxes, [len(log2arr), int(log2arr[0])])
+    # for i in range(newaxes.shape[1]):
+    #     flattenNewaxes[(i)*len(log2arr): (i + 1)*len(log2arr)] = np.array(newaxes[:, i])
+    tensor = np.transpose(tensor, flattenNewaxes)
     shape = tensor.shape
     dim = len(shape)
     r = np.ones(dim, dtype=int)
@@ -133,8 +141,6 @@ def kronSumtoTT(A: list, B: list):
         core = np.stack((A[i], 0*B[i], B[i], A[i]), axis=2)[np.newaxis, :, :, :]
         core = np.reshape(core, [core.shape[1], core.shape[2], 2, 2])
         core = np.transpose(core, [2, 0, 1, 3])
-        print(core[1, :, :, 0])
-        # time.sleep(500)
         cores.append(core)
     core = np.stack((A[-1], B[-1]), axis=0)[:, :, :, np.newaxis]
     cores.append(core)

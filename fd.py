@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.linalg as sp_linalg
 from scipy.interpolate import *
-import misc.spectral as spectral
+import mathematics.spectral as spectral
 import matplotlib.pyplot as plt
 import time as time
 

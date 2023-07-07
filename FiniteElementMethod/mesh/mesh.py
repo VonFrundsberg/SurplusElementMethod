@@ -1,10 +1,9 @@
-from misc import approximate
+from mathematics import approximate
 import itertools as itertools
 from functools import reduce
 from dataclasses import dataclass
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
-import sympy as symp
 import numpy as np
 import re
 

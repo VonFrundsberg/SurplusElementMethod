@@ -1,5 +1,5 @@
 import numpy as np
-from misc import spectral as sp
+from mathematics import spectral as sp
 
 class basicElement():
     def __init__(self, interval, polynomialOrder, mappingType, boundaryConditions=[]):

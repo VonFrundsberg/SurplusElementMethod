@@ -1,7 +1,7 @@
 import numpy as np
 
 from FiniteElementMethod.element.basicElement import basicElement
-import misc.approximate as approx
+import mathematics.approximate as approx
 
 class element():
     def __init__(self, rectangle, polynomialOrder, mappingType=0, boundaryConditions=None):
