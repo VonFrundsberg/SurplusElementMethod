@@ -48,10 +48,10 @@ def reg_32_wn(a=-1, b=1, n=20):
     left_weights = w * (b - a) * h
     mid_weights = np.ones(n) * (b - a) * h
     right_weights = w[::-1] * (b - a) * h
-    points = np.array([left_points, mid_points, right_points])
-    weights = np.array([left_weights, mid_weights, right_weights])
-    points = np.concatenate(points).ravel()
-    weights = np.concatenate(weights).ravel()
+    points = np.hstack([left_points, mid_points, right_points])
+    weights = np.hstack([left_weights, mid_weights, right_weights])
+    # points = np.concatenate(points).ravel()
+    # weights = np.concatenate(weights).ravel()
     return weights, points
 
 def reg_22_wn(a=-1, b=1, n=20):

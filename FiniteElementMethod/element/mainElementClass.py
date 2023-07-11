@@ -30,11 +30,11 @@ class element():
         result = []
         i = 0
         for it in self.basicElements:
-            result.append(it.evaluatePoints(np.unique(x[i])))
+            result.append(it.eval(np.unique(x[i])))
             i += 1
         return result
 
-    def evaluateDerivativePointsAxis(self, x, axis):
+    def evalDiffAlongAxis(self, x, axis):
         result = self.basicElements[axis].evalDiff(np.unique(x[axis]))
         return result
     # def bcs(self):

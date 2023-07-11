@@ -1,6 +1,10 @@
 from FiniteElementMethod.element.mainElementClass import element
 import FiniteElementMethod.element.elementOperations as elemOp
+import scipy.sparse as sp_sparse
 from mathematics import approximate as approx
+from mathematics import integrate as integr
+from mathematics import spectral as spec
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as sp_lin
 
@@ -23,7 +27,7 @@ def testKronSum(elementU):
     basisDiffFuncList = []
     for i in range(elementU.getDim()):
         basisFuncList.append(elementU[i].evalAtChebPoints()[1:-1, 1: -1])
-        basisDiffFuncList.append(elementU[i].evalDiffAtChebPoints()[1:-1, 1: -1])
+        basisDiffFuncList.append(elementU[i].evalDiffRefNodes()[1:-1, 1: -1])
     C = np.kron(np.kron(basisDiffFuncList[0], basisFuncList[1]), basisFuncList[2])
     C += np.kron(np.kron(basisFuncList[0], basisDiffFuncList[1]), basisFuncList[2])
     C += np.kron(np.kron(basisFuncList[0], basisFuncList[1]), basisDiffFuncList[2])
@@ -114,7 +118,7 @@ def testLaplacianInverseTT(elementU):
     basisDiffFuncList = []
     for i in range(elementU.getDim()):
         basisFuncList.append(elementU[i].evalAtChebPoints()[1:-1, 1: -1])
-        basisDiffFuncList.append(elementU[i].evalDiffAtChebPoints()[1:-1, 1: -1])
+        basisDiffFuncList.append(elementU[i].evalDiffRefNodes()[1:-1, 1: -1])
     C = np.kron(np.kron(np.dot(basisDiffFuncList[0], basisDiffFuncList[0]), basisFuncList[1]), basisFuncList[2])
     C += np.kron(np.kron(basisFuncList[0], np.dot(basisDiffFuncList[1], basisDiffFuncList[1])), basisFuncList[2])
     C += np.kron(np.kron(basisFuncList[0], basisFuncList[1]), np.dot(basisDiffFuncList[2], basisDiffFuncList[2]))
@@ -165,11 +169,60 @@ def testLaplacianInverseTT(elementU):
     A = np.reshape(A, initShape)
     print("approximation error for original matrix: ", np.sum((A - C) ** 2))
 
-elem = element(np.array([[-2, 2], [-4, 4], [-8, 8]]),
-               7*np.array([2, 3, 4], dtype=int), np.array([0, 0, 0]))
-def f(x):
-    return np.exp(-np.sqrt(4*x[0]**2 + 2*x[1]**2 + x[2]**2))
 
+def solvePeriodicODE(polyOrder, rhsF, halfInterval=False):
+    """Numerically solves the equation
+        du + u = rhsF(x), where rhsF is a periodic function,
+        with halfInterval false the interval is [0, 2*pi], with true it is [0, pi]"""
+    n = polyOrder
+    D = spec.periodicDiffMatrix(n, halfInterval)
+    I = np.eye(n)
+    x = spec.periodicNodes(n, halfInterval)
+    sol = sp_lin.solve(D + I, rhsF(x))
+    return sol
+def solvePrintPlotPeriodicODE(polyorder, rhsF, asol):
+    sol = solvePeriodicODE(polyorder, rhsF, True)
+    x = spec.periodicNodes(polyorder, halfInterval=True)
+    print('approximation order is: ', polyorder)
+    print(sol - asol(x))
+    plt.plot(x, sol)
+    plt.plot(x, asol(x))
+    plt.show()
+
+def solveSphericalPois(polyOrder, rhsF):
+    elem = element(np.array([[0, np.inf], [0, 2*np.pi], [0, np.pi]]),
+                   np.array(polyOrder, dtype=int), np.array([1, 3, 4]))
+
+    rMatrixD = elemOp.integrateBilinearForm1(elem, lambda x: x*x, 500, 0)[:-1, :-1]
+    rMatrixI = elemOp.integrateBilinearForm0(elem, lambda x: x*0 + 1, 500, 0)[:-1, :-1]
+
+    tMatrixD = elem[1].evalDiffRefNodes()
+    tMatrixD = np.dot(tMatrixD, tMatrixD)
+    tMatrixI = np.eye(elem[1].approxOrder)
+    #
+    pMatrixD = elem[2].evalDiffRefNodes()
+    pMatrixD = np.dot(pMatrixD, pMatrixD)
+    pMatrixI = np.eye(elem[2].approxOrder)
+
+    basisFuncList = [rMatrixI, tMatrixI, pMatrixI]
+    basisDiffFuncList = [rMatrixD, tMatrixD, pMatrixD]
+
+    C = sp_sparse.kron(sp_sparse.kron(basisDiffFuncList[0], basisFuncList[1]), basisFuncList[2])
+    C += sp_sparse.kron(sp_sparse.kron(basisFuncList[0], basisDiffFuncList[1]), basisFuncList[2])
+    C += sp_sparse.kron(sp_sparse.kron(basisFuncList[0], basisFuncList[1]), basisDiffFuncList[2])
+    grid = elem.getGrid()
+    fx = rhsF(grid)
+    ttFx = approx.simpleTTsvd(fx)
+    for it in ttFx:
+        print(it.shape)
+    # print(C.toarray().size)
+    # ttC = approx.matrixTTsvd(C.toarray(), polyOrder - [1, 0, 0])
+    # for it in ttC:
+    #     print(it.shape)
+# def f(x):
+#     return np.exp(-np.sqrt(4*x[0]**2 + 2*x[1]**2 + x[2]**2))
+solveSphericalPois(np.array([6, 4, 4]), lambda x: np.exp(-x[0])*np.sin(x[1])*np.cos(2*x[2]))
 # testKronSum(elem)
 # testTT_approximation(elem, f, 1e-6)
-testLaplacianInverseTT(elem)
+# testLaplacianInverseTT(elem)
+

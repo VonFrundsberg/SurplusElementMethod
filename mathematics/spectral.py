@@ -9,33 +9,39 @@ def chebTransform(f, axis=0):
     a[0] /= 2; a[-1] /= 2
     return a
 
-def calcChebPoints(pointsAmount, a, b):
+def chebNodes(pointsAmount, a, b):
     nodes = (np.cos(np.arange(0, pointsAmount) * np.pi / (pointsAmount - 1))[::-1]) * (b - a) / 2
     nodes -= nodes[0]
     nodes += a
     return nodes
 
-def barycentricChebInterpolate(f, x, a, b, extrapolation=0):
+def periodicNodes(pointsAmount: int, halfInterval=False):
+    if not halfInterval:
+        return np.arange(pointsAmount)*2*np.pi/pointsAmount
+    else:
+        return np.arange(pointsAmount)*np.pi/pointsAmount
+def barycentricChebInterpolate(f, x, a, b, extrapolation=0, axis=0):
     """Calculates partial derivative of element basis functions along axis.
 
         Arguments:
-            f: values of function at chebyshev points, algebraically rescaled to an [a, b] interval
-            x: points at which interpolated function is evaluated
-            a, b: range of chebyshev points
+            f:
+            x:
+            a:
+            b:
 
         Returns:
             result: interpolated values of f at x
     """
-    chebyshevPoints = calcChebPoints(pointsAmount=f.size, a=a, b=b)
+    chebyshevPoints = chebNodes(pointsAmount=f.shape[0], a=a, b=b)
     extrapolatedPoints = np.argwhere((x < a) | (x > b))
-    result = sp_interp.barycentric_interpolate(chebyshevPoints, f, x, axis=0)
+    result = sp_interp.barycentric_interpolate(chebyshevPoints, f, x, axis=axis)
     match extrapolation:
-        case 0: result[extrapolatedPoints] = 0
+        case 0: result[extrapolatedPoints, :] = 0
     return result
 
-def ChebDiffMatrix(matrixSize, a=-1, b=1):
+def chebDiffMatrix(matrixSize, a=-1, b=1):
         n = matrixSize
-        x = calcChebPoints(n, a, b)
+        x = chebNodes(n, a, b)
         X = np.ones([n, n], dtype=float)
         X = ((X.T)*x).T
         dX = X - X.T
@@ -46,3 +52,38 @@ def ChebDiffMatrix(matrixSize, a=-1, b=1):
         D = C/(dX + np.eye(n))
         D = D - np.diag(np.sum(D, axis=1))
         return D
+
+
+def periodicDiffMatrix(matrixSize, halfInterval=False):
+
+    n = matrixSize
+    i = np.arange(n)
+    j = np.arange(n)
+    if not halfInterval:
+        x = periodicNodes(n)
+        diffMatrix = 0.5*(-1)**(i[:, np.newaxis] + j[np.newaxis, :])/ \
+                     (np.tan((x[:, np.newaxis] - x[np.newaxis, :])/2.0))
+        np.fill_diagonal(diffMatrix, 0)
+    else:
+        x = periodicNodes(n, True)
+        diffMatrix = (-1) ** (i[:, np.newaxis] + j[np.newaxis, :]) / \
+                     (np.tan((x[:, np.newaxis] - x[np.newaxis, :])))
+        np.fill_diagonal(diffMatrix, 0)
+    return diffMatrix
+def periodic2DiffMatrix(matrixSize, halfInterval=False):
+    n = matrixSize
+    i = np.arange(n)
+    j = np.arange(n)
+    if not halfInterval:
+        x = periodicNodes(n)
+        diff2Matrix = -(-1)**(i[:, np.newaxis] + j[np.newaxis, :])* \
+                     0.5*(np.power(np.sin((x[:, np.newaxis] - x[np.newaxis, :])/2.0), -2))
+        diag = (-n**2 - 2)/12.0
+        np.fill_diagonal(diff2Matrix, diag)
+    else:
+        x = periodicNodes(n, halfInterval=True)
+        diff2Matrix = -(-1) ** (i[:, np.newaxis] + j[np.newaxis, :]) * \
+                      2 * (np.power(np.sin((x[:, np.newaxis] - x[np.newaxis, :])), -2))
+        diag = (-n ** 2 - 2) / 3.0
+        np.fill_diagonal(diff2Matrix, diag)
+    return diff2Matrix
