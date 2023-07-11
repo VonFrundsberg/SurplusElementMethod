@@ -54,10 +54,15 @@ class element():
     def getGrid(self):
         coordsList = []
         for i in range(self.dim):
+            # print(self.basicElements[i].getMappedRefPoints())
             coordsList.append(self.basicElements[i].getMappedRefPoints())
         grid = approx.meshgrid(*coordsList)
         return grid
-
+    def getGridList(self):
+        coordsList = []
+        for i in range(self.dim):
+            coordsList.append(self.basicElements[i].getMappedRefPoints())
+        return coordsList
     def __getitem__(self, key):
         return self.basicElements[key]
 

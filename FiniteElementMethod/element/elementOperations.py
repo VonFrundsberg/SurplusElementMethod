@@ -21,7 +21,6 @@ def integrateBilinearForm0(elementU: element,weight, integrationPointsAmount: in
     w = w * elementU[axis].inverseDerivativeMap(x)
     D = elementU[axis].eval(x)
     x = elementU[axis].map(x)
-
     W = weight(x) * w
     D2 = np.einsum('ij,ik->ijk', D, D)
 
@@ -52,9 +51,9 @@ def integrateBilinearForm1(elementU: element, weight, integrationPointsAmount: i
 
     resultIntegrals = np.einsum('ijk, i -> jk', D2, W)
     return resultIntegrals
-def integrateBilinearForm2(elementU: element, weight, integrationPointsAmount: int):
-    """(two-dimensional) Integrates bilinear form of the type
-        a(u, u) = int_K weight(x) grad u(x) grad v(x) dx,
+def integrateBilinearForm2(elementU: element, weight, integrationPointsAmount: int, axis:int):
+    """(one-dimensional) Integrates bilinear form of the type
+        a(u, u) = int_K weight(x) grad u(x) v(x) dx,
         where U(x) and v(x) are basis functions of elementU element
         and K is a non-zero region of elementU functions.
 
@@ -65,7 +64,18 @@ def integrateBilinearForm2(elementU: element, weight, integrationPointsAmount: i
         Returns:
             result: an integral of chosen bilinear form and elementU
     """
-    return None
+    w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
+    w = w * elementU[axis].inverseDerivativeMap(x)
+    D = elementU[axis].evalDiff(x)
+    I = elementU[axis].eval(x)
+    x = elementU[axis].map(x)
+
+    W = weight(x) * w
+    D2 = np.einsum('ij,ik->ijk', I, D)
+
+    resultIntegrals = np.einsum('ijk, i -> jk', D2, W)
+    return resultIntegrals
+
 def integrateBilinearForm3(elementU: element, weight, integrationPointsAmount: int):
     """4-dimensional Integrates bilinear form of the type
         a(u, u) = int_K weight(x)(grad_1 u(x) grad_1 v(x) + grad_2 u(x) grad_2 v(x))dx,
@@ -81,7 +91,8 @@ def integrateBilinearForm3(elementU: element, weight, integrationPointsAmount: i
     """
     return None
 
-def integrateFunctional(elementU: element, function, integrationPointsAmount: int, axis: int):
+def integrateFunctional(elementU: element, function,
+        integrationPointsAmount: int, axis: int, ttForm=False, precalc=False):
     """(one-dimensional) Integrates functional form of the type l(v) = int_K function(x) v(x) dx,
             where v(x) are basis functions of elementU element
             and K is a non-zero region of elementU functions.
@@ -94,12 +105,27 @@ def integrateFunctional(elementU: element, function, integrationPointsAmount: in
             Returns:
                 result: an integral of functional
         """
-    w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
-    w = w*elementU[axis].inverseDerivativeMap(x)
-    I = elementU[axis].eval(x)
-    x = elementU[axis].map(x)
-    W = function(x)*w
+    if precalc == False:
+        if ttForm == False:
+            w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
+            w = w*elementU[axis].inverseDerivativeMap(x)
+            I = elementU[axis].eval(x)
+            x = elementU[axis].map(x)
+            W = function(x)*w
 
-    resultIntegrals = np.einsum('ij, i -> j', I, W)
+            resultIntegrals = np.einsum('ij, i -> j', I, W)
+        elif ttForm == True:
+            w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
+            w = w * elementU[axis].inverseDerivativeMap(x)
+            W = np.einsum('ij, i -> ij', function(x), w)
+            I = elementU[axis].eval(x)
+            resultIntegrals = np.einsum('ij, ik -> kj', I, W)
+    elif precalc == True:
+        w, x = integr.reg_32_wn(a=-1, b=1, n=function.shape[0] - 32)
+        w = w * elementU[axis].inverseDerivativeMap(x)
+        # print(function.shape, w.shape)
+        W = np.einsum('ij, i -> ij', function, w)
+        I = elementU[axis].eval(x)
+        resultIntegrals = np.einsum('ij, ik -> jk', I, W)
     return resultIntegrals
 

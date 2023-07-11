@@ -146,38 +146,10 @@ def kronSumtoTT(A: list, B: list):
     core = np.stack((A[-1], B[-1]), axis=0)[:, :, :, np.newaxis]
     cores.append(core)
     return cores
-# def vecRound(u, tol=1e-6):
-#     size = len(u)
-#     for i in range(size - 1, 1, -1):
-#         print(u[i].shape)
-#         a, n, b = u[i].shape
-#         # R, Q = sp_linalg.rq(np.reshape(u[i], [a, n*b]), mode='economic')
-#         Q, R = np.linalg.qr(np.reshape(u[i], [a, n*b]))
-#         # R, Q = sp_linalg.qr(np.reshape(u[i], [a, n * b]), mode='economic')
-#         # print(R.shape, Q.shape)
-#         u[i] = np.reshape(Q, [a, n, 1])
-#         # print('r', R.shape)
-#         # print(u[i - 1].shape, Q.shape, R.shape)
-#         u[i - 1] = np.tensordot(u[i - 1], R, axes=(2, 0))
-#         # print(Q.shape, R.shape)
-#     for i in range(size - 1):
-#         a, n, b = u[i].shape
-#         # print(a, n, b)
-#         U, S, V = sp_linalg.svd(np.reshape(u[i], [a*n, b]))
-#         # print(i, S)
-#         sigma = max(1, np.size(S[S > tol]))
-#         u[i] = U[:, :sigma]; V = np.dot(np.diag(S[:sigma]), V[:sigma, :])
-#         # print(V.shape, u[i + 1].shape)
-#         u[i + 1] = np.tensordot(V, u[i + 1], axes=(1, 0))
-#         u[i] = np.reshape(u[i], [a, n, sigma])
 
-    # a, n, b = u[-1].shape
-    # U, S, V = sp_linalg.svd(np.reshape(u[-1], [a * n, b]))
-    # sigma = np.size(S[S > tol])
-    # print(a, n, b)
-    # u[i] = U[:, :sigma];
-    # V = np.dot(np.diag(S[:sigma]), V[:sigma, :])
-    # # print(V.shape, u[i + 1].shape)
-    # u[i + 1] = np.tensordot(V, u[i + 1], axes=(1, 0))
-    # u[i] = np.reshape(u[i], [a, n, sigma])
-    # return u
+def toFullTensor(u):
+    T = u[0]
+    for k in range(len(u) - 1):
+        T = np.tensordot(T, u[k + 1], axes=1)
+    T = np.squeeze(T)
+    return T
