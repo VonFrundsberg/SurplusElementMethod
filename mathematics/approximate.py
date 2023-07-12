@@ -1,7 +1,9 @@
 import numpy as np
 import scipy.linalg as sp_linalg
 import time as time
-
+import scikit_tt.solvers.sle as sle
+from scikit_tt.tensor_train import TT
+import scikit_tt.tensor_train as tt
 def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
     tensor = argTensor.copy()
     shape = tensor.shape
@@ -146,10 +148,89 @@ def kronSumtoTT(A: list, B: list):
     core = np.stack((A[-1], B[-1]), axis=0)[:, :, :, np.newaxis]
     cores.append(core)
     return cores
+def kronSumtoTT_blockFormat(matricesMatrix):
+    """Construct TT cores of matrix sum
 
-def toFullTensor(u):
+        Returns:
+            cores:
+    """
+    dim = len(matricesMatrix)
+    M = matricesMatrix
+    cores = []
+    core = np.stack((M[0][1], M[0][2]), axis=2)[np.newaxis, :, :, :]
+    cores.append(core)
+    for i in range(1, dim - 1):
+        core = np.stack((M[i][0], 0*M[i][1], M[i][1], M[i][2]), axis=2)[np.newaxis, :, :, :]
+        core = np.reshape(core, [core.shape[1], core.shape[2], 2, 2])
+        core = np.transpose(core, [2, 0, 1, 3])
+        cores.append(core)
+    core = np.stack((M[2][0], M[2][1]), axis=0)[:, :, :, np.newaxis]
+    cores.append(core)
+    return cores
+def toFullTensor(u, matrixForm=False):
     T = u[0]
     for k in range(len(u) - 1):
         T = np.tensordot(T, u[k + 1], axes=1)
     T = np.squeeze(T)
+    if matrixForm == True:
+        shape = T.shape
+        arange = np.reshape(np.arange(len(shape)), [int(len(shape)/2), 2])
+        T = np.transpose(T, np.concatenate((arange[:, 0], arange[:, 0] + 1), axis=0))
     return T
+
+def vecRound(u, tol=1e-6):
+    size = len(u)
+    for i in range(size - 1, 1, -1):
+        a, n, b = u[i].shape
+        # R, Q = sp_linalg.rq(np.reshape(u[i], [a, n*b]))
+        R, Q = sp_linalg.qr(np.reshape(u[i], [a, n * b]), mode='economic')
+        u[i] = np.reshape(Q, [int(Q.shape[0]), n, 1])
+        # print('r', R.shape)
+        # print(u[i - 1].shape, Q.shape, R.shape)
+        u[i - 1] = np.tensordot(u[i - 1], R, axes=(2, 0))
+        # print(Q.shape, R.shape)
+    for i in range(size - 1):
+        a, n, b = u[i].shape
+        # print(a, n, b)
+        U, S, V = sp_linalg.svd(np.reshape(u[i], [a*n, b]), full_matrices=False)
+        # print(i, S)
+        sigma = max(1, np.size(S[S > tol]))
+        u[i] = U[:, :sigma]; V = np.dot(np.diag(S[:sigma]), V[:sigma, :])
+        # print(V.shape, u[i + 1].shape)
+        u[i + 1] = np.tensordot(V, u[i + 1], axes=(1, 0))
+        u[i] = np.reshape(u[i], [a, n, sigma])
+def alterLeastSquares(A, f, ranks):
+    ttA = TT(A)
+    newf = []
+    for i in range(len(f)):
+        newf.append(f[i][:, :, np.newaxis, :])
+    ttF = TT(newf)
+    initTT = tt.ones(ttA.row_dims, [1] * ttA.order, ranks=5).ortho_right()
+    sol = sle.als(ttA, initTT, ttF).matricize()
+    return sol
+    # print(sol.shape)
+    # print('done')
+    # time.sleep(500)
+    # print("matrix has the shape")
+    # for it in A:
+    #     print(it.shape)
+    # print("f shape is")
+    # for it in f:
+    #     print(it.shape)
+    # print("ranks are")
+    # print(ranks)
+    # dim = len(A)
+    # Y = []
+    # for i in range(dim):
+    #     aShape = A[i].shape
+    #     fShape = f[i].shape
+    #     core = np.einsum('ijkl, mkn -> jimln', A[i], f[i])
+    #     core = np.reshape(core, [fShape[1], aShape[0]*fShape[0], aShape[-1]*fShape[-1]])
+    #     core = np.transpose(core, [1, 0, 2])
+    #     print(core.shape)
+    #     Y.append(core)
+    # vecRound(Y, tol=1e-6)
+    # print("after rounding")
+    # for i in range(dim):
+    #     print(Y[i].shape)
+    # return Y

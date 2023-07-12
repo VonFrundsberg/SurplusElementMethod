@@ -69,6 +69,15 @@ class basicElement():
                     return
             case 3:
                 self.elemType = 3
+                a = 0;
+                b = np.pi*2
+                q = (b - a) / 2.0;
+                p = (b + a) / 2.0
+                self.map = lambda x: (q * x + p)
+                self.inverseMap = lambda x: (x - p) / q
+
+                self.derivativeMap = lambda x: 1.0 / (q + x * 0)
+                self.inverseDerivativeMap = lambda x: q + 0
             case 4:
                 self.elemType = 4
 
@@ -103,13 +112,12 @@ class basicElement():
 
             result = spec.barycentricChebInterpolate(basisMatrix, x, a=-1, b=1, axis=0)
         elif self.elemType == 3:
-            return
-            # x = np.atleast_1d(x)
-            # n = self.approxOrder
-            # xj = 2*np.pi*np.arange(n)/n
-            #
-            # result = 1.0/n*np.sin(n*(x[:, np.newaxis]-xj[np.newaxis, :])/2.0)/np.tan((x[:, np.newaxis]-xj[np.newaxis, :])/2.0)
+            x = self.map(np.atleast_1d(x))
+            n = self.approxOrder
 
+            xj = 2*np.pi*np.arange(n)/n
+
+            result = 1.0/n*np.sin(n*(x[:, np.newaxis]-xj[np.newaxis, :])/2.0)/np.tan((x[:, np.newaxis]-xj[np.newaxis, :])/2.0)
         return result
     def getMappedRefPoints(self):
         if self.elemType < 3:
@@ -130,16 +138,25 @@ class basicElement():
             Returns:
                 result: array with the shape: (*x.shape, degree of element)
         """
-        x = np.atleast_1d(x)
-        derivativeBasisMatrix = self.refPointDiffVal
-        if x.size == 1:
-            if x[0] == self.interval[0]:
-                return self.derivativeMap(-1)*np.array([derivativeBasisMatrix[0, :]])
-            if x[0] == self.interval[-1]:
-                return self.derivativeMap(1)*np.array([derivativeBasisMatrix[-1, :]])
-        # xs = np.array(self.imap(x), dtype=np.float)
-        result = spec.barycentricChebInterpolate(f=derivativeBasisMatrix, x=x, a=-1, b=1, axis=0) \
-                 * np.reshape(self.derivativeMap(x), (*x.shape, 1))
+        if self.elemType <= 2:
+            x = np.atleast_1d(x)
+            derivativeBasisMatrix = self.refPointDiffVal
+            if x.size == 1:
+                if x[0] == self.interval[0]:
+                    return self.derivativeMap(-1)*np.array([derivativeBasisMatrix[0, :]])
+                if x[0] == self.interval[-1]:
+                    return self.derivativeMap(1)*np.array([derivativeBasisMatrix[-1, :]])
+            # xs = np.array(self.imap(x), dtype=np.float)
+            result = spec.barycentricChebInterpolate(f=derivativeBasisMatrix, x=x, a=-1, b=1, axis=0) \
+                     * np.reshape(self.derivativeMap(x), (*x.shape, 1))
+        elif self.elemType == 3:
+            x = self.map(np.atleast_1d(x))
+            n = self.approxOrder
+            xj = 2 * np.pi * np.arange(n) / n
+            result = -(-1)**(np.arange(n)) / (2.0 * n) * ((n * np.cos(n * (x[:, np.newaxis]) / 2.0) \
+                                / np.tan((-x[:, np.newaxis] + xj[np.newaxis, :]) / 2.0)) +
+                                np.sin(n * x[:, np.newaxis] / 2.0)\
+                                / (np.sin((xj[np.newaxis, :] - x[:, np.newaxis])/2.0)**2))
         return result
     def generateFunction(self):
         return lambda x: self.eval(x)
