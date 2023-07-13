@@ -189,7 +189,7 @@ def solvePrintPlotPeriodicODE(polyorder, rhsF, asol):
     plt.plot(x, asol(x))
     plt.show()
 import time
-def solveSphericalPois(polyOrder, rhsF, integrPoints=100):
+def solveSphericalPois(polyOrder, rhsF, integrPoints=350):
 
     elem = element(np.array([[0, np.inf], [0, np.pi], [0, 2*np.pi]]),
                    np.array(polyOrder, dtype=int), np.array([1, 0, 3]))
@@ -205,11 +205,11 @@ def solveSphericalPois(polyOrder, rhsF, integrPoints=100):
 
     pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
     pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
-
-    C = -sp_sparse.kron(sp_sparse.kron(rMatrixD, tMatrixIr), pMatrixI)
-    C -= sp_sparse.kron(sp_sparse.kron(rMatrixI, tMatrixD), pMatrixI)
-    C -= sp_sparse.kron(sp_sparse.kron(rMatrixI, tMatrixIp), pMatrixD)
-
+    # print("here1?")
+    # C = -np.kron(np.kron(rMatrixD, tMatrixIr), pMatrixI)
+    # C -= np.kron(np.kron(rMatrixI, tMatrixD), pMatrixI)
+    # C -= np.kron(np.kron(rMatrixI, tMatrixIp), pMatrixD)
+    # print("here2?")
     # ttC = approx.matrixTTsvd(C.toarray(), elem.approxOrder - [1, 0, 0])
     # k = 1
     # i = 0
@@ -229,17 +229,41 @@ def solveSphericalPois(polyOrder, rhsF, integrPoints=100):
     grid = elem.getGridList()
     w, idNodes = integr.reg_32_wn(-1, 1, integrPoints)
     grid[0] = elem[0].map(idNodes)
-    grid[1] = elem[1].map(idNodes)
-    grid[2] = elem[2].map(idNodes)
+    # grid[1] = elem[1].map(idNodes)
+    # grid[2] = elem[2].map(idNodes)
     grid = approx.meshgrid(*grid)
 
     fx = rhsF(grid)
     fx = np.nan_to_num(fx, 0)
 
-    ttFx = approx.simpleTTsvd(fx, tol=1e-6)
+    ttFx = approx.simpleTTsvd(fx, tol=1e-6, R_MAX=400)
+
+    # grid0 = idNodes
+    # core0 = ttFx[0]
+    # core0 = np.transpose(core0, [1, 0, 2])
+    # core0 = spec.barycentricChebInterpolate(core0, grid0, a=-1, b=1, extrapolation=0, axis=0)
+    # core0 = np.transpose(core0, [1, 0, 2])
+    # ttFx[0] = core0
+
+    grid1 = idNodes
+    core1 = ttFx[1]
+    core1 = np.transpose(core1, [1, 0, 2])
+    core1 = spec.barycentricChebInterpolate(core1, grid1, a=-1, b=1, extrapolation=0, axis=0)
+    core1 = np.transpose(core1, [1, 0, 2])
+    ttFx[1] = core1
+    # print(core1.shape)
+    grid2 = idNodes
+    core2 = ttFx[2]
+    core2= np.transpose(core2, [1, 0, 2])
+    core2 = np.einsum('ij, jnk -> ink', elem[2].eval(grid2), core2)
+
+    core2 = np.transpose(core2, [1, 0, 2])
+    ttFx[2] = core2
+
     # print('cores of f tt decomposition have the following shapes: ')
     # for i in ttFx:
     #     print(i.shape)
+    # time.sleep(500)
     ttR = ttFx[0].copy()
     ttR = np.reshape(ttR, [ttR.shape[1], ttR.shape[2]])
     integral = operations.integrateFunctional(elem, ttR, integrPoints, 0, True, precalc=True)
@@ -278,12 +302,14 @@ def solveSphericalPois(polyOrder, rhsF, integrPoints=100):
     # print(np.max(np.abs(C.dot(fx.flatten()) - approx.toFullTensor(ttfx).flatten())))
     # time.sleep(500)
     t = time.time()
-    print("everything is calculated, starting system solving")
-    sol = sparse_linalg.spsolve(sp_sparse.csc_matrix(C), fx)
-    print("sparse solver done in ", time.time() - t)
+    # print("everything is calculated, starting system solving")
+    # ttSol = sp_lin.solve(C, fx)
+    # ttSol = sp_lin.sol
+    # print("sparse solver done in ", time.time() - t)
     # print("solving with TT als algorithm")
     # t = time.time()
-    # ttSol = approx.alterLeastSquares(ttC, ttFx, np.ones([elem.dim, 2]))
+    ttSol = approx.alterLeastSquares(ttC, ttFx, 7).matricize()
+    T = time.time() - t
     # print("ALS solver done in ", time.time() - t)
     # print("difference is ", np.max(np.abs(ttSol - sol)))
     # print("max is: ", np.max(np.abs(sol)))
@@ -292,16 +318,17 @@ def solveSphericalPois(polyOrder, rhsF, integrPoints=100):
     # print("solution tt ranks")
     # for i in ttFx:
     #     print(i.shape)
-    # r, t, p = elem.getGridList()
+    r, t, p = elem.getGridList()
     # print(np.cos(2*t))
-    # rr, tt, pp = approx.meshgrid(r[:-1], t, p)
-    # grid = approx.meshgrid(r[:-1], t, p)
-    # fx = -np.exp(-rr) * (np.sin(pp)) * np.cos(2 * tt)
+    rr, tt, pp = approx.meshgrid(r[:-1], t, p)
+    grid = approx.meshgrid(r[:-1], t, p)
+    fx = -(np.exp(-rr) * (np.sin(pp)) * np.cos(2 * tt) + np.exp(-2*rr) * (np.cos(2*pp)) * np.cos(4 * tt))
     # ttFx = approx.simpleTTsvd(fx, tol=1e-6)
     # print("fx tt ranks")
     # for i in ttFx:
     #     print(i.shape)
-    # print("max difference on grid", np.max(np.abs(sol - fx)))
+    # print("max difference on grid", np.max(np.abs(ttSol - fx.flatten())))
+    print(T, np.max(np.abs(ttSol + fx.flatten())))
 
 def solveSphericalPoisNoPhi(polyOrder, rhsF, integrPoints=2000):
 
@@ -406,12 +433,23 @@ def solveSphericalPoisNoPhi(polyOrder, rhsF, integrPoints=2000):
 #                        #                                    (1 + x[0])**2/(np.sin(x[1])**2)))
 #                        #  lambda x: (x[0]**2)*(np.sin(x[1])*np.sin(x[1]))*np.cos(2*x[1])*np.exp(-x[0]))#*\
 #                         lambda x: (np.sin(x[1])**2)*np.exp(-x[0])*(-2.0 + (-6.0 + (-2.0 + x[0])*x[0])*np.cos(2.0*x[1])))
-for i in range(4, 20, 2):
-    print(i)
-    solveSphericalPois(np.array([3*i, i, i]),
+for i in range(4, 100, 2):
+    # print(i)
+    solveSphericalPois(np.array([i, i, min(i, 14)]),
                        #FULL
                        # lambda x: (np.sin(x[1])**2)*np.exp(-x[0])*(np.sin(x[2]))* \
                        #           ((6.0 - (-2.0 + x[0])*x[0])*np.cos(2*x[1]) + 1.0/(np.sin(x[1])**2)))
+                        #FULL X 2
+                    #     lambda x: (np.sin(x[1])**2)*(np.exp(-2*x[0])*\
+                    # (12*np.cos(2*x[2]) + 8*np.cos(2*x[2])*np.cos(2*x[1]) +\
+                    #  np.cos(2*x[2])*np.cos(4*x[1])*(4*x[0]*x[0] - 20.0 - 4*x[0]) +\
+                    #  -4 * np.cos(2*x[2])/(np.sin(x[1])**2)) + \
+                    # np.exp(-x[0])*(np.cos(2*x[1])*np.sin(x[2])*(x[0]*x[0] - 6.0 - 2*x[0]) - np.sin(x[2])/(np.sin(x[1])**2)))
+                      #SAME
+                    lambda x: np.exp(-x[0])*(np.sin(x[2])*(np.cos(2*x[1])*(-1.0 + (-4.0 + (-2.0 + x[0])*x[0])*(np.sin(x[1])**2)) - (np.sin(2*x[1])**2)) +
+                                          np.exp(-x[0])*4*np.cos(2*x[2])*(np.cos(4*x[1])*(-1.0 + (-4.0 + (-1.0 + x[0])*x[0])*(np.sin(x[1])**2)) - \
+                                                                    np.cos(x[1])*np.sin(x[1])*np.sin(4*x[1])))
+                       , integrPoints=500)
                         #"WITHOUT" T
                        # lambda x: (np.sin(x[1]) ** 2) * np.exp(-x[0]) * np.sin(x[2]) * \
                        #           (((-2.0 + x[0]) * x[0]) - 1.0 / (np.sin(x[1]) ** 2)))
@@ -421,8 +459,8 @@ for i in range(4, 20, 2):
 
                         #lambda x: (np.sin(x[1])**2)*np.cos(x[2])/((1+x[0])**3)*(-2*(3+x[0]*(7+3*x[0]))*np.cos(2*x[1]) - \
                         #                                    (1 + x[0])**2/(np.sin(x[1])**2)))
-                        lambda x: (x[0]**2)*(np.sin(x[1])**2)*np.exp(-x[0])*\
-                                 np.sin(x[1])*np.cos(2*x[2]))
+                        # lambda x: (x[0]**2)*(np.sin(x[1])**2)*np.exp(-x[0])*\
+                        #          np.sin(x[1])*np.cos(2*x[2]))
                        #THIS ONE IS GOOD
                        # lambda x: np.sin(x[1])*np.sin(x[1]) * np.exp(-x[0]) * (
                        #             -2.0 + (-6.0 + (-2.0 + x[0]) * x[0]) * np.cos(2.0 * x[1])))

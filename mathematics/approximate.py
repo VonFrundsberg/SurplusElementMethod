@@ -205,8 +205,8 @@ def alterLeastSquares(A, f, ranks):
     for i in range(len(f)):
         newf.append(f[i][:, :, np.newaxis, :])
     ttF = TT(newf)
-    initTT = tt.ones(ttA.row_dims, [1] * ttA.order, ranks=5).ortho_right()
-    sol = sle.als(ttA, initTT, ttF).matricize()
+    initTT = tt.ones(ttA.row_dims, [1] * ttA.order, ranks=ranks).ortho_right()
+    sol = sle.als(ttA, initTT, ttF)
     return sol
     # print(sol.shape)
     # print('done')
