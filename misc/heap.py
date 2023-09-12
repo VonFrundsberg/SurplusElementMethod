@@ -229,11 +229,8 @@ def solveSphericalPois(polyOrder, rhsF, integrPoints=350):
     grid = elem.getGridList()
     w, idNodes = integr.reg_32_wn(-1, 1, integrPoints)
     grid[0] = elem[0].map(idNodes)
-<<<<<<< HEAD
-=======
     # grid[1] = elem[1].map(idNodes)
     # grid[2] = elem[2].map(idNodes)
->>>>>>> fb8c55445abd7fbc87e447cb439b4fb39e85d371
     grid = approx.meshgrid(*grid)
 
     fx = rhsF(grid)
@@ -406,66 +403,14 @@ def solveSphericalPoisNoPhi(polyOrder, rhsF, integrPoints=2000):
     plt.colorbar()
     plt.show()
 
-<<<<<<< HEAD
 def solveSphericalPoisForPlot(iStart, iEnd, iStep):
     for i in range(iStart, iEnd, iStep):
-        solveSphericalPois(np.array([i, i, min(i, 14)]),
-=======
-    # ttFx[0] =
-
-
-
-
-    # print(C.toarray().size)
-    # ttC = approx.matrixTTsvd(C.toarray(), polyOrder - [1, 0, 0])
-    # for it in ttC:
-    #     print(it.shape)
-
-
-# np.set_printoptions(precision=3, suppress=True)
-# for i in range(4, 20, 2):
-#     solveSphericalPoisNoPhi(np.array([2*i, i]),
-#                        # lambda x: (np.sin(x[1])**2)*np.exp(-x[0])*np.sin(x[2])*(np.cos(x[1])*\
-#                        #              (6.0 - (-2.0 + x[0])*x[0]) + 1.0/(np.sin(x[1])**2)))
-#                        # lambda x: (np.sin(x[1])**2)*np.cos(x[2])/((1+x[0])**3)*(-2*(3+x[0]*(7+3*x[0]))*np.cos(2*x[1]) - \
-#                        #                                    (1 + x[0])**2/(np.sin(x[1])**2)))
-#                        #  lambda x: (x[0]**2)*(np.sin(x[1])*np.sin(x[1]))*np.cos(2*x[1])*np.exp(-x[0]))#*\
-#                         lambda x: (np.sin(x[1])**2)*np.exp(-x[0])*(-2.0 + (-6.0 + (-2.0 + x[0])*x[0])*np.cos(2.0*x[1])))
-for i in range(4, 100, 2):
-    # print(i)
-    solveSphericalPois(np.array([i, i, min(i, 14)]),
->>>>>>> fb8c55445abd7fbc87e447cb439b4fb39e85d371
-                       #FULL
-                       # lambda x: (np.sin(x[1])**2)*np.exp(-x[0])*(np.sin(x[2]))* \
-                       #           ((6.0 - (-2.0 + x[0])*x[0])*np.cos(2*x[1]) + 1.0/(np.sin(x[1])**2)))
-                        #FULL X 2
-                    #     lambda x: (np.sin(x[1])**2)*(np.exp(-2*x[0])*\
-                    # (12*np.cos(2*x[2]) + 8*np.cos(2*x[2])*np.cos(2*x[1]) +\
-                    #  np.cos(2*x[2])*np.cos(4*x[1])*(4*x[0]*x[0] - 20.0 - 4*x[0]) +\
-                    #  -4 * np.cos(2*x[2])/(np.sin(x[1])**2)) + \
-                    # np.exp(-x[0])*(np.cos(2*x[1])*np.sin(x[2])*(x[0]*x[0] - 6.0 - 2*x[0]) - np.sin(x[2])/(np.sin(x[1])**2)))
-                      #SAME
-                    lambda x: np.exp(-x[0])*(np.sin(x[2])*(np.cos(2*x[1])*(-1.0 + (-4.0 + (-2.0 + x[0])*x[0])*(np.sin(x[1])**2)) - (np.sin(2*x[1])**2)) +
+        solveSphericalPois(np.array([i, i, min(i, 14)]), lambda x: np.exp(-x[0])*(np.sin(x[2])*(np.cos(2*x[1])*(-1.0 + (-4.0 + (-2.0 + x[0])*x[0])*(np.sin(x[1])**2)) - (np.sin(2*x[1])**2)) +
                                           np.exp(-x[0])*4*np.cos(2*x[2])*(np.cos(4*x[1])*(-1.0 + (-4.0 + (-1.0 + x[0])*x[0])*(np.sin(x[1])**2)) - \
                                                                     np.cos(x[1])*np.sin(x[1])*np.sin(4*x[1])))
                        , integrPoints=500)
-<<<<<<< HEAD
-=======
-                        #"WITHOUT" T
-                       # lambda x: (np.sin(x[1]) ** 2) * np.exp(-x[0]) * np.sin(x[2]) * \
-                       #           (((-2.0 + x[0]) * x[0]) - 1.0 / (np.sin(x[1]) ** 2)))
-                       # lambda x: np.sin(x[1]) * np.sin(x[1]) * np.exp(-x[0]) * (
-                        # ONLY R T
-                       #           -2.0 + (-6.0 + (-2.0 + x[0]) * x[0]) * np.cos(2.0 * x[1])))
 
-                        #lambda x: (np.sin(x[1])**2)*np.cos(x[2])/((1+x[0])**3)*(-2*(3+x[0]*(7+3*x[0]))*np.cos(2*x[1]) - \
-                        #                                    (1 + x[0])**2/(np.sin(x[1])**2)))
-                        # lambda x: (x[0]**2)*(np.sin(x[1])**2)*np.exp(-x[0])*\
-                        #          np.sin(x[1])*np.cos(2*x[2]))
-                       #THIS ONE IS GOOD
-                       # lambda x: np.sin(x[1])*np.sin(x[1]) * np.exp(-x[0]) * (
-                       #             -2.0 + (-6.0 + (-2.0 + x[0]) * x[0]) * np.cos(2.0 * x[1])))
->>>>>>> fb8c55445abd7fbc87e447cb439b4fb39e85d371
+
 
 
 def solveEigenSphericalPois(polyOrder, potential, integrPoints=350):
