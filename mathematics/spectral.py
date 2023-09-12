@@ -21,6 +21,25 @@ def periodicNodes(pointsAmount: int, halfInterval=False):
     else:
         return np.arange(pointsAmount)*np.pi/pointsAmount
 def barycentricChebInterpolate(f, x, a, b, extrapolation=0, axis=0):
+    """
+
+        Arguments:
+            f:
+            x:
+            a:
+            b:
+
+        Returns:
+            result: interpolated values of f at x
+    """
+    chebyshevPoints = chebNodes(pointsAmount=f.shape[0], a=a, b=b)
+    extrapolatedPoints = np.argwhere((x < a) | (x > b))
+    result = sp_interp.barycentric_interpolate(chebyshevPoints, f, x, axis=axis)
+    match extrapolation:
+        case 0: result[extrapolatedPoints, :] = 0
+    return result
+
+def periodicInterpolate(f, x, extrapolation=0, axis=0):
     """Calculates partial derivative of element basis functions along axis.
 
         Arguments:

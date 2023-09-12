@@ -52,13 +52,13 @@ class basicElement():
                     return
             case 2:
                 self.elemType = 2
-                if self.interval[0] == -np.inf:
-                    self.map = lambda x: -((1.0 - x) / (1.0 + x) - self.interval[1])
-                    self.inverseMap = lambda x: (x + 1.0 - self.interval[1])/(-x + self.interval[1] + 1.0)
-
-                    self.derivativeMap = lambda x: (x + 1) ** 2 / 2
-                    self.inverseDerivativeMap = lambda x: 2/(x + 1)**2
-                    return
+                # if self.interval[0] == -np.inf:
+                #     self.map = lambda x: -((1.0 - x) / (1.0 + x) - self.interval[1])
+                #     self.inverseMap = lambda x: (x + 1.0 - self.interval[1])/(-x + self.interval[1] + 1.0)
+                #
+                #     self.derivativeMap = lambda x: (x + 1) ** 2 / 2
+                #     self.inverseDerivativeMap = lambda x: 2/(x + 1)**2
+                #     return
 
                 if self.interval[1] == np.inf:
                     self.map = lambda x: np.log((1.0 + x) / (1.0 - x) + 1) + self.interval[0]

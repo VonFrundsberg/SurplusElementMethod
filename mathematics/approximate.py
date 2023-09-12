@@ -2,6 +2,7 @@ import numpy as np
 import scipy.linalg as sp_linalg
 import time as time
 import scikit_tt.solvers.sle as sle
+import scikit_tt.solvers.evp as evp
 from scikit_tt.tensor_train import TT
 import scikit_tt.tensor_train as tt
 def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
@@ -205,8 +206,8 @@ def alterLeastSquares(A, f, ranks):
     for i in range(len(f)):
         newf.append(f[i][:, :, np.newaxis, :])
     ttF = TT(newf)
-    initTT = tt.ones(ttA.row_dims, [1] * ttA.order, ranks=5).ortho_right()
-    sol = sle.als(ttA, initTT, ttF).matricize()
+    initTT = tt.ones(ttA.row_dims, [1] * ttA.order, ranks=ranks).ortho_right()
+    sol = sle.als(ttA, initTT, ttF)
     return sol
     # print(sol.shape)
     # print('done')
@@ -234,3 +235,34 @@ def alterLeastSquares(A, f, ranks):
     # for i in range(dim):
     #     print(Y[i].shape)
     # return Y
+
+def eigAlterLeastSquares(A, B, ranks, sigma=1, V = None, prev = None, real=True, shift=None):
+    ttA = TT(A)
+    if V is not None:
+        ttA = ttA + TT(V)
+    ttB = TT(B)
+    initTT = tt.ones(ttA.row_dims, [1] * ttA.order, ranks=ranks).ortho_right()
+    if prev is not None:
+        res = evp.als(operator=ttA, initial_guess=initTT,
+                      operator_gevp=ttB, sigma=sigma, real=real, previous=prev, shift=shift)
+    else:
+        res = evp.als(operator=ttA, initial_guess=initTT, operator_gevp=ttB, sigma=sigma, real=real)
+    return res
+
+
+def eigAlterLeastSquares2d(A, B, ranks, sigma=1, V = None, prev = None, real=True, shift=None):
+    ttA = TT(A)
+    print("A ranks", ttA.order)
+    ttA = TT(A) + TT(A)
+    print("A ranks", ttA.order)
+    time.sleep(500)
+    if V is not None:
+        ttA = ttA + TT(V)
+    ttB = TT(B)
+    initTT = tt.ones(ttA.row_dims, [1] * ttA.order, ranks=ranks).ortho_right()
+    if prev is not None:
+        res = evp.als(operator=ttA, initial_guess=initTT,
+                      operator_gevp=ttB, sigma=sigma, real=real, previous=prev, shift=shift)
+    else:
+        res = evp.als(operator=ttA, initial_guess=initTT, operator_gevp=ttB, sigma=sigma, real=real)
+    return res
