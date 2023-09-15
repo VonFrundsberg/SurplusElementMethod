@@ -161,7 +161,7 @@ def kronSumtoTT_blockFormat(matricesMatrix):
     core = np.stack((M[0][1], M[0][2]), axis=2)[np.newaxis, :, :, :]
     cores.append(core)
     for i in range(1, dim - 1):
-        core = np.stack((M[i][0], 0*M[i][1], M[i][1], M[i][2]), axis=2)[np.newaxis, :, :, :]
+        core = np.stack((M[i][0], 1/2*M[i][1], 1/2*M[i][1], M[i][2]), axis=2)[np.newaxis, :, :, :]
         core = np.reshape(core, [core.shape[1], core.shape[2], 2, 2])
         core = np.transpose(core, [2, 0, 1, 3])
         cores.append(core)
@@ -251,18 +251,18 @@ def eigAlterLeastSquares(A, B, ranks, sigma=1, V = None, prev = None, real=True,
 
 
 def eigAlterLeastSquares2d(A, B, ranks, sigma=1, V = None, prev = None, real=True, shift=None):
-    ttA = TT(A)
-    print("A ranks", ttA.order)
-    ttA = TT(A) + TT(A)
-    print("A ranks", ttA.order)
-    time.sleep(500)
+    ttA = TT(A[0]) + TT(A[1])
+    A = None
     if V is not None:
-        ttA = ttA + TT(V)
+        for i in range(len(V)):
+            ttA = ttA + TT(V[i])
+    V = None
     ttB = TT(B)
+    B = None
     initTT = tt.ones(ttA.row_dims, [1] * ttA.order, ranks=ranks).ortho_right()
     if prev is not None:
         res = evp.als(operator=ttA, initial_guess=initTT,
                       operator_gevp=ttB, sigma=sigma, real=real, previous=prev, shift=shift)
     else:
-        res = evp.als(operator=ttA, initial_guess=initTT, operator_gevp=ttB, sigma=sigma, real=real)
+        res = evp.als(operator=ttA, initial_guess=initTT, operator_gevp=ttB, sigma=sigma, repeats=10)
     return res

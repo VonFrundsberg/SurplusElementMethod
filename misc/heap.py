@@ -237,7 +237,9 @@ def solveSphericalPois(polyOrder, rhsF, integrPoints=350):
     fx = np.nan_to_num(fx, 0)
 
     ttFx = approx.simpleTTsvd(fx, tol=1e-6, R_MAX=400)
-
+    for it in ttFx:
+        print(it.shape)
+    time.sleep(500)
     # grid0 = idNodes
     # core0 = ttFx[0]
     # core0 = np.transpose(core0, [1, 0, 2])
@@ -330,6 +332,99 @@ def solveSphericalPois(polyOrder, rhsF, integrPoints=350):
     # print("max difference on grid", np.max(np.abs(ttSol - fx.flatten())))
     print(T, np.max(np.abs(ttSol + fx.flatten())))
 
+
+def solveSphericalPoisVecRHS(polyOrder, vecRHS_F, vecRHS_elem : element,
+                             solutionTT_ranks: int, integrPoints=350, ):
+
+    elem = element(np.array([[0, np.inf], [0, np.pi], [0, 2*np.pi]]),
+                   np.array(polyOrder, dtype=int), np.array([1, 0, 3]))
+
+    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
+
+    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
+               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
+
+    tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
+    tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
+
+    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+
+    ttC = approx.kronSumtoTT_blockFormat([[None, -rMatrixD, rMatrixI],
+                                         [tMatrixIr, -tMatrixD, tMatrixIp],
+                                         [pMatrixI, -pMatrixD, None]])
+
+    grid = elem.getGridList()
+    w, idNodes = integr.reg_32_wn(-1, 1, integrPoints)
+    grid[0] = elem[0].map(idNodes)
+    # grid[1] = elem[1].map(idNodes)
+    # grid[2] = elem[2].map(idNodes)
+    #grid = approx.meshgrid(*grid)
+
+    ttFx = vecRHS_F
+    core0 = ttFx[0]
+    core0 = np.transpose(core0, [1, 0, 2])
+    rhs_grid0 = vecRHS_elem.getGridList()[0]
+    core0 = spec.barycentricChebInterpolate(core0, grid[0],
+                                            a=rhs_grid0[0], b=rhs_grid0[-1], extrapolation=0, axis=0)
+    ttFx[0] = np.transpose(core0, [1, 0, 2])
+
+    grid1 = idNodes
+    core1 = ttFx[1]
+    core1 = np.transpose(core1, [1, 0, 2])
+    core1 = spec.barycentricChebInterpolate(core1, grid1, a=-1, b=1, extrapolation=0, axis=0)
+    core1 = np.transpose(core1, [1, 0, 2])
+    ttFx[1] = core1
+    # print(core1.shape)
+    grid2 = idNodes
+    core2 = ttFx[2]
+    core2 = np.transpose(core2, [1, 0, 2])
+    core2 = np.einsum('ij, jnk -> ink', elem[2].eval(grid2), core2)
+
+    core2 = np.transpose(core2, [1, 0, 2])
+    ttFx[2] = core2
+
+    # print('cores of f tt decomposition have the following shapes: ')
+    # for i in ttFx:
+    #     print(i.shape)
+    # time.sleep(500)
+    ttR = ttFx[0].copy()
+    ttR = np.reshape(ttR, [ttR.shape[1], ttR.shape[2]])
+    integral = operations.integrateFunctional(elem, ttR, integrPoints, 0, True, precalc=True)
+    integral = integral[np.newaxis, :-1, :]
+    ttFx[0] = integral
+
+    ttT = ttFx[1].copy()
+    preshape = ttT.shape
+    ttT = np.transpose(ttT, [1, 0, 2])
+    ttT = np.reshape(ttT, [preshape[1], preshape[0]*preshape[2]])
+    integral = operations.integrateFunctional(elem, ttT, integrPoints, 1, True, precalc=True)
+    integral = integral[:, :, np.newaxis]
+    integral = np.reshape(integral, [elem[1].approxOrder, preshape[0], preshape[2]])
+    integral = np.transpose(integral, [1, 0, 2])
+    ttFx[1] = integral
+    ttP = ttFx[2].copy()
+    preshape = ttP.shape
+    ttP = np.transpose(ttP, [1, 0, 2])
+    ttP = np.reshape(ttP, [preshape[1], preshape[0] * preshape[2]])
+    integral = operations.integrateFunctional(elem, ttP, integrPoints, 2, True, precalc=True)
+    integral = integral[:, :, np.newaxis]
+    integral = np.reshape(integral, [elem[2].approxOrder, preshape[0], preshape[2]])
+    integral = np.transpose(integral, [1, 0, 2])
+    ttFx[2] = integral
+    #t = time.time()
+    ttSol = approx.alterLeastSquares(ttC, ttFx, solutionTT_ranks)
+    #T = time.time() - t
+    solCores = []
+    for it in ttSol.cores:
+        shape = it.shape
+        solCores.append(np.reshape(it, [shape[0], shape[1], shape[3]]))
+    shape1 = solCores[0].shape
+    solCores[0] = np.hstack([solCores[0], np.zeros(shape=(shape1[0], 1, shape1[2]))])
+    return solCores
+
+
 def solveSphericalPoisNoPhi(polyOrder, rhsF, integrPoints=2000):
 
     elem = element(np.array([[0, np.inf], [0, np.pi]]),
@@ -409,120 +504,3 @@ def solveSphericalPoisForPlot(iStart, iEnd, iStep):
                                           np.exp(-x[0])*4*np.cos(2*x[2])*(np.cos(4*x[1])*(-1.0 + (-4.0 + (-1.0 + x[0])*x[0])*(np.sin(x[1])**2)) - \
                                                                     np.cos(x[1])*np.sin(x[1])*np.sin(4*x[1])))
                        , integrPoints=500)
-
-
-
-
-def solveEigenSphericalPois(polyOrder, potential, integrPoints=350):
-
-    elem = element(np.array([[0, 20], [0, np.pi], [0, 2*np.pi]]),
-                   np.array(polyOrder, dtype=int), np.array([0, 0, 3]))
-
-    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
-    rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
-
-    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
-               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
-
-    tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
-    tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
-
-    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
-    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
-
-    ttA = approx.kronSumtoTT_blockFormat([[None, rMatrixD, rMatrixI],
-                                         [tMatrixIr, tMatrixD, tMatrixIp],
-                                         [pMatrixI, pMatrixD, None]])
-
-    rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x, integrPoints, 0)[:-1, :-1]
-    tMatrixI = operations.integrateBilinearForm0(elem, lambda x: np.sin(x) ** 2, integrPoints, 1)
-    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
-    ttV = [2*rMatrixI, tMatrixI, pMatrixI]
-    for i in range(len(ttV)):
-        ttV[i] = -ttV[i][np.newaxis, :, :, np.newaxis]
-
-    rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
-
-    tMatrixI = operations.integrateBilinearForm0(elem, lambda x: np.sin(x) ** 2, integrPoints, 1)
-
-    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
-
-    ttB = [2*rMatrixI, tMatrixI, pMatrixI]
-    for i in range(len(ttB)):
-        ttB[i] = ttB[i][np.newaxis, : , :, np.newaxis]
-
-    #print("solving with TT als algorithm")
-    t = time.time()
-    ttSol = approx.eigAlterLeastSquares(A=ttA, B=ttB,  ranks=4, sigma=-0.5, V=ttV, real=True)
-    eigsList = []
-    eigVecList = []
-    eigVecList.append(ttSol[1])
-    eigsList.append(ttSol[0])
-    # for i in range(4):
-    #     ttSol = approx.eigAlterLeastSquares(A=ttA, B=ttB, ranks=6, sigma=-0.5,
-    #                                         V=ttV, prev=eigVecList, real=True, shift=eigsList[-1])
-    #     eigVecList.append(ttSol[1])
-    #     eigsList.append(ttSol[0])
-    print(eigsList)
-
-
-def solveEigenSphericalPois6d(polyOrder, potential, integrPoints=350):
-
-    elem = element(np.array([[0, 20], [0, np.pi], [0, 2*np.pi]]),
-                   np.array(polyOrder, dtype=int), np.array([0, 0, 3]))
-
-    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
-    rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
-
-    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
-               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
-
-    tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
-    tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
-
-    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
-    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
-
-    ttA = approx.kronSumtoTT_blockFormat([[None, rMatrixD, rMatrixI],
-                                         [tMatrixIr, tMatrixD, tMatrixIp],
-                                         [pMatrixI, pMatrixD, None]])
-
-
-    rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x, integrPoints, 0)[:-1, :-1]
-    tMatrixI = operations.integrateBilinearForm0(elem, lambda x: np.sin(x) ** 2, integrPoints, 1)
-    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
-    ttV = [2*rMatrixI, tMatrixI, pMatrixI]
-    for i in range(len(ttV)):
-        ttV[i] = -ttV[i][np.newaxis, :, :, np.newaxis]
-
-    rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
-
-    tMatrixI = operations.integrateBilinearForm0(elem, lambda x: np.sin(x) ** 2, integrPoints, 1)
-
-    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
-
-    ttB = [2*rMatrixI, tMatrixI, pMatrixI]
-    for i in range(len(ttB)):
-        ttB[i] = ttB[i][np.newaxis, : , :, np.newaxis]
-
-    #print("solving with TT als algorithm")
-    t = time.time()
-    #ttSol = approx.eigAlterLeastSquares(A=ttA, B=ttB,  ranks=4, sigma=-0.5, real=True, V=ttV)
-    ttSol = approx.eigAlterLeastSquares2d(A=ttA, B=ttB, ranks=4, sigma=-0.5, real=True, V=ttV)
-    eigsList = []
-    eigVecList = []
-    eigVecList.append(ttSol[1])
-    eigsList.append(ttSol[0])
-    print(ttSol[1].full().shape)
-    # for i in range(4):
-    #     ttSol = approx.eigAlterLeastSquares(A=ttA, B=ttB, ranks=6, sigma=-0.5,
-    #                                         V=ttV, prev=eigVecList, real=True, shift=eigsList[-1])
-    #     eigVecList.append(ttSol[1])
-    #     eigsList.append(ttSol[0])
-    print(eigsList)
-def solveEigenSphericalPoisForPlot(iStart, iEnd, iStep):
-    for i in range(iStart, iEnd, iStep):
-        solveEigenSphericalPois6d(np.array([i, i, i]),
-                                lambda x: np.sin(x[2]), integrPoints=500)
-
-solveEigenSphericalPoisForPlot(8, 60, 2)

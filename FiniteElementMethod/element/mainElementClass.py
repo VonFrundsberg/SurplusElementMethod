@@ -37,6 +37,9 @@ class element():
     def evalDiffAlongAxis(self, x, axis):
         result = self.basicElements[axis].evalDiff(np.unique(x[axis]))
         return result
+    def evalAlongAxis(self, x, axis):
+        result = self.basicElements[axis].eval(np.unique(x[axis]))
+        return result
     # def bcs(self):
     #     lists = np.zeros(len(self.dims))
     #     pad = np.zeros([len(self.dims), 2], dtype=np.int)
