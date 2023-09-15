@@ -9,7 +9,8 @@ from mathematics import spectral as spec
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as sp_lin
-from heap import solveSphericalPoisVecRHS as poissonSolution
+from heap import solveSphericalPoisMatRHS as poissonSolution
+from scikit_tt.tensor_train import TT
 def testKronSum(elementU):
     """Some tests with kronecker sum of a differential-like operator, conversion to TT train format"""
     basisFuncList = []
@@ -253,7 +254,7 @@ def solveEigenSphericalPois6d(polyOrder, integrPoints=350):
     #print("solving with TT als algorithm")
     t = time.time()
     ttSol = approx.eigAlterLeastSquares2d(A=[ttA1, ttA2], B=ttB, ranks=1, sigma=-10, real=True, V=[ttV1, ttV2])
-    print("init energy: " , ttSol[0] + 4)
+    print("init energy: " , ttSol[0])
     solCores = []
     for it in ttSol[1].cores:
         shape = it.shape
@@ -263,6 +264,144 @@ def solveEigenSphericalPois6d(polyOrder, integrPoints=350):
     solCores[0] = np.hstack([solCores[0], np.zeros(shape=(shape1[0], 1, shape1[2]))])
     solCores[3] = np.hstack([solCores[3], np.zeros(shape=(shape2[0], 1, shape2[2]))])
     return solCores
+
+
+def solveEigenSphericalPois6dRepulsionOld(polyOrder, prevSolutionCores, integrPoints=350):
+
+    elem = element(np.array([[0, 20], [0, np.pi], [0, 2*np.pi]]),
+                   np.array(polyOrder, dtype=int), np.array([0, 0, 3]))
+
+    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixI1 = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
+    rMatrixI2 = operations.integrateBilinearForm0(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+
+    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
+               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
+
+    tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
+    tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
+
+    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+
+    ttA1 = approx.kronSumtoTT_blockFormat([[None, rMatrixD, rMatrixI1],
+                                          [tMatrixIr, tMatrixD, tMatrixIp],
+                                          [pMatrixI, pMatrixD, None],
+                                          ])
+
+    ttA1.append(rMatrixI2[np.newaxis, :, :, np.newaxis])
+    ttA1.append(tMatrixIr[np.newaxis, :, :, np.newaxis])
+    ttA1.append(pMatrixI[np.newaxis, :, :, np.newaxis])
+
+    ttA2 = approx.kronSumtoTT_blockFormat([[None, rMatrixD, rMatrixI1],
+                                           [tMatrixIr, tMatrixD, tMatrixIp],
+                                           [pMatrixI, pMatrixD, None],
+                                           ])
+    ttA2.insert(0, rMatrixI2[np.newaxis, :, :, np.newaxis])
+    ttA2.insert(1, tMatrixIr[np.newaxis, :, :, np.newaxis])
+    ttA2.insert(2, pMatrixI[np.newaxis, :, :, np.newaxis])
+
+    rMatrixD = None; rMatrixI = None; tMatrixD = None; tMatrixIr = None; tMatrixIp = None;
+    pMatrixD = None; pMatrixI = None;
+    for it in prevSolutionCores:
+        print(it.shape)
+    time.sleep(500)
+    potentialY = poissonSolution(polyOrder, prevSolutionCores[:3], elem,
+                                 integrPoints=integrPoints, solutionTT_ranks=10)
+
+    poissonElem = element(np.array([[0, np.inf], [0, np.pi], [0, 2 * np.pi]]),
+                   np.array(polyOrder, dtype=int), np.array([1, 0, 3]))
+    #poisGrid = poissonElem[0].getMappedRefPoints()
+    #print("poisson grid", poisGrid)
+    refGrid = elem[0].getMappedRefPoints()
+    #print("reference grid", refGrid)
+    #print("reference grid to poisson grid", poissonElem[0].inverseMap(refGrid))
+    refGridToPoisGridUnit = poissonElem[0].inverseMap(refGrid)
+    rShapeComponentOfY = potentialY[0].shape
+    rComponentOfY = np.reshape(potentialY[0], [rShapeComponentOfY[1], rShapeComponentOfY[2]])
+    rComponentOfY = spec.barycentricChebInterpolate(rComponentOfY, x=refGridToPoisGridUnit, a=-1, b=1)
+    potentialY[0] = rComponentOfY[np.newaxis, :, :]
+    Y = approx.hadamardProduct(potentialY[:3], prevSolutionCores[3:])
+    # for it in Y:
+    #     print(it.shape)
+
+    grid = elem.getGridList()
+    w, idNodes = integr.reg_32_wn(-1, 1, integrPoints)
+
+    ttFx = Y
+    grid0 = idNodes
+    core0 = ttFx[0]
+    core0 = np.transpose(core0, [1, 0, 2])
+    core0 = spec.barycentricChebInterpolate(core0, grid0, a=-1, b=1, extrapolation=0, axis=0)
+
+    core0 = np.transpose(core0, [1, 0, 2])
+    ttFx[0] = core0 * (grid0[np.newaxis, : , np.newaxis])**2
+
+    grid1 = idNodes
+    core1 = ttFx[1]
+    core1 = np.transpose(core1, [1, 0, 2])
+    core1 = spec.barycentricChebInterpolate(core1, grid1, a=-1, b=1, extrapolation=0, axis=0)
+    core1 = np.transpose(core1, [1, 0, 2])
+    ttFx[1] = core1 * (grid1[np.newaxis, : , np.newaxis])**2
+    # print(core1.shape)
+    grid2 = idNodes
+    core2 = ttFx[2]
+    core2 = np.transpose(core2, [1, 0, 2])
+    core2 = np.einsum('ij, jnk -> ink', elem[2].eval(grid2), core2)
+
+    core2 = np.transpose(core2, [1, 0, 2])
+    ttFx[2] = core2
+
+    integralOfY = np.squeeze(approx.integrateTT(ttFx, [w, w, w]))
+    ttFx = None
+    core1 = None; core2 = None; core0 = None; grid0 = None; grid1 = None; grid2 = None
+
+    Z = 2
+    rMatrixI1 = operations.integrateBilinearForm0(elem, lambda x: -Z*2*x, integrPoints, 0)[:-1, :-1]
+    rMatrixI2 = operations.integrateBilinearForm0(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    tMatrixI = operations.integrateBilinearForm0(elem, lambda x: np.sin(x) ** 2, integrPoints, 1)
+    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    ttV1 = [rMatrixI1, tMatrixI, pMatrixI, rMatrixI2, tMatrixI, pMatrixI]
+    ttV2 = [rMatrixI2, tMatrixI, pMatrixI, rMatrixI1, tMatrixI, pMatrixI]
+    arrayY = []
+    for i in range(len(ttV1)):
+        ttV1[i] = ttV1[i][np.newaxis, :, :, np.newaxis]
+        ttV2[i] = ttV2[i][np.newaxis, :, :, np.newaxis]
+        arrayY.append(np.ones(ttV1[i].shape))
+    integralOfY = -1
+    arrayY[0] *= np.pi*2*integralOfY
+
+    rMatrixI1 = None; rMatrixI2 = None
+    tMatrixI = None;  pMatrixI = None;
+
+    rMatrixI = operations.integrateBilinearForm0(elem, lambda x: np.sqrt(2) * x * x, integrPoints, 0)[:-1, :-1]
+
+    tMatrixI = operations.integrateBilinearForm0(elem, lambda x: np.sin(x) ** 2, integrPoints, 1)
+
+    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+
+    ttB = [rMatrixI, tMatrixI, pMatrixI, rMatrixI, tMatrixI, pMatrixI]
+    for i in range(len(ttB)):
+        ttB[i] = ttB[i][np.newaxis, : , :, np.newaxis]
+
+    rMatrixI = None;    tMatrixI = None;    pMatrixI = None;
+
+    #print("solving with TT als algorithm")
+    t = time.time()
+
+    ttSol = approx.eigAlterLeastSquares2d(A=[ttA1, ttA2], B=[ttB, arrayY],
+                                          ranks=1, sigma=-10, real=True, V=[ttV1, ttV2])
+    print("post energy: " , ttSol[0])
+    solCores = []
+    for it in ttSol[1].cores:
+        shape = it.shape
+        solCores.append(np.reshape(it, [shape[0], shape[1], shape[3]]))
+    shape1 = solCores[0].shape
+    shape2 = solCores[3].shape
+    solCores[0] = np.hstack([solCores[0], np.zeros(shape=(shape1[0], 1, shape1[2]))])
+    solCores[3] = np.hstack([solCores[3], np.zeros(shape=(shape2[0], 1, shape2[2]))])
+    return solCores
+
 
 
 def solveEigenSphericalPois6dRepulsion(polyOrder, prevSolutionCores, integrPoints=350):
@@ -302,12 +441,74 @@ def solveEigenSphericalPois6dRepulsion(polyOrder, prevSolutionCores, integrPoint
 
     rMatrixD = None; rMatrixI = None; tMatrixD = None; tMatrixIr = None; tMatrixIp = None;
     pMatrixD = None; pMatrixI = None;
+    for it in prevSolutionCores:
+        print(it.shape)
 
-    potentialY = poissonSolution(polyOrder, prevSolutionCores[:3], elem,
-                                 integrPoints=integrPoints, solutionTT_ranks=6)
+    IdCores = []
+    for i in range(3):
+        IdCores.append(np.eye(polyOrder[i])[np.newaxis,:, : ,np.newaxis])
+    for it in IdCores:
+        print(it.shape)
+    potentialY = poissonSolution(polyOrder, IdCores, elem,
+                                 integrPoints=integrPoints, solutionTT_ranks=10)
+
+    time.sleep(500)
+    for i in range(len(potentialY)):
+        tmp = np.transpose(potentialY[i], [1, 0, 2])
+        potentialY[i] = np.reshape(tmp, [polyOrder[i], polyOrder[i], tmp.shape[1], tmp.shape[2]])
+        potentialY[i] = np.transpose(potentialY[i], [2, 0, 1, 3])
     for it in potentialY:
         print(it.shape)
+    tmp = None
+    print("done")
     time.sleep(500)
+    poissonElem = element(np.array([[0, np.inf], [0, np.pi], [0, 2 * np.pi]]),
+                   np.array(polyOrder, dtype=int), np.array([1, 0, 3]))
+    #poisGrid = poissonElem[0].getMappedRefPoints()
+    #print("poisson grid", poisGrid)
+    refGrid = elem[0].getMappedRefPoints()
+    #print("reference grid", refGrid)
+    #print("reference grid to poisson grid", poissonElem[0].inverseMap(refGrid))
+    refGridToPoisGridUnit = poissonElem[0].inverseMap(refGrid)
+    rShapeComponentOfY = potentialY[0].shape
+    rComponentOfY = np.reshape(potentialY[0], [rShapeComponentOfY[1], rShapeComponentOfY[2]])
+    rComponentOfY = spec.barycentricChebInterpolate(rComponentOfY, x=refGridToPoisGridUnit, a=-1, b=1)
+    potentialY[0] = rComponentOfY[np.newaxis, :, :]
+    Y = approx.hadamardProduct(potentialY[:3], prevSolutionCores[3:])
+    # for it in Y:
+    #     print(it.shape)
+
+    grid = elem.getGridList()
+    w, idNodes = integr.reg_32_wn(-1, 1, integrPoints)
+
+    ttFx = Y
+    grid0 = idNodes
+    core0 = ttFx[0]
+    core0 = np.transpose(core0, [1, 0, 2])
+    core0 = spec.barycentricChebInterpolate(core0, grid0, a=-1, b=1, extrapolation=0, axis=0)
+
+    core0 = np.transpose(core0, [1, 0, 2])
+    ttFx[0] = core0 * (grid0[np.newaxis, : , np.newaxis])**2
+
+    grid1 = idNodes
+    core1 = ttFx[1]
+    core1 = np.transpose(core1, [1, 0, 2])
+    core1 = spec.barycentricChebInterpolate(core1, grid1, a=-1, b=1, extrapolation=0, axis=0)
+    core1 = np.transpose(core1, [1, 0, 2])
+    ttFx[1] = core1 * (grid1[np.newaxis, : , np.newaxis])**2
+    # print(core1.shape)
+    grid2 = idNodes
+    core2 = ttFx[2]
+    core2 = np.transpose(core2, [1, 0, 2])
+    core2 = np.einsum('ij, jnk -> ink', elem[2].eval(grid2), core2)
+
+    core2 = np.transpose(core2, [1, 0, 2])
+    ttFx[2] = core2
+
+    integralOfY = np.squeeze(approx.integrateTT(ttFx, [w, w, w]))
+    ttFx = None
+    core1 = None; core2 = None; core0 = None; grid0 = None; grid1 = None; grid2 = None
+
     Z = 2
     rMatrixI1 = operations.integrateBilinearForm0(elem, lambda x: -Z*2*x, integrPoints, 0)[:-1, :-1]
     rMatrixI2 = operations.integrateBilinearForm0(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
@@ -315,9 +516,13 @@ def solveEigenSphericalPois6dRepulsion(polyOrder, prevSolutionCores, integrPoint
     pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
     ttV1 = [rMatrixI1, tMatrixI, pMatrixI, rMatrixI2, tMatrixI, pMatrixI]
     ttV2 = [rMatrixI2, tMatrixI, pMatrixI, rMatrixI1, tMatrixI, pMatrixI]
+    arrayY = []
     for i in range(len(ttV1)):
         ttV1[i] = ttV1[i][np.newaxis, :, :, np.newaxis]
         ttV2[i] = ttV2[i][np.newaxis, :, :, np.newaxis]
+        arrayY.append(np.ones(ttV1[i].shape))
+    integralOfY = -1
+    arrayY[0] *= np.pi*2*integralOfY
 
     rMatrixI1 = None; rMatrixI2 = None
     tMatrixI = None;  pMatrixI = None;
@@ -336,8 +541,10 @@ def solveEigenSphericalPois6dRepulsion(polyOrder, prevSolutionCores, integrPoint
 
     #print("solving with TT als algorithm")
     t = time.time()
-    ttSol = approx.eigAlterLeastSquares2d(A=[ttA1, ttA2], B=ttB, ranks=1, sigma=-10, real=True, V=[ttV1, ttV2])
-    print("init energy: " , ttSol[0])
+
+    ttSol = approx.eigAlterLeastSquares2d(A=[ttA1, ttA2], B=[ttB, arrayY],
+                                          ranks=1, sigma=-10, real=True, V=[ttV1, ttV2])
+    print("post energy: " , ttSol[0])
     solCores = []
     for it in ttSol[1].cores:
         shape = it.shape
@@ -349,9 +556,9 @@ def solveEigenSphericalPois6dRepulsion(polyOrder, prevSolutionCores, integrPoint
     return solCores
 def solveEigenSphericalPoisForPlot(iStart, iEnd, iStep):
     for i in range(iStart, iEnd, iStep):
-        cores = solveEigenSphericalPois6d(np.array([i, 4, 4]), integrPoints=500)
-        for j in range(5):
-            cores = solveEigenSphericalPois6dRepulsion(np.array([i, 4, 4]), cores, integrPoints=500)
+        cores = solveEigenSphericalPois6d(np.array([8, 6, 4]), integrPoints=500)
+        for j in range(10):
+            cores = solveEigenSphericalPois6dRepulsion(np.array([8, 6, 4]), cores, integrPoints=500)
         time.sleep(500)
 
 solveEigenSphericalPoisForPlot(4, 30, 2)

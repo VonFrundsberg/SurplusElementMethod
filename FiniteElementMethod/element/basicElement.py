@@ -8,7 +8,7 @@ class basicElement():
         Arguments:
             interval:
             approxOrder:
-            elemType: 0 is linear qx+p, 1 is rational (1+x)/(1-x), 2 is exponential ???
+            elemType: 0 is linear qx+p, 1 is rational (1+x)/(1-x), 2 is exponential, 3 is periodic
             boundaryConditions:
 
         Returns: None

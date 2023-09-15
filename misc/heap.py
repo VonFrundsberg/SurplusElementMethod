@@ -425,6 +425,101 @@ def solveSphericalPoisVecRHS(polyOrder, vecRHS_F, vecRHS_elem : element,
     return solCores
 
 
+def solveSphericalPoisMatRHS(polyOrder, matRHS_F, matRHS_elem : element,
+                             solutionTT_ranks: int, integrPoints=350, ):
+
+    elem = element(np.array([[0, np.inf], [0, np.pi], [0, 2*np.pi]]),
+                   np.array(polyOrder, dtype=int), np.array([1, 0, 3]))
+
+    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
+
+    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
+               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
+
+    tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
+    tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
+
+    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+
+    ttC = approx.kronSumtoTT_blockFormat([[None, -rMatrixD, rMatrixI],
+                                         [tMatrixIr, -tMatrixD, tMatrixIp],
+                                         [pMatrixI, -pMatrixD, None]])
+
+    grid = elem.getGridList()
+    w, idNodes = integr.reg_32_wn(-1, 1, integrPoints)
+    grid[0] = elem[0].map(idNodes)
+    # grid[1] = elem[1].map(idNodes)
+    # grid[2] = elem[2].map(idNodes)
+    #grid = approx.meshgrid(*grid)
+
+    ttFx = matRHS_F
+    core0 = ttFx[0]
+    core0 = np.transpose(core0, [1, 2, 0, 3])
+    rhs_grid0 = matRHS_elem.getGridList()[0]
+    core0 = spec.barycentricChebInterpolate(core0, grid[0],
+                                            a=rhs_grid0[0], b=rhs_grid0[-1], extrapolation=0, axis=0)
+    core0 = np.transpose(core0, [1, 0, 2, 3])
+    core0 = spec.barycentricChebInterpolate(core0, grid[0],
+                                            a=rhs_grid0[0], b=rhs_grid0[-1], extrapolation=0, axis=0)
+    core0 = np.transpose(core0, [1, 0, 2, 3])
+    ttFx[0] = np.squeeze(core0)
+
+
+    grid1 = idNodes
+    core1 = ttFx[1]
+    core1 = np.transpose(core1, [1, 2, 0, 3])
+    core1 = spec.barycentricChebInterpolate(core1, grid1, a=-1, b=1, extrapolation=0, axis=0)
+
+    core1 = np.transpose(core1, [1, 0, 2, 3])
+    core1 = spec.barycentricChebInterpolate(core1, grid[1],
+                                            a=-1, b=1, extrapolation=0, axis=0)
+    ttFx[1] = np.squeeze(core1)
+    # print(core1.shape)
+    grid2 = idNodes
+    core2 = ttFx[2]
+    core2 = np.transpose(core2, [1, 2, 0, 3])
+    core2 = np.einsum('ij, jnmk -> inmk', elem[2].eval(grid2), core2)
+
+    ttFx[2] = np.squeeze(core2)
+
+    # print('cores of f tt decomposition have the following shapes: ')
+    # for i in ttFx:
+    #     print(i.shape)
+    # time.sleep(500)
+    ttR = ttFx[0]
+    ttR = np.reshape(ttR, [ttR, 1, 1])
+    integral = operations.integrateFunctional(elem, ttR, integrPoints, 0, True, precalc=True)
+    integral = integral[np.newaxis, :-1, :]
+    ttFx[0] = integral
+
+    ttT = ttFx[1]
+    ttT = np.reshape(ttT.flatten(), [1, 1])
+    integral = operations.integrateFunctional(elem, ttT, integrPoints, 1, True, precalc=True)
+
+    ttFx[1] = integral
+
+    ttP = ttFx[2]
+    ttP = np.reshape(ttP.flatten(), [1, 1])
+    integral = operations.integrateFunctional(elem, ttP, integrPoints, 2, True, precalc=True)
+    ttFx[2] = integral
+    #t = time.time()
+    for it in ttFx:
+        print(it.shape)
+    time.sleep(500)
+    ttSol = approx.alterLeastSquares(ttC, ttFx, solutionTT_ranks)
+    #T = time.time() - t
+    solCores = []
+    for it in ttSol.cores:
+        shape = it.shape
+        solCores.append(np.reshape(it, [shape[0], shape[1], shape[3]]))
+    shape1 = solCores[0].shape
+    solCores[0] = np.hstack([solCores[0], np.zeros(shape=(shape1[0], 1, shape1[2]))])
+    return solCores
+
+
+
 def solveSphericalPoisNoPhi(polyOrder, rhsF, integrPoints=2000):
 
     elem = element(np.array([[0, np.inf], [0, np.pi]]),
@@ -498,9 +593,68 @@ def solveSphericalPoisNoPhi(polyOrder, rhsF, integrPoints=2000):
     plt.colorbar()
     plt.show()
 
-def solveSphericalPoisForPlot(iStart, iEnd, iStep):
-    for i in range(iStart, iEnd, iStep):
-        solveSphericalPois(np.array([i, i, min(i, 14)]), lambda x: np.exp(-x[0])*(np.sin(x[2])*(np.cos(2*x[1])*(-1.0 + (-4.0 + (-2.0 + x[0])*x[0])*(np.sin(x[1])**2)) - (np.sin(2*x[1])**2)) +
-                                          np.exp(-x[0])*4*np.cos(2*x[2])*(np.cos(4*x[1])*(-1.0 + (-4.0 + (-1.0 + x[0])*x[0])*(np.sin(x[1])**2)) - \
-                                                                    np.cos(x[1])*np.sin(x[1])*np.sin(4*x[1])))
-                       , integrPoints=500)
+
+def testSphericalLaplacianInverseTT(polyOrder, integrPoints=500):
+    elem = element(np.array([[0, np.inf], [0, np.pi], [0, 2 * np.pi]]),
+                   np.array(polyOrder, dtype=int), np.array([1, 0, 3]))
+
+    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
+
+    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x) ** 2, integrPoints, 1) + \
+               operations.integrateBilinearForm2(elem, lambda x: np.sin(x) * np.cos(x), integrPoints, 1)
+
+    tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x) ** 2, integrPoints, 1)
+    tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 1)
+
+    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+
+    ttC = approx.kronSumtoTT_blockFormat([[None, -rMatrixD, rMatrixI],
+                                          [tMatrixIr, -tMatrixD, tMatrixIp],
+                                          [pMatrixI, -pMatrixD, None]])
+    truePolyOrder = np.array(polyOrder) - np.array([1, 0, 0])
+    #C = (approx.toFullTensor(ttC, True))
+    #invC = sp_lin.inv(np.reshape(C, [np.prod(truePolyOrder), np.prod(truePolyOrder)]))
+    shape = polyOrder
+    #ttC = approx.matrixTTsvd(C, truePolyOrder, tol=1e-6)
+    ttInvC = approx.invertTT_Matrix(ttC, 10)
+    #ttInvC = approx.matrixTTsvd(invC, truePolyOrder, tol=1e-6)
+    #print("nonzero amount in kron matrix: ", np.count_nonzero(C))
+    #print("nonzero amount in inverse matrix: ", np.count_nonzero(invC))
+    sum = 0
+    for i in range(len(ttC)):
+        print("C core shape:", ttC[i].shape, "inverse C core shape ", ttInvC[i].shape, "with the total size"
+                                                                                       "of ", ttInvC[i].size)
+        sum += ttInvC[i].size
+    #print("inverse and TT approximation nonzero elements magnitude difference (times):", np.count_nonzero(invC) / sum)
+    for i in range(3):
+        shape = ttInvC[i].shape
+        ttInvC[i] = np.reshape(ttInvC[i], [shape[0], shape[1] * shape[2], shape[3]])
+
+        shape = ttC[i].shape
+        ttC[i] = np.reshape(ttC[i], [shape[0], shape[1] * shape[2], shape[3]])
+
+    # newCshape = np.array(truePolyOrder, dtype=int)
+    # invC = np.reshape(invC, [*newCshape, *newCshape])
+    # invC = np.transpose(invC, axes=[0, 3, 1, 4, 2, 5])
+    # invC = np.reshape(invC, newCshape ** 2)
+    # A = np.reshape(ttInvC[0], [ttInvC[0].shape[1], ttInvC[0].shape[-1]])
+    # initShape = invC.shape
+    # for i in range(1, len(ttInvC)):
+    #     shape = ttInvC[i].shape
+    #     reshaped = np.reshape(ttInvC[i], [shape[0], shape[1] * shape[2]])
+    #     A = np.dot(A, reshaped)
+    #     A = np.reshape(A, [np.prod(initShape[:i + 1]), int(A.shape[-1] / initShape[i])])
+    # A = np.reshape(A, initShape)
+    # print("approximation error for inverse: ", np.sum((A - invC) ** 2))
+
+
+testSphericalLaplacianInverseTT([30, 8, 8])
+
+# def solveSphericalPoisForPlot(iStart, iEnd, iStep):
+#     for i in range(iStart, iEnd, iStep):
+#         solveSphericalPois(np.array([i, i, min(i, 14)]), lambda x: np.exp(-x[0])*(np.sin(x[2])*(np.cos(2*x[1])*(-1.0 + (-4.0 + (-2.0 + x[0])*x[0])*(np.sin(x[1])**2)) - (np.sin(2*x[1])**2)) +
+#                                           np.exp(-x[0])*4*np.cos(2*x[2])*(np.cos(4*x[1])*(-1.0 + (-4.0 + (-1.0 + x[0])*x[0])*(np.sin(x[1])**2)) - \
+#                                                                     np.cos(x[1])*np.sin(x[1])*np.sin(4*x[1])))
+#                        , integrPoints=500)

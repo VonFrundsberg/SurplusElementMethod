@@ -129,3 +129,23 @@ def integrateFunctional(elementU: element, function,
         resultIntegrals = np.einsum('ij, ik -> jk', I, W)
     return resultIntegrals
 
+def integrateFunctionalWithMatrixRHS(elementU: element, matrix,
+        integrationPointsAmount: int, axis: int):
+    """(one-dimensional) Integrates functional form of the type l(v) = int_K function(x) v(x) dx,
+            where v(x) are basis functions of elementU element
+            and K is a non-zero region of elementU functions.
+
+            Arguments:
+                elementU:
+                weight:
+                integrationPointsAmount:
+                axis:
+            Returns:
+                result: an integral of functional
+        """
+    w, x = integr.reg_32_wn(a=-1, b=1, n=matrix.shape[0] - 32)
+    w = w * elementU[axis].inverseDerivativeMap(x)
+    W = np.einsum('ij, i -> ij', matrix, w)
+    I = elementU[axis].eval(x)
+    resultIntegrals = np.einsum('ij, ik -> jik', I, W)
+    return resultIntegrals
