@@ -9,8 +9,8 @@ from mathematics import spectral as spec
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as sp_lin
+import scikit_tt.tensor_train as tt
 from heap import solveSphericalPoisMatRHS as poissonSolution
-from scikit_tt.tensor_train import TT
 def testKronSum(elementU):
     """Some tests with kronecker sum of a differential-like operator, conversion to TT train format"""
     basisFuncList = []
@@ -306,7 +306,7 @@ def solveEigenSphericalPois6dRepulsionOld(polyOrder, prevSolutionCores, integrPo
     for it in prevSolutionCores:
         print(it.shape)
     time.sleep(500)
-    potentialY = poissonSolution(polyOrder, prevSolutionCores[:3], elem,
+    potentialY = poissonSolution(polyOrder, tt.eye, elem,
                                  integrPoints=integrPoints, solutionTT_ranks=10)
 
     poissonElem = element(np.array([[0, np.inf], [0, np.pi], [0, 2 * np.pi]]),
@@ -441,29 +441,18 @@ def solveEigenSphericalPois6dRepulsion(polyOrder, prevSolutionCores, integrPoint
 
     rMatrixD = None; rMatrixI = None; tMatrixD = None; tMatrixIr = None; tMatrixIp = None;
     pMatrixD = None; pMatrixI = None;
-    for it in prevSolutionCores:
-        print(it.shape)
 
     IdCores = []
     for i in range(3):
-        IdCores.append(np.eye(polyOrder[i])[np.newaxis,:, : ,np.newaxis])
-    for it in IdCores:
-        print(it.shape)
-    potentialY = poissonSolution(polyOrder, IdCores, elem,
-                                 integrPoints=integrPoints, solutionTT_ranks=10)
+        IdCores.append(np.eye(polyOrder[i]))
 
-    time.sleep(500)
-    for i in range(len(potentialY)):
-        tmp = np.transpose(potentialY[i], [1, 0, 2])
-        potentialY[i] = np.reshape(tmp, [polyOrder[i], polyOrder[i], tmp.shape[1], tmp.shape[2]])
-        potentialY[i] = np.transpose(potentialY[i], [2, 0, 1, 3])
-    for it in potentialY:
-        print(it.shape)
-    tmp = None
-    print("done")
-    time.sleep(500)
+    potentialY = poissonSolution(polyOrder, IdCores, elem,
+                                  integrPoints=integrPoints, solutionTT_ranks=5, invRanks=5)
+
     poissonElem = element(np.array([[0, np.inf], [0, np.pi], [0, 2 * np.pi]]),
                    np.array(polyOrder, dtype=int), np.array([1, 0, 3]))
+    approx.printTT(potentialY)
+    time.sleep(500)
     #poisGrid = poissonElem[0].getMappedRefPoints()
     #print("poisson grid", poisGrid)
     refGrid = elem[0].getMappedRefPoints()
@@ -471,14 +460,19 @@ def solveEigenSphericalPois6dRepulsion(polyOrder, prevSolutionCores, integrPoint
     #print("reference grid to poisson grid", poissonElem[0].inverseMap(refGrid))
     refGridToPoisGridUnit = poissonElem[0].inverseMap(refGrid)
     rShapeComponentOfY = potentialY[0].shape
-    rComponentOfY = np.reshape(potentialY[0], [rShapeComponentOfY[1], rShapeComponentOfY[2]])
-    rComponentOfY = spec.barycentricChebInterpolate(rComponentOfY, x=refGridToPoisGridUnit, a=-1, b=1)
-    potentialY[0] = rComponentOfY[np.newaxis, :, :]
-    Y = approx.hadamardProduct(potentialY[:3], prevSolutionCores[3:])
-    # for it in Y:
-    #     print(it.shape)
-
-    grid = elem.getGridList()
+    rComponentOfY = np.reshape(potentialY[0],
+                    [rShapeComponentOfY[1], rShapeComponentOfY[2]* rShapeComponentOfY[3]])
+    rComponentOfY = spec.barycentricChebInterpolate(rComponentOfY, x=refGridToPoisGridUnit, a=-1, b=1, axis=0)
+    potentialY[0] = np.reshape(rComponentOfY,
+                    [1, rShapeComponentOfY[1], rShapeComponentOfY[2], rShapeComponentOfY[3]])
+    #ttFx[0]
+    IdCores = []
+    for i in range(3):
+        IdCores.append(np.eye(polyOrder[i])[np.newaxis, :, :, np.newaxis])
+    Y = approx.hadamardProduct(potentialY, IdCores, matrixForm = True)
+    print("Y shapes")
+    approx.printTT(Y)
+    time.sleep(500)
     w, idNodes = integr.reg_32_wn(-1, 1, integrPoints)
 
     ttFx = Y
@@ -505,7 +499,9 @@ def solveEigenSphericalPois6dRepulsion(polyOrder, prevSolutionCores, integrPoint
     core2 = np.transpose(core2, [1, 0, 2])
     ttFx[2] = core2
 
-    integralOfY = np.squeeze(approx.integrateTT(ttFx, [w, w, w]))
+    integralOfY = np.squeeze(approx.integrateTT(ttFx, [w, w, w], matrixForm = True))
+    print("done")
+    time.sleep(500)
     ttFx = None
     core1 = None; core2 = None; core0 = None; grid0 = None; grid1 = None; grid2 = None
 

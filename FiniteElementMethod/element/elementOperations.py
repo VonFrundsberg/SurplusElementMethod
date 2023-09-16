@@ -4,9 +4,12 @@ from FiniteElementMethod.element.mainElementClass import element
 import numpy as np
 import mathematics.approximate as approx
 import mathematics.integrate as integr
-def integrateBilinearForm0(elementU: element,weight, integrationPointsAmount: int, axis: int):
+
+
+
+def integrateBilinearForm0(elementU: element, weight, integrationPointsAmount: int, axis: int):
     """(one-dimensional) Integrates bilinear form of the type a(u, u) = int_K weight(x) u(x) v(x) dx,
-        where U(x) and v(x) are basis functions of elementU element
+        where u(x) and v(x) are basis functions of elementU element
         and K is a non-zero region of elementU functions.
         weight(x) must be a calculable function on an element grid
 
@@ -129,23 +132,38 @@ def integrateFunctional(elementU: element, function,
         resultIntegrals = np.einsum('ij, ik -> jk', I, W)
     return resultIntegrals
 
-def integrateFunctionalWithMatrixRHS(elementU: element, matrix,
-        integrationPointsAmount: int, axis: int):
-    """(one-dimensional) Integrates functional form of the type l(v) = int_K function(x) v(x) dx,
-            where v(x) are basis functions of elementU element
-            and K is a non-zero region of elementU functions.
+def integrateFunctionalWithMatrixRHS(elementU: element, evaluatedFuncsList,
+        integrationPointsAmount: int, axis: int, weightAlongAxis = None):
+    """(one-dimensional) Integrates functional form of the type
+        l(v) := int_K matrixFunction(i, j, x) v(x) dx,
+        where matrix function i,j is based on functions from evaluatedFuncsList
+        as all combinations of products of i and j functions from list
 
             Arguments:
                 elementU:
-                weight:
+                weight: optional weight along chosen axis
                 integrationPointsAmount:
+                evaluatedFuncsList: list of functions to be evaluated with shape=(integrationPointsAmount, n)
                 axis:
             Returns:
-                result: an integral of functional
+                result: an integral of functional calculated by the following formula
+                in, ijk, i -> njk
+                where "in" is the shape of basis functions
+                    "ijk" is the shape of matrixFunctions
+                    "i" is the shape of calculated weight function
         """
-    w, x = integr.reg_32_wn(a=-1, b=1, n=matrix.shape[0] - 32)
+    w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
     w = w * elementU[axis].inverseDerivativeMap(x)
-    W = np.einsum('ij, i -> ij', matrix, w)
-    I = elementU[axis].eval(x)
-    resultIntegrals = np.einsum('ij, ik -> jik', I, W)
+    if weightAlongAxis is not None:
+        integrWeight = weightAlongAxis(x) * w
+    else:
+        integrWeight = w
+    mappedIntegrationNodex = elementU[axis].map(x)
+
+    matrixFunction = np.einsum('ij,ik->ijk', evaluatedFuncsList, evaluatedFuncsList)
+
+    evaluatedBasisFunctions = elementU[axis].eval(mappedIntegrationNodex)
+
+    resultIntegrals = np.einsum('in, ijk, i -> njk',
+                                evaluatedBasisFunctions, matrixFunction, integrWeight)
     return resultIntegrals

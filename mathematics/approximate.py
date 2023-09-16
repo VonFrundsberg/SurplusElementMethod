@@ -5,6 +5,10 @@ import scikit_tt.solvers.sle as sle
 import scikit_tt.solvers.evp as evp
 from scikit_tt.tensor_train import TT
 import scikit_tt.tensor_train as tt
+
+def printTT(argTensor):
+    for it in argTensor:
+        print(it.shape)
 def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
     tensor = argTensor.copy()
     shape = tensor.shape
@@ -27,8 +31,34 @@ def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
     cores = cores[::-1]
     return cores
 
-def hadamardProduct(lhsTT, rhsTT):
+def matrixToVectorTT(argMatrixTensor):
+    """Only for cases where inner indices are the same
+            """
     cores = []
+    for i in range(len(argMatrixTensor)):
+        shape = argMatrixTensor[i].shape
+        core = np.transpose(argMatrixTensor[i], (1, 2, 0, 3))
+        core = np.reshape(core, [int(shape[1]**2), shape[0], shape[3]])
+        cores.append(np.transpose(core, (1, 0, 2)))
+    return cores
+
+def vectorToMatrixTT(argVectorTensor):
+    """Only for cases where inner indices are expected to be the same
+                """
+    cores = []
+    for i in range(len(argVectorTensor)):
+        shape = argVectorTensor[i].shape
+        core = np.transpose(argVectorTensor[i], (1, 0, 2))
+        sqrt = int(np.sqrt(shape[1]))
+        core = np.reshape(core, [sqrt, sqrt, shape[0], shape[2]])
+        cores.append(np.transpose(core, (2, 0, 1, 3)))
+    return cores
+def hadamardProduct(lhsTTarg, rhsTTarg, matrixForm = False):
+    cores = []
+
+    if matrixForm == True:
+        lhsTT = matrixToVectorTT(lhsTTarg)
+        rhsTT = matrixToVectorTT(rhsTTarg)
     for i in range(len(lhsTT)):
         lhsShape = lhsTT[i].shape
         rhsShape = rhsTT[i].shape
@@ -39,6 +69,8 @@ def hadamardProduct(lhsTT, rhsTT):
                                      resultShape[1]*resultShape[2],
                                      resultShape[3]*resultShape[4]])
         cores.append(np.transpose(result, [1, 0, 2]))
+    if matrixForm == True:
+        cores = vectorToMatrixTT(cores)
     return cores
 
 def simpleQTTsvd(argTensor, tol=1e-6, makeCopy=True, flattenNewaxes=None):
@@ -128,14 +160,19 @@ def matrixTTsvd(A, shape, tol=1e-6, f=None):
 def meshgrid(*arg):
     return np.meshgrid(*arg, indexing='ij')
 
-def integrateTT(integratedTT, w):
+def integrateTT(integratedTTarg, weights, matrixForm=False):
+    if matrixForm == True:
+        integratedTT = matrixToVectorTT(integratedTTarg)
+    else:
+        integratedTT = integratedTTarg
     integralsList = []
     for i in range(len(integratedTT)):
-         integralsList.append(np.einsum("ijk, j -> ik", integratedTT[i], w[i]))
-    result = integralsList[0]
-    for i in range(1, len(integralsList)):
-        result = result.dot(integralsList[i])
-    return result
+         integralsList.append(np.einsum("ijk, j -> ik", integratedTT[i], weights[i]))
+    printTT(integralsList)
+    #result = integralsList[0]
+    #for i in range(1, len(integralsList)):
+    #    result = result.dot(integralsList[i])
+    #return result
 def contraction(u, a):
     v = []
     for i in range(len(u)):
@@ -209,8 +246,8 @@ def invertTT_Matrix(A, rankOfInverse):
         rhsTT.cores[i] = np.reshape(rhsTT.cores[i], [1, shape[1]**2, 1, 1])
     rhsTT = TT(rhsTT.cores)
     ttSolMatrix = TT(solMatrix)
+    solMatrix = None
     initTT = tt.ones(ttSolMatrix.row_dims, [1] * ttSolMatrix.order, ranks=rankOfInverse).ortho_right()
-    print('fun begins here')
     solution = sle.als(operator=ttSolMatrix, initial_guess=initTT, right_hand_side=rhsTT)
 
     sol = []
@@ -221,7 +258,7 @@ def invertTT_Matrix(A, rankOfInverse):
         solCore = np.reshape(solCore, [sqrt, sqrt, shape[0], shape[3]])
         solCore = np.transpose(solCore, [2, 0, 1, 3])
         sol.append(solCore)
-    vecRound(sol, tol=1e-12, matrixForm=True)
+    vecRound(sol, tol=1e-6, matrixForm=True)
     return sol
 def toFullTensor(u, matrixForm=False):
     T = u[0]
@@ -258,7 +295,7 @@ def vecRound(u, tol=1e-6, matrixForm=False):
         # print(a, n, b)
         U, S, V = sp_linalg.svd(np.reshape(u[i], [a*n, b]), full_matrices=False)
         # print(i, S)
-        sigma = min(max(1, np.size(S[np.abs(S) > tol])), np.size(S))
+        sigma = min(max(1, np.size(S[np.abs(S) > tol])) + 1, np.size(S))
         #sigma = max(1, np.size(s[np.abs(s) > tol]))
         u[i] = U[:, :sigma]; V = np.dot(np.diag(S[:sigma]), V[:sigma, :])
         # print(V.shape, u[i + 1].shape)
@@ -280,33 +317,6 @@ def alterLeastSquares(A, f, ranks):
     initTT = tt.ones(ttA.row_dims, [1] * ttA.order, ranks=ranks).ortho_right()
     sol = sle.als(ttA, initTT, ttF)
     return sol
-    # print(sol.shape)
-    # print('done')
-    # time.sleep(500)
-    # print("matrix has the shape")
-    # for it in A:
-    #     print(it.shape)
-    # print("f shape is")
-    # for it in f:
-    #     print(it.shape)
-    # print("ranks are")
-    # print(ranks)
-    # dim = len(A)
-    # Y = []
-    # for i in range(dim):
-    #     aShape = A[i].shape
-    #     fShape = f[i].shape
-    #     core = np.einsum('ijkl, mkn -> jimln', A[i], f[i])
-    #     core = np.reshape(core, [fShape[1], aShape[0]*fShape[0], aShape[-1]*fShape[-1]])
-    #     core = np.transpose(core, [1, 0, 2])
-    #     print(core.shape)
-    #     Y.append(core)
-    # vecRound(Y, tol=1e-6)
-    # print("after rounding")
-    # for i in range(dim):
-    #     print(Y[i].shape)
-    # return Y
-
 def eigAlterLeastSquares(A, B, ranks, sigma=1, V = None, prev = None, real=True, shift=None):
     ttA = TT(A)
     if V is not None:
