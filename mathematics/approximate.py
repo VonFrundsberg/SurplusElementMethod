@@ -357,6 +357,9 @@ def toFullTensor(u, matrixForm=False):
     return T
 
 def expandCoreCase0(argTensor, index: int):
+    """
+    case when there is a just a product of two 1, 1 cores in which first is packed with 2 dims
+    """
     #printTT(argTensor)
     n = 3;
     #lhsLeft = [None]*n; lhsRight = [None]*n;
@@ -423,34 +426,42 @@ def expandCoreCase0(argTensor, index: int):
 
     pass
 
-def expandCoreCase0(argTensor, index: int):
-    #printTT(argTensor)
+def expandCoreCase1(argTensor, index: int):
+    """
+        case where there is a sum of size alpha of two cores product
+        in which first core is packed with 2 dims
+        """
     n = 3;
+    alpha = 3
     #lhsLeft = [None]*n; lhsRight = [None]*n;
     lhs = [None]*n
     rand2 = np.random.rand(2, 2); rand4 = np.random.rand(4, 4)
-    lhs = np.einsum("i, j -> ij", rand2.flatten(), rand4.flatten())
-    lhsKron = np.kron(rand2, rand4)
+    randAlpha = np.random.rand(alpha)
+    lhs = np.einsum("i, j, k -> ijk", rand2.flatten(), rand4.flatten(), randAlpha)
+    lhsKron = np.einsum("ij, k -> ijk", np.kron(rand2, rand4), randAlpha)
     for i in range(1, n):
         rand2 = np.random.rand(2, 2)
         rand4 = np.random.rand(4, 4)
 
-        lhs += np.einsum("i, j -> ij", rand2.flatten(), rand4.flatten())
-        lhsKron += np.kron(rand2, rand4)
+        lhs += np.einsum("i, j, k -> ijk", rand2.flatten(), rand4.flatten(), randAlpha)
+        lhsKron += np.einsum("ij, k -> ijk", np.kron(rand2, rand4), randAlpha)
     #print(lhs.shape)
-
-    lhs = np.array(lhs)[np.newaxis, :, :, np.newaxis]
-    rhs = np.random.rand(3, 3)[np.newaxis, :, :, np.newaxis]
-    cores = [lhsKron[np.newaxis, :, :, np.newaxis], rhs]
+    lhsKron = lhsKron[np.newaxis, :, :, :]
+    lhs = np.array(lhs)[np.newaxis, :, :]
+    rhs = np.random.rand(alpha, 3, 3)[:, :, :, np.newaxis]
+    #print(lhsKron.shape)
+    cores = [lhsKron, rhs]
     print("init sort of cores")
     printTT([lhs, rhs])
+    print("init kronCores")
+    printTT([lhsKron, rhs])
     ttCores = TT(cores)
     fullTensor = ttCores.full()
     print("initial kronTensor shape", fullTensor.shape)
     lhsShape = lhs.shape
     #reshapedLhs = np.transpose(lhs, (0, 1, 3, 2))
     #print("prev shape", lhs.shape)
-    reshapedLhs = np.reshape(lhs, [4, 16])
+    reshapedLhs = np.reshape(lhs, [4, 16*alpha])
     #print("after shape", reshapedLhs.shape)
     u, s, v = sp_linalg.svd(reshapedLhs, full_matrices=False)
     #print(s[:30])
@@ -461,11 +472,11 @@ def expandCoreCase0(argTensor, index: int):
     v = np.dot(np.diag(np.sqrt(s[:r_delta])), v[:r_delta, :])
     print("separated shapes")
     print(u.shape, v.shape)
-    sqrtU = int(np.sqrt(u.shape[0]))
+    sqrtU = int(np.sqrt(4))
     u = np.reshape(u, [1, sqrtU, sqrtU, u.shape[1]])
     #u = np.transpose(u, (0, 2, 1, 3))
-    sqrtV = int(np.sqrt(v.shape[1]))
-    v = np.reshape(v, [v.shape[0], sqrtV, sqrtV, 1])
+    sqrtV = int(np.sqrt(16))
+    v = np.reshape(v, [v.shape[0], sqrtV, sqrtV, alpha])
     #v = np.transpose(v, (0, 2, 1, 3))
     # prod = np.einsum("ijkl, lmnv -> ijkmnv", u, v)
     # prod = np.reshape(prod, [1, 4, 4, 1])
@@ -487,6 +498,132 @@ def expandCoreCase0(argTensor, index: int):
                toFullTensor([u, v, rhs], matrixForm=True).flatten() - fullTensor.flatten())
     plt.show()
     #print(newTensor.full().flatten()[n:n + 10] - fullTensor.flatten()[n:n + 10])
+
+    pass
+
+
+def expandCoreCase2(argTensor, index: int):
+    """
+        case where there is a sum of size alpha of two cores product
+        in which both cores are packed with 2 dims
+        """
+    n = 3;
+    alpha = 3
+
+    lhs = [None]*n
+    rand2 = np.random.rand(2, 2); rand4 = np.random.rand(4, 4)
+    randAlpha = np.random.rand(alpha)
+    lhs = np.einsum("i, j, k -> ijk", rand2.flatten(), rand4.flatten(), randAlpha)
+    lhsKron = np.einsum("ij, k -> ijk", np.kron(rand2, rand4), randAlpha)
+    for i in range(1, n):
+        rand2 = np.random.rand(2, 2)
+        rand4 = np.random.rand(4, 4)
+
+        lhs += np.einsum("i, j, k -> ijk", rand2.flatten(), rand4.flatten(), randAlpha)
+        lhsKron += np.einsum("ij, k -> ijk", np.kron(rand2, rand4), randAlpha)
+
+    lhsKron = lhsKron[np.newaxis, :, :, :]
+    lhs = np.array(lhs)[np.newaxis, :, :]
+
+    n = 4;
+    alpha = 3
+
+    lhs = [None] * n
+    rand2 = np.random.rand(2, 2);
+    rand4 = np.random.rand(4, 4)
+    randAlpha = np.random.rand(alpha)
+    lhs = np.einsum("i, j, k -> ijk", rand2.flatten(), rand4.flatten(), randAlpha)
+    lhsKron = np.einsum("ij, k -> ijk", np.kron(rand2, rand4), randAlpha)
+    for i in range(1, n):
+        rand2 = np.random.rand(2, 2)
+        rand4 = np.random.rand(4, 4)
+
+        lhs += np.einsum("i, j, k -> ijk", rand2.flatten(), rand4.flatten(), randAlpha)
+        lhsKron += np.einsum("ij, k -> ijk", np.kron(rand2, rand4), randAlpha)
+
+    lhsKron = lhsKron[np.newaxis, :, :, :]
+    lhs = np.array(lhs)[np.newaxis, :, :]
+
+    rhs = [None] * n
+    rand2 = np.random.rand(3, 3);
+    rand4 = np.random.rand(5, 5)
+    randAlpha = np.random.rand(alpha)
+    rhs = np.einsum("i, j, k -> ijk", randAlpha, rand2.flatten(), rand4.flatten())
+    rhsKron = np.einsum("k, ij -> kij", randAlpha, np.kron(rand2, rand4))
+    for i in range(1, n):
+        rand2 = np.random.rand(3, 3);
+        rand4 = np.random.rand(5, 5)
+
+        rhs += np.einsum("i, j, k -> ijk", randAlpha, rand2.flatten(), rand4.flatten())
+        rhsKron += np.einsum("k, ij -> kij", randAlpha, np.kron(rand2, rand4))
+
+    rhsKron = rhsKron[:, :, :, np.newaxis]
+    rhs = np.array(rhs)[:, :, :, np.newaxis]
+
+    #rhs = np.random.rand(alpha, 3, 3)[:, :, :, np.newaxis]
+    #print(lhsKron.shape)
+    cores = [lhsKron, rhsKron]
+    print("init sort of cores")
+    printTT([lhs, rhs])
+    print("init kronCores")
+    printTT([lhsKron, rhsKron])
+    ttCores = TT(cores)
+    fullTensor = ttCores.full()
+    print("initial kronTensor shape", fullTensor.shape)
+    lhsShape = lhs.shape
+    #reshapedLhs = np.transpose(lhs, (0, 1, 3, 2))
+    #print("prev shape", lhs.shape)
+    """
+    separation of left core
+    """
+    reshapedLhs = np.reshape(lhs, [4, 16*alpha])
+    #print("after shape", reshapedLhs.shape)
+    u, s, v = sp_linalg.svd(reshapedLhs, full_matrices=False)
+    #print(s[:30])
+    cumsum = np.cumsum(s)
+    r_delta = np.argmax(cumsum[-1] - cumsum < 1e-12) + 1
+    #r_delta = 1000
+    u = np.dot(u[:, :r_delta], np.diag(np.sqrt(s[:r_delta])))
+    v = np.dot(np.diag(np.sqrt(s[:r_delta])), v[:r_delta, :])
+    print("separated shapes at left core")
+    print(u.shape, v.shape)
+    sqrtU = int(np.sqrt(4))
+    uLhs = np.reshape(u, [1, sqrtU, sqrtU, u.shape[1]])
+    #u = np.transpose(u, (0, 2, 1, 3))
+    sqrtV = int(np.sqrt(16))
+    vLhs = np.reshape(v, [v.shape[0], sqrtV, sqrtV, alpha])
+    """
+        separation of right core
+    """
+    reshapedRhs = np.reshape(rhs, [alpha*9, 25])
+    # print("after shape", reshapedLhs.shape)
+    u, s, v = sp_linalg.svd(reshapedRhs, full_matrices=False)
+    # print(s[:30])
+    cumsum = np.cumsum(s)
+    r_delta = np.argmax(cumsum[-1] - cumsum < 1e-12) + 1
+    # r_delta = 1000
+    u = np.dot(u[:, :r_delta], np.diag(np.sqrt(s[:r_delta])))
+    v = np.dot(np.diag(np.sqrt(s[:r_delta])), v[:r_delta, :])
+    print("separated shapes of right core")
+    print(u.shape, v.shape)
+    sqrtU = int(np.sqrt(9))
+    uRhs = np.reshape(u, [alpha, sqrtU, sqrtU, u.shape[1]])
+    # u = np.transpose(u, (0, 2, 1, 3))
+    sqrtV = int(np.sqrt(25))
+    vRhs = np.reshape(v, [v.shape[0], sqrtV, sqrtV, 1])
+    print("resulting separated core shapes")
+    printTT([uLhs, vLhs, uRhs, vRhs])
+    newTensor = TT([uLhs, vLhs, uRhs, vRhs])
+    print("cores of newTensor")
+    printTT(newTensor.cores)
+    print("newTensor shape")
+    print(newTensor.full().shape)
+
+
+    plt.scatter(np.arange(fullTensor.size),
+               newTensor.full().flatten() - fullTensor.flatten())
+    plt.show()
+
 
     pass
 def vecRound(u, tol=1e-6, matrixForm=False):
