@@ -426,7 +426,8 @@ def solveSphericalPoisVecRHS(polyOrder, vecRHS_F, vecRHS_elem : element,
 
 
 def solveSphericalPoisMatRHS(polyOrder, matRHS_F, matRHS_elem : element,
-                             solutionTT_ranks: int,  invRanks: int, integrPoints: int = 350):
+                             solutionTT_ranks: int,  invRanks: int, integrPoints: int = 350,
+                             rounding=False):
     """
             Returns:
                 ttSolFull: incides in cores are [r_left, i_n, j_n, r_right]
@@ -451,7 +452,7 @@ def solveSphericalPoisMatRHS(polyOrder, matRHS_F, matRHS_elem : element,
     ttC = approx.kronSumtoTT_blockFormat([[None, -rMatrixD, rMatrixI],
                                          [tMatrixIr, -tMatrixD, tMatrixIp],
                                          [pMatrixI, -pMatrixD, None]])
-    inv_ttC = TT(approx.invertTT_Matrix(ttC, invRanks))
+    inv_ttC = TT(approx.invertTT_Matrix(ttC, invRanks), rounding)
 
     w, idNodes = integr.reg_32_wn(-1, 1, integrPoints)
 
@@ -463,11 +464,11 @@ def solveSphericalPoisMatRHS(polyOrder, matRHS_F, matRHS_elem : element,
                                 a=rhs_grid0[0], b=rhs_grid0[-1], extrapolation=0, axis=0)
 
     ttFx[0] = operations.integrateFunctionalWithMatrixRHS(elem,
-                        ttFx[0], integrPoints, 0, weightAlongAxis=lambda x: x * x)[:-1, :, :]
+                        ttFx[0], integrPoints, 0, lambdaWeightAlongAxis=lambda x: x * x)[:-1, :, :]
 
     ttFx[1] = spec.barycentricChebInterpolate(ttFx[1], idNodes, a=-1, b=1, extrapolation=0, axis=0)
     ttFx[1] = operations.integrateFunctionalWithMatrixRHS(elem,
-                        ttFx[1], integrPoints, 1, weightAlongAxis=lambda x: x * x)
+                        ttFx[1], integrPoints, 1, lambdaWeightAlongAxis=lambda x: x * x)
 
     ttFx[2] = np.einsum('ij, jk -> ik', elem[2].eval(idNodes), ttFx[2])
     ttFx[2] = operations.integrateFunctionalWithMatrixRHS(elem,
@@ -482,6 +483,10 @@ def solveSphericalPoisMatRHS(polyOrder, matRHS_F, matRHS_elem : element,
 
 
     ttSolFull = inv_ttC.dot(TT(smallTT)).cores
+    shape = ttSolFull[0].shape
+    zeros = np.zeros([shape[0], shape[1] + 1, shape[2], shape[3]])
+    zeros[:, :-1, :, :] = ttSolFull[0]
+    ttSolFull[0] = zeros
     return ttSolFull
 
 

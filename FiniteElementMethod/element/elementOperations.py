@@ -6,7 +6,26 @@ import mathematics.approximate as approx
 import mathematics.integrate as integr
 
 
-
+def integrateBilinearForm0_TensorWeight(elementU: element, evaluatedFuncsTensor,
+        integrationPointsAmount: int, axis: int, lambdaWeightAlongAxis = None):
+    """
+    """
+    w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
+    w = w * elementU[axis].inverseDerivativeMap(x)
+    if lambdaWeightAlongAxis is not None:
+        integrWeight = lambdaWeightAlongAxis(x) * w
+    else:
+        integrWeight = w
+    mappedIntegrationNodes = elementU[axis].map(x)
+    evaluatedBasisFunctions = elementU[axis].eval(mappedIntegrationNodes)
+    matrixFunction = np.einsum('ij,ik->ijk',
+                               evaluatedBasisFunctions, evaluatedBasisFunctions)
+    # print(matrixFunction.shape)
+    # print(evaluatedFuncsTensor.shape)
+    # print(integrWeight.shape)
+    resultIntegrals = np.einsum('iln, iamb, i -> lnamb',
+                                matrixFunction, evaluatedFuncsTensor, integrWeight)
+    return resultIntegrals
 def integrateBilinearForm0(elementU: element, weight, integrationPointsAmount: int, axis: int):
     """(one-dimensional) Integrates bilinear form of the type a(u, u) = int_K weight(x) u(x) v(x) dx,
         where u(x) and v(x) are basis functions of elementU element
@@ -133,7 +152,7 @@ def integrateFunctional(elementU: element, function,
     return resultIntegrals
 
 def integrateFunctionalWithMatrixRHS(elementU: element, evaluatedFuncsList,
-        integrationPointsAmount: int, axis: int, weightAlongAxis = None):
+        integrationPointsAmount: int, axis: int, lambdaWeightAlongAxis = None):
     """(one-dimensional) Integrates functional form of the type
         l(v) := int_K matrixFunction(i, j, x) v(x) dx,
         where matrix function i,j is based on functions from evaluatedFuncsList
@@ -154,8 +173,8 @@ def integrateFunctionalWithMatrixRHS(elementU: element, evaluatedFuncsList,
         """
     w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
     w = w * elementU[axis].inverseDerivativeMap(x)
-    if weightAlongAxis is not None:
-        integrWeight = weightAlongAxis(x) * w
+    if lambdaWeightAlongAxis is not None:
+        integrWeight = lambdaWeightAlongAxis(x) * w
     else:
         integrWeight = w
     mappedIntegrationNodex = elementU[axis].map(x)

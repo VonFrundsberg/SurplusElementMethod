@@ -1,4 +1,6 @@
+import matplotlib.pyplot as plt
 import numpy as np
+import scipy.linalg
 import scipy.linalg as sp_linalg
 import time as time
 import scikit_tt.solvers.sle as sle
@@ -210,6 +212,88 @@ def kronSumtoTT(A: list, B: list):
     core = np.stack((A[-1], B[-1]), axis=0)[:, :, :, np.newaxis]
     cores.append(core)
     return cores
+
+
+def sphericalLaplace6d(matricesMatrix):
+    """Construct TT cores of matrix sum
+
+        Returns:
+            cores: with shapes G_1(r_1) G_2(r_2) G_3(theta_1) G_4(theta_2) G_5(phi_1) G_6(phi)_2
+    """
+    dim = 6
+    M = matricesMatrix
+    cores = []
+    """R CORES
+        """
+    lhsCore = np.stack([M[0][1], M[0][2]])
+    cores.append(np.transpose(lhsCore, [1, 2, 0])[np.newaxis, :, :, :])
+
+    rhsCore = np.stack([M[0][2], M[0][1]])[:, :, :, np.newaxis]
+    cores.append(rhsCore)
+
+    cores.append(M[1][0][np.newaxis, :, :, np.newaxis])
+    cores.append(M[1][0][np.newaxis, :, :, np.newaxis])
+
+    cores.append(M[2][0][np.newaxis, :, :, np.newaxis])
+    cores.append(M[2][0][np.newaxis, :, :, np.newaxis])
+    ttR = TT(cores)
+    """THETA CORES
+            """
+    cores = []
+    lhsCore = np.stack([M[0][0], M[0][2]])
+    cores.append(np.transpose(lhsCore, [1, 2, 0])[np.newaxis, :, :, :])
+
+    zeros = np.zeros(M[0][0].shape)
+    rhsCore = np.stack([M[0][2], zeros, zeros, M[0][0]])[:, :, :]
+    rhsCore = np.reshape(rhsCore, [2, 2, *zeros.shape])
+    rhsCore = np.transpose(rhsCore, [0, 2, 3, 1])
+
+    cores.append(rhsCore)
+    zeros = np.zeros(M[1][0].shape)
+    thetaLhsCore = np.stack([M[1][1], zeros, zeros, M[1][0]])[:, :, :]
+    thetaLhsCore = np.reshape(thetaLhsCore, [2, 2, *zeros.shape])
+    thetaLhsCore = np.transpose(thetaLhsCore, [0, 2, 3, 1])
+    cores.append(thetaLhsCore)
+    thetaRhsCore = np.stack([M[1][0], M[1][1]])[:, :, :, np.newaxis]
+    cores.append(thetaRhsCore)
+
+    cores.append(M[2][0][np.newaxis, :, :, np.newaxis])
+    cores.append(M[2][0][np.newaxis, :, :, np.newaxis])
+
+    ttTheta = TT(cores)
+    """PHI CORES
+            """
+    cores = []
+    lhsCore = np.stack([M[0][0], M[0][2]])
+    cores.append(np.transpose(lhsCore, [1, 2, 0])[np.newaxis, :, :, :])
+
+    zeros = np.zeros(M[0][0].shape)
+    rhsCore = np.stack([M[0][2], zeros, zeros, M[0][0]])[:, :, :]
+    rhsCore = np.reshape(rhsCore, [2, 2, *zeros.shape])
+    rhsCore = np.transpose(rhsCore, [0, 2, 3, 1])
+
+    cores.append(rhsCore)
+    zeros = np.zeros(M[1][0].shape)
+    thetaLhsCore = np.stack([M[1][2], zeros, zeros, M[1][0]])[:, :, :]
+    thetaLhsCore = np.reshape(thetaLhsCore, [2, 2, *zeros.shape])
+    thetaLhsCore = np.transpose(thetaLhsCore, [0, 2, 3, 1])
+    cores.append(thetaLhsCore)
+
+    thetaRhsCore = np.stack([M[1][0], zeros, zeros, M[1][2]])[:, :, :]
+    thetaRhsCore = np.reshape(thetaRhsCore, [2, 2, *zeros.shape])
+    thetaRhsCore = np.transpose(thetaRhsCore, [0, 2, 3, 1])
+    cores.append(thetaRhsCore)
+
+    zeros = np.zeros(M[2][0].shape)
+    phiLhsCore = np.stack([M[2][1], zeros, zeros, M[2][0]])[:, :, :]
+    phiLhsCore = np.reshape(phiLhsCore, [2, 2, *zeros.shape])
+    phiLhsCore = np.transpose(phiLhsCore, [0, 2, 3, 1])
+    cores.append(phiLhsCore)
+    phiRhsCore = np.stack([M[2][0], M[2][1]])[:, :, :, np.newaxis]
+    cores.append(phiRhsCore)
+
+    ttPhi = TT(cores)
+    return ttR + ttTheta + ttPhi
 def kronSumtoTT_blockFormat(matricesMatrix):
     """Construct TT cores of matrix sum
 
@@ -230,7 +314,7 @@ def kronSumtoTT_blockFormat(matricesMatrix):
     cores.append(core)
     return cores
 
-def invertTT_Matrix(A, rankOfInverse):
+def invertTT_Matrix(A, rankOfInverse, rounding=False):
     ttA = TT(A)
     rhsTT = tt.eye(ttA.col_dims)
     ttA = None
@@ -258,7 +342,8 @@ def invertTT_Matrix(A, rankOfInverse):
         solCore = np.reshape(solCore, [sqrt, sqrt, shape[0], shape[3]])
         solCore = np.transpose(solCore, [2, 0, 1, 3])
         sol.append(solCore)
-    vecRound(sol, tol=1e-6, matrixForm=True)
+    if rounding == True:
+        vecRound(sol, tol=1e-6, matrixForm=True)
     return sol
 def toFullTensor(u, matrixForm=False):
     T = u[0]
@@ -271,6 +356,139 @@ def toFullTensor(u, matrixForm=False):
         T = np.transpose(T, np.concatenate((arange[:, 0], arange[:, 0] + 1), axis=0))
     return T
 
+def expandCoreCase0(argTensor, index: int):
+    #printTT(argTensor)
+    n = 3;
+    #lhsLeft = [None]*n; lhsRight = [None]*n;
+    lhs = [None]*n
+    rand2 = np.random.rand(2, 2); rand4 = np.random.rand(4, 4)
+    lhs = np.einsum("i, j -> ij", rand2.flatten(), rand4.flatten())
+    lhsKron = np.kron(rand2, rand4)
+    for i in range(1, n):
+        rand2 = np.random.rand(2, 2)
+        rand4 = np.random.rand(4, 4)
+
+        lhs += np.einsum("i, j -> ij", rand2.flatten(), rand4.flatten())
+        lhsKron += np.kron(rand2, rand4)
+    #print(lhs.shape)
+
+    lhs = np.array(lhs)[np.newaxis, :, :, np.newaxis]
+    rhs = np.random.rand(3, 3)[np.newaxis, :, :, np.newaxis]
+    cores = [lhsKron[np.newaxis, :, :, np.newaxis], rhs]
+    print("init sort of cores")
+    printTT([lhs, rhs])
+    ttCores = TT(cores)
+    fullTensor = ttCores.full()
+    print("initial kronTensor shape", fullTensor.shape)
+    lhsShape = lhs.shape
+    #reshapedLhs = np.transpose(lhs, (0, 1, 3, 2))
+    #print("prev shape", lhs.shape)
+    reshapedLhs = np.reshape(lhs, [4, 16])
+    #print("after shape", reshapedLhs.shape)
+    u, s, v = sp_linalg.svd(reshapedLhs, full_matrices=False)
+    #print(s[:30])
+    cumsum = np.cumsum(s)
+    r_delta = np.argmax(cumsum[-1] - cumsum < 1e-12) + 1
+    #r_delta = 1000
+    u = np.dot(u[:, :r_delta], np.diag(np.sqrt(s[:r_delta])))
+    v = np.dot(np.diag(np.sqrt(s[:r_delta])), v[:r_delta, :])
+    print("separated shapes")
+    print(u.shape, v.shape)
+    sqrtU = int(np.sqrt(u.shape[0]))
+    u = np.reshape(u, [1, sqrtU, sqrtU, u.shape[1]])
+    #u = np.transpose(u, (0, 2, 1, 3))
+    sqrtV = int(np.sqrt(v.shape[1]))
+    v = np.reshape(v, [v.shape[0], sqrtV, sqrtV, 1])
+    #v = np.transpose(v, (0, 2, 1, 3))
+    # prod = np.einsum("ijkl, lmnv -> ijkmnv", u, v)
+    # prod = np.reshape(prod, [1, 4, 4, 1])
+    #
+    # print(np.max(np.abs(lhs - prod)))
+    # cores = np.reshape(cores, [2, 2, 3, 2, 2, 3])
+    newTensor = TT([u, v, rhs])
+    print("cores of newTensor")
+    printTT(newTensor.cores)
+    print("newTensor shape")
+    print(newTensor.full().shape)
+    # print(toFullTensor([u, v, rhs], matrixForm=True).shape)
+    # plt.scatter(np.arange(newTensor.full().size),
+    #             toFullTensor([u, v, rhs], matrixForm=False).flatten() -
+    #             toFullTensor([lhs, rhs], matrixForm=False).flatten())
+    # plt.show()
+
+    plt.scatter(np.arange(fullTensor.size),
+               toFullTensor([u, v, rhs], matrixForm=True).flatten() - fullTensor.flatten())
+    plt.show()
+    #print(newTensor.full().flatten()[n:n + 10] - fullTensor.flatten()[n:n + 10])
+
+    pass
+
+def expandCoreCase0(argTensor, index: int):
+    #printTT(argTensor)
+    n = 3;
+    #lhsLeft = [None]*n; lhsRight = [None]*n;
+    lhs = [None]*n
+    rand2 = np.random.rand(2, 2); rand4 = np.random.rand(4, 4)
+    lhs = np.einsum("i, j -> ij", rand2.flatten(), rand4.flatten())
+    lhsKron = np.kron(rand2, rand4)
+    for i in range(1, n):
+        rand2 = np.random.rand(2, 2)
+        rand4 = np.random.rand(4, 4)
+
+        lhs += np.einsum("i, j -> ij", rand2.flatten(), rand4.flatten())
+        lhsKron += np.kron(rand2, rand4)
+    #print(lhs.shape)
+
+    lhs = np.array(lhs)[np.newaxis, :, :, np.newaxis]
+    rhs = np.random.rand(3, 3)[np.newaxis, :, :, np.newaxis]
+    cores = [lhsKron[np.newaxis, :, :, np.newaxis], rhs]
+    print("init sort of cores")
+    printTT([lhs, rhs])
+    ttCores = TT(cores)
+    fullTensor = ttCores.full()
+    print("initial kronTensor shape", fullTensor.shape)
+    lhsShape = lhs.shape
+    #reshapedLhs = np.transpose(lhs, (0, 1, 3, 2))
+    #print("prev shape", lhs.shape)
+    reshapedLhs = np.reshape(lhs, [4, 16])
+    #print("after shape", reshapedLhs.shape)
+    u, s, v = sp_linalg.svd(reshapedLhs, full_matrices=False)
+    #print(s[:30])
+    cumsum = np.cumsum(s)
+    r_delta = np.argmax(cumsum[-1] - cumsum < 1e-12) + 1
+    #r_delta = 1000
+    u = np.dot(u[:, :r_delta], np.diag(np.sqrt(s[:r_delta])))
+    v = np.dot(np.diag(np.sqrt(s[:r_delta])), v[:r_delta, :])
+    print("separated shapes")
+    print(u.shape, v.shape)
+    sqrtU = int(np.sqrt(u.shape[0]))
+    u = np.reshape(u, [1, sqrtU, sqrtU, u.shape[1]])
+    #u = np.transpose(u, (0, 2, 1, 3))
+    sqrtV = int(np.sqrt(v.shape[1]))
+    v = np.reshape(v, [v.shape[0], sqrtV, sqrtV, 1])
+    #v = np.transpose(v, (0, 2, 1, 3))
+    # prod = np.einsum("ijkl, lmnv -> ijkmnv", u, v)
+    # prod = np.reshape(prod, [1, 4, 4, 1])
+    #
+    # print(np.max(np.abs(lhs - prod)))
+    # cores = np.reshape(cores, [2, 2, 3, 2, 2, 3])
+    newTensor = TT([u, v, rhs])
+    print("cores of newTensor")
+    printTT(newTensor.cores)
+    print("newTensor shape")
+    print(newTensor.full().shape)
+    # print(toFullTensor([u, v, rhs], matrixForm=True).shape)
+    # plt.scatter(np.arange(newTensor.full().size),
+    #             toFullTensor([u, v, rhs], matrixForm=False).flatten() -
+    #             toFullTensor([lhs, rhs], matrixForm=False).flatten())
+    # plt.show()
+
+    plt.scatter(np.arange(fullTensor.size),
+               toFullTensor([u, v, rhs], matrixForm=True).flatten() - fullTensor.flatten())
+    plt.show()
+    #print(newTensor.full().flatten()[n:n + 10] - fullTensor.flatten()[n:n + 10])
+
+    pass
 def vecRound(u, tol=1e-6, matrixForm=False):
     if matrixForm == True:
         for i in range(len(u)):
@@ -278,7 +496,6 @@ def vecRound(u, tol=1e-6, matrixForm=False):
             u[i] = np.transpose(u[i], [1, 2, 0, 3])
             u[i] = np.reshape(u[i], [shape[1]**2, shape[0], shape[3]])
             u[i] = np.transpose(u[i], [1, 0, 2])
-
 
     size = len(u)
     for i in range(size - 1, 1, -1):
@@ -332,11 +549,13 @@ def eigAlterLeastSquares(A, B, ranks, sigma=1, V = None, prev = None, real=True,
 
 
 def eigAlterLeastSquares2d(A, B, ranks, sigma=1, V = None, prev = None, real=True, shift=None):
-    ttA = TT(A[0]) + TT(A[1])
+    ttA = A
+    #ttA = TT(A)
     A = None
     if V is not None:
         for i in range(len(V)):
             ttA = ttA + TT(V[i])
+
     V = None
 
     if(len(B) == 2):
@@ -351,5 +570,6 @@ def eigAlterLeastSquares2d(A, B, ranks, sigma=1, V = None, prev = None, real=Tru
         res = evp.als(operator=ttA, initial_guess=initTT,
                       operator_gevp=ttB, sigma=sigma, real=real, previous=prev, shift=shift)
     else:
-        res = evp.als(operator=ttA, initial_guess=initTT, operator_gevp=ttB, sigma=sigma, repeats=10)
+        res = evp.als(operator=ttA, initial_guess=initTT,
+                      operator_gevp=ttB, real=real, sigma=sigma, repeats=10)
     return res
