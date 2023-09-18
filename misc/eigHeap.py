@@ -714,7 +714,7 @@ def solveEigenSphericalPois6dRepulsionDifferentOrder(polyOrder, integrPoints=350
         """
         ttY[i] = np.transpose(ttY[i], [1, 0, 2, 3])
     #approx.printTT(ttY)
-    approx.expandCoreCase3(ttY, 0)
+    approx.expandCoreCase4(ttY, 0)
     time.sleep(500)
     tttY = []
     for i in range(3):
