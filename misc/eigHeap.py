@@ -670,12 +670,30 @@ def solveEigenSphericalPois6dRepulsionDifferentOrder(polyOrder, integrPoints=350
         IdCores.append(np.eye(polyOrder[i]))
 
     potentialY = poissonSolution(polyOrder, IdCores, elem,
-                                  integrPoints=integrPoints, solutionTT_ranks=2, invRanks=2, rounding=False)
-
+                                  integrPoints=integrPoints, solutionTT_ranks=1, invRanks=1, rounding=False)
+    for k in range(3):
+        shape = potentialY[k].shape
+        fig, axs = plt.subplots(shape[0], shape[-1])
+        if( k == 0):
+            fig.suptitle('r cores')
+        for i in range(shape[0]):
+            for j in range(shape[-1]):
+                #print(i, j)
+                if(shape[0] == 1 and shape[-1] != 1):
+                    axs[j].imshow(potentialY[k][i, :, :, j].T)
+                elif(shape[-1] == 1 and shape[0] != 1):
+                    axs[i].imshow(potentialY[k][i, :, :, j].T)
+                elif(shape[-1] != 1 and shape[0] != 1):
+                    axs[i, j].imshow(potentialY[k][i, :, :, j].T)
+                else:
+                    plt .imshow(potentialY[k][i, :, :, j].T)
+        # plt.colorbar()
+        plt.show()
 
     poissonElem = element(np.array([[0, np.inf], [0, np.pi], [0, 2 * np.pi]]),
                    np.array(polyOrder, dtype=int), np.array([1, 0, 3]))
-
+    print("poisson solution ranks")
+    approx.printTT(potentialY)
 
     refGridR = elem[0].getMappedRefPoints()
     refGridToPoisGridUnit = poissonElem[0].inverseMap(refGridR)
@@ -697,7 +715,10 @@ def solveEigenSphericalPois6dRepulsionDifferentOrder(polyOrder, integrPoints=350
         potentialY[1], idNodes, a=-1, b=1, axis=1)
 
     potentialY[2] = np.einsum('ij, ajkb -> aikb', elem[2].eval(idNodes), potentialY[2])
-    #approx.printTT(potentialY)
+    #print("max and min of potential R core")
+
+    print("potential shape")
+    approx.printTT(potentialY)
     ttY = [None]*3
     for i in range(3):
         potentialY[i] = np.transpose(potentialY[i], [1, 0, 2, 3])
@@ -708,67 +729,82 @@ def solveEigenSphericalPois6dRepulsionDifferentOrder(polyOrder, integrPoints=350
             ttY[i] = operations.integrateBilinearForm0_TensorWeight(
                 elem, potentialY[i], integrPoints, axis=i)
         shape = ttY[i].shape
+
+        # print(i, "s shape: ", shape)
         ttY[i] = np.reshape(ttY[i], [shape[0]*shape[1], shape[2], shape[3], shape[4]])
-        """
-        second integration functions are second
-        """
-        ttY[i] = np.transpose(ttY[i], [1, 0, 2, 3])
-    #approx.printTT(ttY)
-    approx.expandCoreCase4(ttY, 0)
-    time.sleep(500)
-    tttY = []
-    for i in range(3):
-        print(i, "s element")
         shape = ttY[i].shape
-        print("preshape", ttY[i].shape)
-        ttY[i] = np.reshape(ttY[i], [shape[0]*shape[1], shape[3]*shape[2]])
-        #ttY[i] = np.transpose(ttY[i], [1, 2, 0, 3])
-        aftershape = ttY[i].shape
-        #ttY[i] = np.transpose(ttY[i], [0, 3, 1, 2, 4])
-        print("aftershape", ttY[i].shape)
-        flattenTTy = ttY[i].flatten()
+        # print(i, "s shape after flattening: ", shape)
 
-        # ttY[i] = np.reshape(ttY[i], [aftershape[0],
-        #                              aftershape[1]*aftershape[2]*aftershape[3]])
-        print("svd matrix shape")
-        print(ttY[i].shape)
-        #time.sleep(500)
-        u, s, v = sp_lin.svd(ttY[i], full_matrices=False)
-        #print(s[:30])
-        cumsum = np.cumsum(s)
-        r_delta = np.argmax(cumsum[-1] - cumsum < 1e-12) + 1
-        u = np.dot(u[:, :r_delta], np.diag(np.sqrt(s[:r_delta])))
-        v = np.dot(np.diag(np.sqrt(s[:r_delta])), v[:r_delta, :])
-        print("separated core shapes")
-        print(u.shape)
-        print(v.shape)
-        u = np.reshape(u, [shape[0], shape[1], u.shape[1]])
-        u = np.transpose(u, (1, 0, 2))[np.newaxis, :, :, :]
-        #u = np.reshape(u, [shape[0], shape[1], u.shape[1], u.shape[2]])
-        #u = np.transpose(u, (2, 0, 1, 3))
+        ttY[i] = np.transpose(ttY[i], [1, 0, 2, 3])
+        shape = ttY[i].shape
+        # print(i, "s shape after axes rearrangement: ", shape)
+    print("before separation")
+    approx.printTT(ttY)
 
-        v = np.reshape(v, [v.shape[0], shape[2], shape[3], shape[4]])
-
-        print(u.shape)
-        print(v.shape)
-        prod = np.einsum("ijkl, lmns -> ijkmns", u, v)
-        #print(prod.shape)
-        #print(np.max(prod.flatten() - flattenTTy))
-        #if (i == 1):
-            #time.sleep(500)
-        if(i == 0):
-            tttY.append(2*u[:, :-1, :-1, :])
-            tttY.append(v[:, :-1, :-1, :])
-        else:
-            tttY.append(u)
-            tttY.append(v)
-        #print(u.shape)
-        #print(v.shape)
-        #time.sleep(500)
+    approx.expandCoreMatrixForm(ttY, 0)
+    approx.expandCoreMatrixForm(ttY, 2)
+    approx.expandCoreMatrixForm(ttY, 4)
+    ttY[0] = ttY[0][:, :-1, :-1, :]
+    ttY[1] = ttY[1][:, :-1, :-1, :]
+    print("after separation")
+    approx.printTT(ttY)
     time.sleep(500)
-    approx.printTT(tttY)
-    ttY = tttY
-    del tttY
+    # ttY = approx.expandCoreMatrixForm(ttY, 0)
+
+    # time.sleep(500)
+    # tttY = []
+    # for i in range(3):
+    #     print(i, "s element")
+    #     shape = ttY[i].shape
+    #     print("preshape", ttY[i].shape)
+    #     ttY[i] = np.reshape(ttY[i], [shape[0]*shape[1], shape[3]*shape[2]])
+    #     #ttY[i] = np.transpose(ttY[i], [1, 2, 0, 3])
+    #     aftershape = ttY[i].shape
+    #     #ttY[i] = np.transpose(ttY[i], [0, 3, 1, 2, 4])
+    #     print("aftershape", ttY[i].shape)
+    #     flattenTTy = ttY[i].flatten()
+    #
+    #     # ttY[i] = np.reshape(ttY[i], [aftershape[0],
+    #     #                              aftershape[1]*aftershape[2]*aftershape[3]])
+    #     print("svd matrix shape")
+    #     print(ttY[i].shape)
+    #     #time.sleep(500)
+    #     u, s, v = sp_lin.svd(ttY[i], full_matrices=False)
+    #     #print(s[:30])
+    #     cumsum = np.cumsum(s)
+    #     r_delta = np.argmax(cumsum[-1] - cumsum < 1e-12) + 1
+    #     u = np.dot(u[:, :r_delta], np.diag(np.sqrt(s[:r_delta])))
+    #     v = np.dot(np.diag(np.sqrt(s[:r_delta])), v[:r_delta, :])
+    #     print("separated core shapes")
+    #     print(u.shape)
+    #     print(v.shape)
+    #     u = np.reshape(u, [shape[0], shape[1], u.shape[1]])
+    #     u = np.transpose(u, (1, 0, 2))[np.newaxis, :, :, :]
+    #     #u = np.reshape(u, [shape[0], shape[1], u.shape[1], u.shape[2]])
+    #     #u = np.transpose(u, (2, 0, 1, 3))
+    #
+    #     v = np.reshape(v, [v.shape[0], shape[2], shape[3], shape[4]])
+    #
+    #     print(u.shape)
+    #     print(v.shape)
+    #     prod = np.einsum("ijkl, lmns -> ijkmns", u, v)
+    #     #print(prod.shape)
+    #     #print(np.max(prod.flatten() - flattenTTy))
+    #     #if (i == 1):
+    #         #time.sleep(500)
+    #     if(i == 0):
+    #         tttY.append(2*u[:, :-1, :-1, :])
+    #         tttY.append(v[:, :-1, :-1, :])
+    #     else:
+    #         tttY.append(u)
+    #         tttY.append(v)
+    #     #print(u.shape)
+    #     #print(v.shape)
+    #     #time.sleep(500)
+    # time.sleep(500)
+    # approx.printTT(tttY)
+    # ttY = tttY
+    # del tttY
     #approx.printTT(ttY)
     ttFx = None
     core1 = None; core2 = None; core0 = None; grid0 = None; grid1 = None; grid2 = None
@@ -804,14 +840,14 @@ def solveEigenSphericalPois6dRepulsionDifferentOrder(polyOrder, integrPoints=350
     t = time.time()
 
     ttSol = approx.eigAlterLeastSquares2d(A=ttA, B=ttB,
-                                          ranks=2, sigma=-10, real=False, V=[ttY, ttV1, ttV2])
+                                          ranks=2, sigma=-10, real=True, V=[ttY, ttV1, ttV2])
     print("energy: " , ttSol[0])
 
 def solveEigenSphericalPoisForPlot(iStart, iEnd, iStep):
     for i in range(iStart, iEnd, iStep):
         #cores = solveEigenSphericalPois6d(np.array([8, 6, 4]), integrPoints=500)
         #for j in range(10):
-        solveEigenSphericalPois6dRepulsionDifferentOrder(np.array([i, 4, 4]), integrPoints=500)
+        solveEigenSphericalPois6dRepulsionDifferentOrder(np.array([i, 8, 8]), integrPoints=500)
         #time.sleep(500)
 
-solveEigenSphericalPoisForPlot(4, 22, 2)
+solveEigenSphericalPoisForPlot(10, 22, 2)

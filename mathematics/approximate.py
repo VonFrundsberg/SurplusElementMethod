@@ -885,7 +885,66 @@ def expandCoreCase4(argTensor, index: int):
 
     pass
 
+def expandCoreMatrixForm(argTensor, expandIndex: int):
+    """
+        expands core given by index into two dims where
+        ...(alpha, n_1, n_2, beta)... is init form of core
+        the result will be in the form
+       ... (alpha, n_1_i, n_1_j, gamma) X (gamma, n_2_i, n_2_j, gamma)...
+        """
+    alpha = argTensor[expandIndex].shape[0]; beta = argTensor[expandIndex].shape[-1];
 
+
+    cores = argTensor
+    # print("init cores")
+    ttCores = TT(cores)
+    #printTT(ttCores.cores)
+    # fullTensor = ttCores.full()
+    # print("initial kronTensor shape", fullTensor.shape)
+
+    #reshapedLhs = np.transpose(lhs, (0, 1, 3, 2))
+    #print("prev shape", lhs.shape)
+    """
+    separation of core
+    """
+    expandShape = argTensor[expandIndex].shape
+    reshapedCore = np.reshape(argTensor[expandIndex],
+                              [alpha*expandShape[1], beta*expandShape[2]])
+    u, s, v = sp_linalg.svd(reshapedCore, full_matrices=False)
+    # print(s[:30])
+    cumsum = np.cumsum(s)
+    r_delta = np.argmax(cumsum[-1] - cumsum < 1e-12) + 1
+    #r_delta = 1000
+    u = np.dot(u[:, :r_delta], np.diag(np.sqrt(s[:r_delta])))
+    v = np.dot(np.diag(np.sqrt(s[:r_delta])), v[:r_delta, :])
+    # print("separated shapes at left core")
+    # print(u.shape, v.shape)
+    # time.sleep(500)
+    sqrtU = int(np.sqrt(expandShape[1]))
+    u = np.reshape(u, [alpha, sqrtU, sqrtU, u.shape[1]])
+    #u = np.transpose(u, (0, 2, 1, 3))
+    sqrtV = int(np.sqrt(expandShape[2]))
+    v = np.reshape(v, [v.shape[0], sqrtV, sqrtV, beta])
+
+
+    # print("resulting separated core shapes")
+    #printTT([argTensor[0], u, v, argTensor[2]])
+    argTensor[expandIndex] = v
+    argTensor.insert(expandIndex, u)
+    #newTensor = TT([argTensor[0], u, v, argTensor[2]])
+    # print("cores of newTensor")
+    # printTT(newTensor.cores)
+    #return newTensor
+    # print("newTensor shape")
+    # print(newTensor.full().shape)
+
+    #print(np.max(np.abs(newTensor.full().flatten() - fullTensor.flatten())))
+    # plt.scatter(np.arange(fullTensor.size),
+    #            newTensor.full().flatten() - fullTensor.flatten())
+    # plt.show()
+
+
+    pass
 def vecRound(u, tol=1e-6, matrixForm=False):
     if matrixForm == True:
         for i in range(len(u)):

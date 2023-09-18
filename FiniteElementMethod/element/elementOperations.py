@@ -12,19 +12,24 @@ def integrateBilinearForm0_TensorWeight(elementU: element, evaluatedFuncsTensor,
     """
     w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
     w = w * elementU[axis].inverseDerivativeMap(x)
+    mappedIntegrationNodes = elementU[axis].map(x)
+    evaluatedBasisFunctions = elementU[axis].eval(x)
+
     if lambdaWeightAlongAxis is not None:
-        integrWeight = lambdaWeightAlongAxis(x) * w
+        integrWeight = lambdaWeightAlongAxis(mappedIntegrationNodes) * w
     else:
         integrWeight = w
-    mappedIntegrationNodes = elementU[axis].map(x)
-    evaluatedBasisFunctions = elementU[axis].eval(mappedIntegrationNodes)
+
+
     matrixFunction = np.einsum('ij,ik->ijk',
                                evaluatedBasisFunctions, evaluatedBasisFunctions)
-    # print(matrixFunction.shape)
-    # print(evaluatedFuncsTensor.shape)
-    # print(integrWeight.shape)
+    print("basis funcs, potential shape")
+    print(matrixFunction.shape)
+    print(evaluatedFuncsTensor.shape)
     resultIntegrals = np.einsum('iln, iamb, i -> lnamb',
                                 matrixFunction, evaluatedFuncsTensor, integrWeight)
+    print("result shape")
+    print(resultIntegrals.shape)
     return resultIntegrals
 def integrateBilinearForm0(elementU: element, weight, integrationPointsAmount: int, axis: int):
     """(one-dimensional) Integrates bilinear form of the type a(u, u) = int_K weight(x) u(x) v(x) dx,
@@ -173,15 +178,17 @@ def integrateFunctionalWithMatrixRHS(elementU: element, evaluatedFuncsList,
         """
     w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
     w = w * elementU[axis].inverseDerivativeMap(x)
+    evaluatedBasisFunctions = elementU[axis].eval(x)
+    mappedIntegrationNodes = elementU[axis].map(x)
     if lambdaWeightAlongAxis is not None:
-        integrWeight = lambdaWeightAlongAxis(x) * w
+        integrWeight = lambdaWeightAlongAxis(mappedIntegrationNodes) * w
     else:
         integrWeight = w
-    mappedIntegrationNodex = elementU[axis].map(x)
+
 
     matrixFunction = np.einsum('ij,ik->ijk', evaluatedFuncsList, evaluatedFuncsList)
 
-    evaluatedBasisFunctions = elementU[axis].eval(mappedIntegrationNodex)
+
 
     resultIntegrals = np.einsum('in, ijk, i -> njk',
                                 evaluatedBasisFunctions, matrixFunction, integrWeight)
