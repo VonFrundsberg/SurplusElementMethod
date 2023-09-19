@@ -8,6 +8,7 @@ import scikit_tt.solvers.evp as evp
 from scikit_tt.tensor_train import TT
 import scikit_tt.tensor_train as tt
 
+
 def printTT(argTensor):
     for it in argTensor:
         print(it.shape)
@@ -306,7 +307,7 @@ def kronSumtoTT_blockFormat(matricesMatrix):
     core = np.stack((M[0][1], M[0][2]), axis=2)[np.newaxis, :, :, :]
     cores.append(core)
     for i in range(1, dim - 1):
-        core = np.stack((M[i][0], 1/2*M[i][1], 1/2*M[i][1], M[i][2]), axis=2)[np.newaxis, :, :, :]
+        core = np.stack((M[i][0], 0*M[i][1], M[i][1], M[i][2]), axis=2)[np.newaxis, :, :, :]
         core = np.reshape(core, [core.shape[1], core.shape[2], 2, 2])
         core = np.transpose(core, [2, 0, 1, 3])
         cores.append(core)
@@ -998,14 +999,25 @@ def eigAlterLeastSquares(A, B, ranks, sigma=1, V = None, prev = None, real=True,
     initTT = tt.ones(ttA.row_dims, [1] * ttA.order, ranks=ranks).ortho_right()
     if prev is not None:
         res = evp.als(operator=ttA, initial_guess=initTT,
-                      operator_gevp=ttB, sigma=sigma, real=real, previous=prev, shift=shift)
+                      operator_gevp=ttB, sigma=sigma, real=real,
+                      previous=prev, shift=100, repeats=30,
+                      conv_eps=1e-10, number_ev=20)
     else:
-        res = evp.als(operator=ttA, initial_guess=initTT, operator_gevp=ttB, sigma=sigma, real=real)
+        res = evp.als(operator=ttA, initial_guess=initTT, operator_gevp=ttB,
+                      sigma=sigma, shift=1, repeats=20)
+        # res = evp.als(operator=ttA, initial_guess=initTT,
+        #               operator_gevp=ttB, sigma=sigma, real=real,
+        #               shift=1, repeats=20,
+        #               conv_eps=1e-10, number_ev=20)
     return res
 
 
 def eigAlterLeastSquares2d(A, B, ranks, sigma=1, V = None, prev = None, real=True, shift=None):
-    ttA = A
+    #ttA = A
+    if len(A) == 2:
+        ttA = TT(A[0]) + TT(A[1])
+    else:
+        ttA = TT(A)
     #ttA = TT(A)
     A = None
     if V is not None:
@@ -1027,5 +1039,5 @@ def eigAlterLeastSquares2d(A, B, ranks, sigma=1, V = None, prev = None, real=Tru
                       operator_gevp=ttB, sigma=sigma, real=real, previous=prev, shift=shift)
     else:
         res = evp.als(operator=ttA, initial_guess=initTT,
-                      operator_gevp=ttB, real=real, sigma=sigma, repeats=10)
+                      operator_gevp=ttB, sigma=sigma, repeats=20)
     return res

@@ -23,13 +23,13 @@ def integrateBilinearForm0_TensorWeight(elementU: element, evaluatedFuncsTensor,
 
     matrixFunction = np.einsum('ij,ik->ijk',
                                evaluatedBasisFunctions, evaluatedBasisFunctions)
-    print("basis funcs, potential shape")
-    print(matrixFunction.shape)
-    print(evaluatedFuncsTensor.shape)
+    # print("basis funcs, potential shape")
+    # print(matrixFunction.shape)
+    # print(evaluatedFuncsTensor.shape)
     resultIntegrals = np.einsum('iln, iamb, i -> lnamb',
                                 matrixFunction, evaluatedFuncsTensor, integrWeight)
-    print("result shape")
-    print(resultIntegrals.shape)
+    # print("result shape")
+    # print(resultIntegrals.shape)
     return resultIntegrals
 def integrateBilinearForm0(elementU: element, weight, integrationPointsAmount: int, axis: int):
     """(one-dimensional) Integrates bilinear form of the type a(u, u) = int_K weight(x) u(x) v(x) dx,
