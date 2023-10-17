@@ -17,7 +17,7 @@ def fun(N, infN, a, nn):
     finiteElementObject.setBilinearForm([gradForm, boundaryForm1, boundaryForm2])
     finiteElementObject.setRHSFunctional(functional)
 
-    boundaryConditions = "1+ = 0"
+    boundaryConditions = "axis: 1, boundary: right, value: 0.0"
     finiteElementObject.setDirichletBoundaryConditions(boundaryConditions)
 
     mesh = MeshClass.mesh(1)

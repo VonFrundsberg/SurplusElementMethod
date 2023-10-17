@@ -170,24 +170,7 @@ def testLaplacianInverseTT(elementU):
         A = np.reshape(A, [np.prod(initShape[:i + 1]), int(A.shape[-1] / initShape[i])])
     A = np.reshape(A, initShape)
     print("approximation error for original matrix: ", np.sum((A - C) ** 2))
-def solvePeriodicODE(polyOrder, rhsF, halfInterval=False):
-    """Numerically solves the equation
-        du + u = rhsF(x), where rhsF is a periodic function,
-        with halfInterval false the interval is [0, 2*pi], with true it is [0, pi]"""
-    n = polyOrder
-    D = spec.periodicDiffMatrix(n, halfInterval)
-    I = np.eye(n)
-    x = spec.periodicNodes(n, halfInterval)
-    sol = sp_lin.solve(D + I, rhsF(x))
-    return sol
-def solvePrintPlotPeriodicODE(polyorder, rhsF, asol):
-    sol = solvePeriodicODE(polyorder, rhsF, True)
-    x = spec.periodicNodes(polyorder, halfInterval=True)
-    print('approximation order is: ', polyorder)
-    print(sol - asol(x))
-    plt.plot(x, sol)
-    plt.plot(x, asol(x))
-    plt.show()
+
 import time
 def solveSphericalPois(polyOrder, rhsF, integrPoints=350):
 
