@@ -14,7 +14,6 @@ import numpy as np
 import scipy.linalg as sp_lin
 import scikit_tt.tensor_train as tt
 from scikit_tt.tensor_train import TT
-from wave_train.dynamics.tise import TISE
 from heap import solveSphericalPoisMatRHS as poissonSolution
 def testKronSum(elementU):
     """Some tests with kronecker sum of a differential-like operator, conversion to TT train format"""
