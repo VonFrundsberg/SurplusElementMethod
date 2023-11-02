@@ -486,11 +486,14 @@ for i in range(3, 100, 1):
     # errors = derivativeError_WithDifferentMethods(i,
     #                          lambda x: (1 + x)*np.exp(np.sin(10*x)**3 + np.cos(6*x)),
     #                          lambda x: np.exp(np.sin(10*x)**3 + np.cos(6*x))*(1 - 6*(1 + x) * np.sin(6*x) + 15 * (1 + x) * np.sin(10*x)* np.sin(20*x)))
+    # errors = firstOrderODE_Zero_Dirichlet(i,
+    #                                               lambda x: (1 - x) * np.sin(x)**3,
+    #                                               lambda x: -np.sin(x)**2 * (3 * (-1 + x) * np.cos(x) + np.sin(x)),
+    #                                               lambda x: 0)
     errors = firstOrderODE_Zero_Dirichlet(i,
-                                                  lambda x: (1 - x) * np.sin(x)**3,
-                                                  lambda x: -np.sin(x)**2 * (3 * (-1 + x) * np.cos(x) + np.sin(x)),
-                                                  lambda x: 0)
-
+                                          lambda x: (1 - x) * np.sin(x) ** 3,
+                                          lambda x: -np.sin(x) ** 2 * (3 * (-1 + x) * np.cos(x) + np.sin(x)),
+                                          lambda x: 0)
 
     indices_list.append(errors[0])
     errors_list.append(errors[1])
@@ -515,8 +518,8 @@ for i, label in enumerate(['FD2_ERROR', 'FD4_ERROR', 'FD8_ERROR', 'FD16_ERROR', 
     ax.loglog([index[i] for index in indices_list], [error[i] for error in errors_list], label=label, linestyle=line_styles[i])
 
 # Customize the plot
-ax.set_title('Error Analysis')
-ax.set_xlabel('Indices')
+ax.set_title('Approximation errors for non-periodic function $(1 - x) * \sin(x)^3$')
+ax.set_xlabel('Amount of non-zero matrix elements')
 ax.set_ylabel('Error')
 ax.legend(loc='best')
 
@@ -527,12 +530,12 @@ ax.legend(loc='best')
 # Format the x-axis labels in scientific notation
 # x_labels = ['$10 \cdot 2^{' + str(i) + '}$' for i in range(1, 6)]
 # ax.set_xticklabels(x_labels)
-custom_y_ticks = [10**(-i) for i in range(10)]
-ax.set_yticks(custom_y_ticks)
+# custom_y_ticks = [10**(-i) for i in range(10)]
+# ax.set_yticks(custom_y_ticks)
 
 # Format the y-axis labels in scientific notation
-y_labels = [f'$10^{{-{i}}}$' for i in range(10)]
-ax.set_yticklabels(y_labels)
+# y_labels = [f'$10^{{-{i}}}$' for i in range(10)]
+# ax.set_yticklabels(y_labels)
 
 
 ax.grid(True, which='both', linestyle='--', linewidth=0.5)

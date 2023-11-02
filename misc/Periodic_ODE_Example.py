@@ -156,22 +156,32 @@ def compareODE_Solutions(nodesAmount: int, func, funcDerivative):
     plt.grid(True)
     plt.tight_layout()  # Improves spacing
     plt.show()
-def compareDerivativeCalculation(nodesAmount: int, func, funcDerivative):
-    n = nodesAmount
+
+def calculatePeriodicFD2_Matrix(n):
     zerosMatrix = np.zeros([n, n], dtype=float)
-    FD2_Matrix = zerosMatrix + 0.5*np.diag(np.ones(n - 1), k=1)
+    FD2_Matrix = zerosMatrix + 0.5 * np.diag(np.ones(n - 1), k=1)
     FD2_Matrix[0, -1] = -0.5
     FD2_Matrix -= np.transpose(FD2_Matrix)
+    return FD2_Matrix
 
+def calculatePeriodicFD4_Matrix(n):
+    if n < 4:
+        n = 4
+    zerosMatrix = np.zeros([n, n], dtype=float)
     FD4_Matrix = (zerosMatrix +
-                  2.0/3.0 * np.diag(np.ones(n - 1), k=1) -
-                  1.0/12.0 * np.diag(np.ones(n - 2), k=2))
+                  2.0 / 3.0 * np.diag(np.ones(n - 1), k=1) -
+                  1.0 / 12.0 * np.diag(np.ones(n - 2), k=2))
 
     FD4_Matrix[0, -1] = -2.0 / 3.0
-    FD4_Matrix[0, -2] = 1.0/12.0
-    FD4_Matrix[1, -1] = 1.0/12.0
+    FD4_Matrix[0, -2] = 1.0 / 12.0
+    FD4_Matrix[1, -1] = 1.0 / 12.0
     FD4_Matrix -= np.transpose(FD4_Matrix)
+    return FD4_Matrix
 
+def calculatePeriodicFD8_Matrix(n):
+    if n < 8:
+        n = 8
+    zerosMatrix = np.zeros([n, n], dtype=float)
     FD8_Matrix = (zerosMatrix +
                   4.0 / 5.0 * np.diag(np.ones(n - 1), k=1) +
                   -1.0 / 5.0 * np.diag(np.ones(n - 2), k=2) +
@@ -179,9 +189,13 @@ def compareDerivativeCalculation(nodesAmount: int, func, funcDerivative):
                   -1.0 / 280.0 * np.diag(np.ones(n - 4), k=4))
 
     for i in range(4):
-        FD8_Matrix[i, -4 + i:] = -FD8_Matrix[i, 2*i + 1: 5 + i][::-1]
+        FD8_Matrix[i, -4 + i:] = -FD8_Matrix[i, 2 * i + 1: 5 + i][::-1]
     FD8_Matrix -= np.transpose(FD8_Matrix)
-
+    return FD8_Matrix
+def calculatePeriodicFD16_Matrix(n):
+    if n < 16:
+        n = 16
+    zerosMatrix = np.zeros([n, n], dtype=float)
     FD16_Matrix = (zerosMatrix +
                   8.0 / 9.0 * np.diag(np.ones(n - 1), k=1) +
                   -14.0 / 45.0 * np.diag(np.ones(n - 2), k=2) +
@@ -195,54 +209,48 @@ def compareDerivativeCalculation(nodesAmount: int, func, funcDerivative):
     for i in range(8):
         FD16_Matrix[i, -8 + i:] = -FD16_Matrix[i, 2 * i + 1: 8 + 1 + i][::-1]
     FD16_Matrix -= np.transpose(FD16_Matrix)
+    return FD16_Matrix
+def compareDerivativeCalculation(nodesAmount: int, func, funcDerivative):
+    n = nodesAmount
+    FD2_Matrix = calculatePeriodicFD2_Matrix(n)
+    FD4_Matrix = calculatePeriodicFD4_Matrix(n)
+    FD8_Matrix = calculatePeriodicFD8_Matrix(n)
+    FD16_Matrix = calculatePeriodicFD16_Matrix(n)
 
-    # print(FD2_Matrix)
-    # print(FD4_Matrix)
-    # print(FD8_Matrix)
 
-    h = 2 * np.pi / n
-    nodes = np.linspace(-np.pi + h, np.pi, n)
-    funcValuesAtNodes = func(nodes)
-    derivative2_Approx = FD2_Matrix @ funcValuesAtNodes/h
-    derivative4_Approx = FD4_Matrix @ funcValuesAtNodes/h
-    derivative8_Approx = FD8_Matrix @ funcValuesAtNodes / h
-    derivative16_Approx = FD16_Matrix @ funcValuesAtNodes / h
-    # plt.scatter(nodes, derivative2_Approx, label="2nd order FD Approximation",  color='blue',
-    #          marker='o')
-    # plt.scatter(nodes, derivative4_Approx, label="4th order FD Approximation",  color='green',
-    #          marker='s')
-    # plt.scatter(nodes, derivative8_Approx, label="8th order FD Approximation", color='cyan',
-    #             marker='v')
-    # plt.scatter(nodes, derivative16_Approx, label="16th order FD Approximation", color='purple',
-    #             marker='x')
-    # plotVals = np.linspace(-np.pi + h, np.pi, 1000)
-    # plt.plot(plotVals, funcDerivative(plotVals), label="Exact Derivative", linestyle='-', color='red', linewidth=2)
-    #
-    # plt.xlabel("Nodes")
-    # plt.ylabel("Values")
-    # plt.title("Comparison of Derivative Approximations")
-    #
-    # plt.grid(True)
-    # plt.legend(loc='best')
-    # plt.show()
-    evaluatedFuncDerivative = funcDerivative(nodes)
-    # plt.plot(nodes, derivative2_Approx - evaluatedFuncDerivative, label="2nd order FD Approximation", color='blue',
-    #          marker='o', linestyle='-', linewidth=2)
-    # plt.plot(nodes, derivative4_Approx - evaluatedFuncDerivative, label="4th order FD Approximation", color='green',
-    #          marker='s', linestyle='--', linewidth=2)
-    plt.plot(nodes, derivative8_Approx - evaluatedFuncDerivative, label="8th order FD Approximation", color='cyan',
-             marker='v', linestyle=':', linewidth=2)
-    plt.plot(nodes, derivative16_Approx - evaluatedFuncDerivative, label="16th order FD Approximation", color='purple',
-             marker='x', linestyle='-.', linewidth=2)
+    def calculateDerivative(FD_matrix):
+        N = np.shape(FD_matrix)[0]
+        h = 2 * np.pi / (N)
+        nodes = np.linspace(-np.pi + h, np.pi, N)
+        funcValues = func(nodes)
+        # print(FD_matrix.shape)
+        # print(nodes.shape)
+        return nodes, FD_matrix @ funcValues / h
 
-    # Add labels, legend, and other plot enhancements
-    plt.xlabel("x values")
-    plt.ylabel("error values")
-    plt.title("Derivative Approximation errors")
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()  # Improves spacing
-    plt.show()
+    # h = 2 * np.pi / n
+    # nodes = np.linspace(-np.pi + h, np.pi, n)
+    # funcValuesAtNodes = func(nodes)
+    nodesFD2, derivative2_Approx = calculateDerivative(FD2_Matrix)
+    nodesFD4, derivative4_Approx = calculateDerivative(FD4_Matrix)
+    nodesFD8, derivative8_Approx = calculateDerivative(FD8_Matrix)
+    nodesFD16, derivative16_Approx = calculateDerivative(FD16_Matrix)
+
+    # evaluatedFuncDerivative =
+
+    D = spec.periodicDiffMatrix(n, halfInterval=False)
+    x = spec.periodicNodes(n, halfInterval=False)
+    spectral_Approx = D @ func(x - np.pi)
+    errors_list = np.array(list(map(lambda x: np.max(np.abs(x)),
+        [derivative2_Approx - funcDerivative(nodesFD2),
+         derivative4_Approx - funcDerivative(nodesFD4),
+         derivative8_Approx - funcDerivative(nodesFD8),
+         derivative16_Approx - funcDerivative(nodesFD16),
+         spectral_Approx - funcDerivative(x - np.pi)])))
+    nonZeroCount = np.array(
+        list(map(lambda x: np.count_nonzero(x), [FD2_Matrix, FD4_Matrix, FD8_Matrix, FD16_Matrix, D])))
+
+    return [nonZeroCount, errors_list]
+
 def solvePrintPlotPeriodicODE(polyorder, rhsF, asol):
     sol = solvePeriodicODE_TYPE0_COLLOCATION(polyorder, rhsF)
     x = spec.periodicNodes(polyorder)
@@ -257,25 +265,52 @@ def solvePrintPlotPeriodicODE(polyorder, rhsF, asol):
 #                              lambda x: np.exp(np.sin(x)),
 #                              lambda x: np.cos(x)*np.exp(np.sin(x)))
 # np.set_printoptions(precision=3, suppress=True)
-# compareDerivativeCalculation(16,
-#                              lambda x: np.exp(np.sin(x)**3 + np.cos(x)),
-#                              lambda x: np.exp(np.sin(x)**3 + np.cos(x))*(-1 + 3 *np.cos(x)* np.sin(x))*np.sin(x))
 errors_list = []
 indices_list = []
-for i in range(16, 360, 2):
+for i in range(4, 100, 2):
+    # result = compareDerivativeCalculation(i,
+    #                          lambda x: np.exp(np.sin(x)**3 + np.cos(x)),
+    #                          lambda x: np.exp(np.sin(x)**3 + np.cos(x))*(-1 + 3 *np.cos(x)* np.sin(x))*np.sin(x))
+    result = compareDerivativeCalculation(i,
+                                          lambda x: np.exp(np.sin(x)),
+                                          lambda x: np.exp(np.sin(x)) * (np.cos(x)))
+
+    print(result)
+    errors_list.append(result[1])
+    indices_list.append(result[0])
+# errors_list = np.array(errors_list)
+
+fig, ax = plt.subplots()
+line_styles = ['-', '--', '-.', ':', '-']
+markers = ['o', 's', 'D', 'v', '^']
+for i, label in enumerate(['FD2_ERROR', 'FD4_ERROR', 'FD8_ERROR', 'FD16_ERROR', 'SPECTRAL_ERROR']):
+    ax.loglog([index[i] for index in indices_list], [error[i] for error in errors_list], label=label, linestyle=line_styles[i])
+
+# Customize the plot
+ax.set_title('Approximation errors for periodic function $e^{\sin(x)}$')
+ax.set_xlabel('Amount of non-zero elements in diff matrix')
+ax.set_ylabel('Error')
+ax.legend(loc='best')
+ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+plt.tight_layout()
+plt.show()
+# errors_list = []
+# indices_list = []
+# for i in range(16, 160, 2):
     # errors = solveODE_WithDifferentMethods(i,
     #                      lambda x: np.exp(np.sin(5*x)**3 + np.cos(3*x)),
     #                      lambda x: -3*np.exp(np.sin(5*x)**3 + np.cos(3*x))*(np.sin(3*x) - 5 *np.cos(5*x)* np.sin(5*x)**2) +
     #                             np.exp(np.sin(5*x)**3 + np.cos(3*x)))
-    errors = solveODE_WithDifferentMethods(i,
-                                           lambda x: np.exp(np.sin(5 * x) ** 3 + np.cos(3 * x)),
-                                           lambda x: np.exp(np.sin(5 * x) ** 3 + np.cos(3 * x)) * (
-                                                       1.0 - 3.0*np.sin(3 * x) + 15 * np.cos(5*x) * np.sin(5*x)**2))
-    indices_list.append(i)
-    errors_list.append(errors)
-plt.loglog(indices_list, errors_list)
-plt.show()
-    # print(i, errors)
+    # errors = solveODE_WithDifferentMethods(i,
+    #                                        lambda x: np.exp(np.sin(5 * x) ** 3 + np.cos(3 * x)),
+    #                                        lambda x: np.exp(np.sin(5 * x) ** 3 + np.cos(3 * x)) * (
+    #                                                    1.0 - 3.0*np.sin(3 * x) + 15 * np.cos(5*x) * np.sin(5*x)**2))
+#     indices_list.append(i)
+#     errors_list.append(errors)
+# plt.loglog(indices_list, errors_list)
+# plt.show()
+#     # print(i, errors)
 
 # compareODE_Solutions(128,
 #                      lambda x: np.exp(np.sin(5*x)**3 + np.cos(3*x)),
