@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
 from scipy.interpolate import *
-from FiniteElementMethod.element.elementOperations import *
+from FiniteElementMethod.element.elementUtils import *
 from FiniteElementMethod.element.mainElementClass import *
 import FiniteElementMethod.main as fem
 import matplotlib.pyplot as plt

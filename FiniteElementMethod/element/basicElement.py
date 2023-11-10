@@ -14,9 +14,9 @@ class basicElement():
         Returns: None
         """
         self.interval = np.array(interval)
-        self.approxOrder = approxOrder
+        self.approxOrder = int(approxOrder)
         self.boundaryConditions = boundaryConditions
-        self.refPointVal = np.eye(approxOrder)
+        self.refPointVal = np.eye(self.approxOrder)
         for it in self.boundaryConditions:
             self.refPointVal[it[0], it[0]] = it[1]
 

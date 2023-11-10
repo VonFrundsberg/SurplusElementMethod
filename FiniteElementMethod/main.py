@@ -7,13 +7,13 @@ import time as time
 class FEM:
 
     def setBilinearForm(self, bilinearFormsList):
-        self.innerForms = []
-        self.boundaryForms = []
-        self.functional = []
+        self.innerForms = [bilinearFormsList[0]]
+        self.boundaryForms = [bilinearFormsList[1], bilinearFormsList[2]]
+
         return None
 
     def setRHSFunctional(self, functional):
-
+        self.functional = functional
         return None
     def setDirichletBoundaryConditions(self, boundaryConditions):
         return None
@@ -37,11 +37,16 @@ class FEM:
         self.elements = [None] * elementsAmount
         for i in range(elementsAmount):
             tmpElement = self.mesh.elements[i]
-            self.elements[i] = element.element(tmpElement[:, -2], polynomialOrder=tmpElement[:, 2],
+            self.elements[i] = element.element(tmpElement[:, :2], polynomialOrder=tmpElement[:, -2],
                                                mappingType=tmpElement[-1])
 
-    def calculateFiniteElementMatrix(self):
+    def calculateElements(self):
+        """
+        For each element in self.mesh, calculates its discretized version,
+         using previously initialized bilinearForms, and RHS functional
+                """
         elementsAmount = self.mesh.getElementsAmount()
+
         self.matrixElements = [None] * elementsAmount
         for i in range(elementsAmount):
             self.matrixElements[i] = [None] * elementsAmount
@@ -49,14 +54,17 @@ class FEM:
 
         innerFormsAmount = len(self.innerForms)
         boundaryFormsAmount = len(self.boundaryForms)
-        for i in range(elementsAmount):
-            innerMatrix = self.innerForms[0](self.elems[i], self.elems[i], K=self.mesh[i][0])
-            for j in range(1, innerFormsAmount):
-                innerMatrix += self.innerForms[0](self.elems[i], self.elems[i], K=self.mesh[i][0])
-            innerMatrix = self.mreshape(self.mesh[i][1], self.mesh[i][1], innerMatrix)
-            self.matrixElems[i][i] = sparse.csr_matrix(innerMatrix)
 
-            self.functionalElements[i] = (self.functional[0](self.elems[i], K=self.mesh[i][0])).flatten()
+        for i in range(elementsAmount):
+            innerMatrix = self.innerForms[0](self.elements[i])
+
+            for j in range(1, innerFormsAmount):
+                innerMatrix += self.innerForms[0](self.elems[i])
+
+            # innerMatrix = self.mreshape(self.mesh[i][1], self.mesh[i][1], innerMatrix)
+            self.matrixElements[i][i] = sparse.csr_matrix(innerMatrix)
+
+            self.functionalElements[i] = (self.functional(self.elements[i])).flatten()
 
             print(str(i) + ' \'s element calculated')
 

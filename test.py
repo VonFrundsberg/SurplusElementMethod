@@ -3,21 +3,29 @@ import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
 import FiniteElementMethod.mesh.mesh as MeshClass
 import FiniteElementMethod.main as fem
+import FiniteElementMethod.element.elementUtils as elemUtils
 import matplotlib.pyplot as plt
 import time as time
 
 def fun(N, infN, a, nn):
     finiteElementObject = fem.FEM()
 
-    gradForm = "integral w(x) grad(u).grad(v)"
-    boundaryForm1 = "boundaryIntegral w(x) [u] <grad(v).n>"
-    boundaryForm2 = "boundaryIntegral w(x) [v] <grad(u).n>"
+    gradForm = "integral w(x) grad(u) @ grad(v)"
+    boundaryForm1 = "boundaryIntegral w(x) [u] <grad(v) @ n>"
+    boundaryForm2 = "boundaryIntegral w(x) [v] <grad(u) @ n>"
+    gradForm = lambda element: elemUtils.integrateBilinearForm1(element, lambda x: x*x, 500, 0)
+    def boundaryForm1(elementTrial: fem.element.element, elementTest: fem.element.element):
+        return elemUtils.evaluateBilinearFormAtBoundary2(elementTrial, elementTest, lambda: x*x, axis=0)
+    def boundaryForm2(elementTrial: fem.element.element, elementTest: fem.element.element):
+        return elemUtils.evaluateBilinearFormAtBoundary2(elementTrial, elementTest, lambda: x*x, axis=0)
+
     functional = "integral w(x) u f"
+    functional = lambda element: elemUtils.integrateFunctional(elementU=element, function=lambda x: np.exp(-x)*x*x, integrationPointsAmount=500, axis=0)
 
     finiteElementObject.setBilinearForm([gradForm, boundaryForm1, boundaryForm2])
     finiteElementObject.setRHSFunctional(functional)
 
-    boundaryConditions = "axis: 1, boundary: right, value: 0.0"
+    boundaryConditions = "axis: 0, boundary: right, value: 0.0"
     finiteElementObject.setDirichletBoundaryConditions(boundaryConditions)
 
     mesh = MeshClass.mesh(1)
@@ -27,6 +35,7 @@ def fun(N, infN, a, nn):
     mesh.fileRead("elementsData.txt", "neighboursData.txt")
     finiteElementObject.initializeMesh(mesh)
     finiteElementObject.initializeElements()
+    finiteElementObject.calculateElements()
     print('done')
     time.sleep(500)
     # msh.extendBox(1, 0, [infN])
@@ -279,7 +288,7 @@ def schroedinger(N, a, nn):
     time.sleep(500)
 
 for i in range(2, 200):
-    fun(i, i, 5, 2)
+    fun(i, i, 5, 3)
     # fun2d(i, i, 5, 2)
     # time.sleep(500)
 # schroedinger(150, 15, 3)

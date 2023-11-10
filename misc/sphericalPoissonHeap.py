@@ -1,6 +1,6 @@
 import numpy as np
 from FiniteElementMethod.element.mainElementClass import element
-import FiniteElementMethod.element.elementOperations as operations
+import FiniteElementMethod.element.elementUtils as operations
 from mathematics import approximate as approx
 from mathematics import integrate as integr
 from mathematics import spectral as spec

@@ -1,5 +1,5 @@
 from FiniteElementMethod.element.mainElementClass import element
-import FiniteElementMethod.element.elementOperations as operations
+import FiniteElementMethod.element.elementUtils as operations
 import scipy.sparse as sp_sparse
 import numpy.linalg as np_lin
 import scipy.sparse.linalg as sparse_linalg
