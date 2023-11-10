@@ -3,7 +3,7 @@ import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
 import FiniteElementMethod.mesh.mesh as MeshClass
 import FiniteElementMethod.main as fem
-import FiniteElementMethod.element.elementUtils as elemUtils
+import FiniteElementMethod.element.basicElementUtils as belemUtils
 import matplotlib.pyplot as plt
 import time as time
 
@@ -13,11 +13,15 @@ def fun(N, infN, a, nn):
     gradForm = "integral w(x) grad(u) @ grad(v)"
     boundaryForm1 = "boundaryIntegral w(x) [u] <grad(v) @ n>"
     boundaryForm2 = "boundaryIntegral w(x) [v] <grad(u) @ n>"
-    gradForm = lambda element: elemUtils.integrateBilinearForm1(element, lambda x: x*x, 500, 0)
+
+    gradForm = lambda trialElement, testElement: belemUtils.integrateBilinearForm1(
+        trialElement[0], testElement[0], lambda x: x * x, 500)
     def boundaryForm1(elementTrial: fem.element.element, elementTest: fem.element.element):
-        return elemUtils.evaluateBilinearFormAtBoundary2(elementTrial, elementTest, lambda: x*x, axis=0)
+        return belemUtils.evaluateBilinearFormAtBoundary2(
+            trialElement=elementTrial[0], testElement=elementTest[0], weight=lambda x: x*x)
     def boundaryForm2(elementTrial: fem.element.element, elementTest: fem.element.element):
-        return elemUtils.evaluateBilinearFormAtBoundary2(elementTrial, elementTest, lambda: x*x, axis=0)
+        return belemUtils.evaluateBilinearFormAtBoundary2(
+            trialElement=elementTrial[0], testElement=elementTest[0], weight=lambda x: x*x)
 
     functional = "integral w(x) u f"
     functional = lambda element: elemUtils.integrateFunctional(elementU=element, function=lambda x: np.exp(-x)*x*x, integrationPointsAmount=500, axis=0)

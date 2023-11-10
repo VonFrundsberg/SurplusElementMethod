@@ -132,7 +132,7 @@ def firstOrderODE_Zero_Dirichlet(nodesAmount: int, func, funcDerivative):
     COLLOCATION_ERROR = np.max(np.abs(func(x) - colSol))
 
     element = elem.element([[-1, 1]], [n], [0])
-    galerkinD = oper.integrateBilinearForm2(element, lambda x: x*0 + 1, 500, 0)[:-1, :-1]
+    galerkinD = oper.integrateBilinearForm2(element, lambda x: x * 0 + 1, 500, 0)[:-1, :-1]
     rhsF = oper.integrateFunctional(element, funcDerivative, 500, 0)[:-1]
     galSol = sp_lin.solve(galerkinD, rhsF)
     GALERKIN_ERROR = np.max(np.abs(func(x) - galSol))

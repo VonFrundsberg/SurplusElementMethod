@@ -56,25 +56,26 @@ class FEM:
         boundaryFormsAmount = len(self.boundaryForms)
 
         for i in range(elementsAmount):
-            innerMatrix = self.innerForms[0](self.elements[i])
+            innerMatrix = self.innerForms[0](self.elements[i], self.elements[i])
 
             for j in range(1, innerFormsAmount):
-                innerMatrix += self.innerForms[0](self.elems[i])
+                innerMatrix += self.innerForms[0](self.elements[i], self.elements[i])
 
             # innerMatrix = self.mreshape(self.mesh[i][1], self.mesh[i][1], innerMatrix)
             self.matrixElements[i][i] = sparse.csr_matrix(innerMatrix)
 
-            self.functionalElements[i] = (self.functional(self.elements[i])).flatten()
+            # self.functionalElements[i] = (self.functional(self.elements[i])).flatten()
 
             print(str(i) + ' \'s element calculated')
 
-            for it in self.mesh.neigh[i]:
-                K1 = self.mesh[i][0]
-                K2 = self.mesh[it[1]][0]
+            for neighborNumber in self.mesh.neighbours[i]:
+                # K1 = self.mesh[i][0]
+                # K2 = self.mesh[it[1]][0]
 
-                self.matrixElems[i][i] += self.mreshape(self.mesh[i][1], self.mesh[i][1],
-                                                        self.bform1(self.elems[i], self.elems[i], K1=K1, K2=K2))
-
+                # self.matrixElems[i][i] += self.mreshape(self.mesh[i][1], self.mesh[i][1],
+                #                                         self.bform1(self.elems[i], self.elems[i], K1=K1, K2=K2))
+                for boundaryForm in self.boundaryForms:
+                    self.matrixElements[i][i] += boundaryForm(self.elements[i], self.elements[i])
 
                 if i < it[1]:
                     self.matrixElems[i][it[1]] = sparse.csr_matrix(self.mreshape(self.mesh[i][1], self.mesh[it[1]][1],

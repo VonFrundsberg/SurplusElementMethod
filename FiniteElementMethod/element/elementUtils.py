@@ -53,7 +53,7 @@ def integrateBilinearForm0(elementU: element, weight, integrationPointsAmount: i
 
     resultIntegrals = np.einsum('ijk, i -> jk', D2, W)
     return resultIntegrals
-def integrateBilinearForm1(elementU: element, weight, integrationPointsAmount: int, axis: int):
+def integrateBilinearForm1_SameElement(elementU: element, weight, integrationPointsAmount: int, axis: int):
     """(one-dimensional) Integrates bilinear form of the type a(u, v) = int_K weight(x) du(x) dv(x) dx,
         where U(x) and v(x) are basis functions of elementU element
         and K is a non-zero region of elementU functions.
@@ -118,66 +118,6 @@ def integrateBilinearForm3(elementU: element, weight, integrationPointsAmount: i
     """
     return None
 
-def evaluateBilinearFormAtBoundary2(elementU: element, elementV: element, weight, axis:int):
-    """(one-dimensional) Evaluates bilinear form of the type
-        a(u, u) = weight(R) grad u(R) v(R) - weight(L) grad u(L) v(L),
-        where u(x) and v(x) are basis functions of elementU element
-        L and R are left and right boundary of elementU interval.
-
-        Arguments:
-            elementU:
-            weight:
-        Returns:
-            result: evaluated differences at boundaries
-    """
-    if(elementU[axis].interval == elementV[axis].interval):
-        """"Case, where trial and test functions intervals overlap"""
-        leftBoundaryPoint = elementU[axis].interval[0]
-        rightBoundaryPoint = elementU[axis].interval[1]
-
-        leftRealSpacePoint = elementU[axis].inverseMap(leftBoundaryPoint)
-        rightRealSpacePoint = elementU[axis].inverseMap(rightBoundaryPoint)
-
-        leftW = weight(leftRealSpacePoint) * elementU[axis].inverseDerivativeMap(leftBoundaryPoint)
-        rightW = weight(rightRealSpacePoint) * elementU[axis].inverseDerivativeMap(rightBoundaryPoint)
-
-        leftU_D = elementU[axis].evalDiff(leftBoundaryPoint)
-        leftV_I = elementV[axis].eval(leftBoundaryPoint)
-
-        rightU_D = elementU[axis].evalDiff(rightBoundaryPoint)
-        rightV_I = elementV[axis].eval(rightBoundaryPoint)
-
-        leftEvaluation = np.einsum("i, j, k -> jk", leftW, leftU_D, leftV_I)
-        rightEvaluation = np.einsum("i, j, k -> jk", rightW, rightU_D, rightV_I)
-        return leftEvaluation - rightEvaluation
-
-    if(elementU[axis].interval[1] == elementV[axis].interval[0]):
-        """"Case, where trial functions are on the RHS of test functions"""
-        rightBoundaryPoint = elementU[axis].interval[1]
-
-        rightRealSpacePoint = elementU[axis].inverseMap(rightBoundaryPoint)
-
-        rightW = weight(rightRealSpacePoint) * elementU[axis].inverseDerivativeMap(rightBoundaryPoint)
-
-        rightU_D = elementU[axis].evalDiff(rightBoundaryPoint)
-        rightV_I = elementV[axis].eval(rightBoundaryPoint)
-
-        rightEvaluation = np.einsum("i, j, k -> jk", rightW, rightU_D, rightV_I)
-        return rightEvaluation
-
-    if (elementU[axis].interval[0] == elementV[axis].interval[1]):
-        """"Case, where trial functions are on the LHS of test functions"""
-        leftBoundaryPoint = elementU[axis].interval[0]
-
-        leftRealSpacePoint = elementU[axis].inverseMap(leftBoundaryPoint)
-
-        leftW = weight(leftRealSpacePoint) * elementU[axis].inverseDerivativeMap(leftBoundaryPoint)
-        leftU_D = elementU[axis].evalDiff(leftBoundaryPoint)
-        leftV_I = elementV[axis].eval(leftBoundaryPoint)
-
-
-        leftEvaluation = np.einsum("i, j, k -> jk", leftW, leftU_D, leftV_I)
-        return -leftEvaluation
 
 
 def integrateFunctional(elementU: element, function,

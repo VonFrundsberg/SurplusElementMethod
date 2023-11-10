@@ -76,11 +76,11 @@ def solveSphericalPoisNoPhi(polyOrder, rhsF, integrPoints=2000):
     elem = element(np.array([[0, np.inf], [0, np.pi]]),
                    np.array(polyOrder, dtype=int), np.array([1, 0]))
 
-    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
     rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
 
     # tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x), integrPoints, 1)
-    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x) ** 2, integrPoints, 1) + \
+    tMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: np.sin(x) ** 2, integrPoints, 1) + \
                operations.integrateBilinearForm2(elem, lambda x: np.sin(x) * np.cos(x), integrPoints, 1)
     tMatrixI = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
 
@@ -148,16 +148,16 @@ def solveEigenSphericalPois(polyOrder, integrPoints=350):
     elem = element(np.array([[0, 50], [0, np.pi], [0, 2*np.pi]]),
                    np.array(polyOrder, dtype=int), np.array([0, 0, 3]))
 
-    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
     rMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
 
-    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
-               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
+    tMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: np.sin(x) ** 2, integrPoints, 1) + \
+               operations.integrateBilinearForm2(elem, lambda x: np.sin(x) * np.cos(x), integrPoints, 1)
 
     tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
     tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
 
-    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    pMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
     pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
 
     ttA = approx.kronSumtoTT_blockFormat([[None, rMatrixD, rMatrixI],
@@ -275,17 +275,17 @@ def solveEigenSphericalPois6dDifferentOrder(polyOrder, integrPoints=350):
     elem = element(np.array([[0, 20], [0, np.pi], [0, 2*np.pi]]),
                    np.array(polyOrder, dtype=int), np.array([0, 0, 3]))
 
-    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
     rMatrixI1 = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
     rMatrixI2 = operations.integrateBilinearForm0(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
 
-    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
-               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
+    tMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: np.sin(x) ** 2, integrPoints, 1) + \
+               operations.integrateBilinearForm2(elem, lambda x: np.sin(x) * np.cos(x), integrPoints, 1)
 
     tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
     tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
 
-    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    pMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
     pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
 
     ttA = approx.sphericalLaplace6d([[rMatrixI1, rMatrixD, rMatrixI2],
@@ -356,17 +356,17 @@ def solveEigenSphericalPois6d(polyOrder, integrPoints=350):
     elem = element(np.array([[0, 20], [0, np.pi], [0, 2*np.pi]]),
                    np.array(polyOrder, dtype=int), np.array([0, 0, 3]))
 
-    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
     rMatrixI1 = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
     rMatrixI2 = operations.integrateBilinearForm0(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
 
-    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
-               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
+    tMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: np.sin(x) ** 2, integrPoints, 1) + \
+               operations.integrateBilinearForm2(elem, lambda x: np.sin(x) * np.cos(x), integrPoints, 1)
 
     tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
     tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
 
-    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    pMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
     pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
 
     ttA1 = approx.kronSumtoTT_blockFormat([[None, rMatrixD, rMatrixI1],
@@ -434,17 +434,17 @@ def solveEigenSphericalPois6dRepulsionOld(polyOrder, prevSolutionCores, integrPo
     elem = element(np.array([[0, 20], [0, np.pi], [0, 2*np.pi]]),
                    np.array(polyOrder, dtype=int), np.array([0, 0, 3]))
 
-    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
     rMatrixI1 = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
     rMatrixI2 = operations.integrateBilinearForm0(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
 
-    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
-               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
+    tMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: np.sin(x) ** 2, integrPoints, 1) + \
+               operations.integrateBilinearForm2(elem, lambda x: np.sin(x) * np.cos(x), integrPoints, 1)
 
     tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
     tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
 
-    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    pMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
     pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
 
     ttA1 = approx.kronSumtoTT_blockFormat([[None, rMatrixD, rMatrixI1],
@@ -572,17 +572,17 @@ def solveEigenSphericalPois6dRepulsion(polyOrder, integrPoints=350):
     elem = element(np.array([[0, 20], [0, np.pi], [0, 2*np.pi]]),
                    np.array(polyOrder, dtype=int), np.array([0, 0, 3]))
 
-    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
     rMatrixI1 = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
     rMatrixI2 = operations.integrateBilinearForm0(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
 
-    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
-               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
+    tMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: np.sin(x) ** 2, integrPoints, 1) + \
+               operations.integrateBilinearForm2(elem, lambda x: np.sin(x) * np.cos(x), integrPoints, 1)
 
     tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
     tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
 
-    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    pMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
     pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
 
     ttA1 = approx.kronSumtoTT_blockFormat([[None, rMatrixD, rMatrixI1],
@@ -729,17 +729,17 @@ def solveEigenSphericalPois6dRepulsionDifferentOrder(polyOrder, integrPoints=350
     elem = element(np.array([[0, 20], [0, np.pi], [0, 2*np.pi]]),
                    np.array(polyOrder, dtype=int), np.array([0, 0, 3]))
 
-    rMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
+    rMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
     rMatrixI1 = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 0)[:-1, :-1]
     rMatrixI2 = operations.integrateBilinearForm0(elem, lambda x: x * x, integrPoints, 0)[:-1, :-1]
 
-    tMatrixD = operations.integrateBilinearForm1(elem, lambda x: np.sin(x)**2, integrPoints, 1) + \
-               operations.integrateBilinearForm2(elem, lambda x: np.sin(x)*np.cos(x), integrPoints, 1)
+    tMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: np.sin(x) ** 2, integrPoints, 1) + \
+               operations.integrateBilinearForm2(elem, lambda x: np.sin(x) * np.cos(x), integrPoints, 1)
 
     tMatrixIr = operations.integrateBilinearForm0(elem, lambda x: np.sin(x)**2, integrPoints, 1)
     tMatrixIp = operations.integrateBilinearForm0(elem, lambda x: x*0 + 1.0, integrPoints, 1)
 
-    pMatrixD = operations.integrateBilinearForm1(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
+    pMatrixD = operations.integrateBilinearForm1_SameElement(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
     pMatrixI = operations.integrateBilinearForm0(elem, lambda x: x * 0 + 1.0, integrPoints, 2)
 
     ttA = approx.sphericalLaplace6d([[rMatrixI1, rMatrixD, rMatrixI2],
