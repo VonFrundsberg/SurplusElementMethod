@@ -1,86 +1,96 @@
 import numpy as np
 from mathematics import spectral as spec
+from enum import Enum
 
-class basicElement():
-    def __init__(self, interval, approxOrder, elemType, boundaryConditions=[]):
-        """Constructor of basic (one-dimensional) element
+
+class ElementType(Enum):
+    LINEAR = 0
+    RATIONAL_INF_HALF_SPACE = 1
+    EXPONENTIAL_INF_HALF_SPACE = 2
+    PERIODIC_CARDINAL = 3
+
+class element1d():
+    def __initializeLINEAR(self):
+        a = self.interval[0];
+        b = self.interval[1]
+        q = (b - a) / 2.0;
+        p = (b + a) / 2.0
+        self.map = lambda x: (q * x + p)
+        self.inverseMap = lambda x: (x - p) / q
+
+        self.derivativeMap = lambda x: 1.0 / (q + x * 0)
+        self.inverseDerivativeMap = lambda x: q + 0
+
+    def __initializeRATIONAL_INF_HALF_SPACE(self):
+        if self.interval[0] == -np.inf:
+            self.map = lambda x: -((1.0 - x) / (1.0 + x) - self.interval[1])
+            self.inverseMap = lambda x: (x + 1.0 - self.interval[1]) / (-x + self.interval[1] + 1.0)
+
+            self.derivativeMap = lambda x: (x + 1) ** 2 / 2
+            self.inverseDerivativeMap = lambda x: 2 / (x + 1) ** 2
+            return
+
+        if self.interval[1] == np.inf:
+            self.map = lambda x: ((1.0 + x) / (1.0 - x) + self.interval[0])
+            self.inverseMap = lambda x: (-x + self.interval[0] + 1.0) / (-x + self.interval[0] - 1.0)
+
+            self.derivativeMap = lambda x: (x - 1) ** 2 / 2
+            self.inverseDerivativeMap = lambda x: 2 / (x - 1) ** 2
+
+    def __initializeEXPONENTIAL_INF_HALF_SPACE(self):
+        if self.interval[1] == np.inf:
+            self.map = lambda x: np.log((1.0 + x) / (1.0 - x) + 1) + self.interval[0]
+            self.inverseMap = lambda x: np.exp(self.interval[0] - x) * (np.exp(x - self.interval[0]) - 2.0)
+
+            self.derivativeMap = lambda x: (1.0 - x)
+            self.inverseDerivativeMap = lambda x: 1 / (1.0 - x)
+
+
+    def __initializePERIODIC_CARDINAL(self):
+        a = 0;
+        b = np.pi * 2
+        q = (b - a) / 2.0;
+        p = (b + a) / 2.0
+        self.map = lambda x: (q * x + p)
+        self.inverseMap = lambda x: (x - p) / q
+
+        self.derivativeMap = lambda x: 1.0 / (q + x * 0)
+        self.inverseDerivativeMap = lambda x: q + 0
+
+    def __init__(self, interval, approxOrder, elementType, dirichletBoundaryConditions=None):
+        """Constructor of one-dimensional galerkin element
 
         Arguments:
             interval:
             approxOrder:
-            elemType: 0 is linear qx+p, 1 is rational (1+x)/(1-x), 2 is exponential, 3 is periodic
+            elementType: 0 is linear qx+p, 1 is rational (1+x)/(1-x), 2 is exponential, 3 is periodic
             boundaryConditions:
 
         Returns: None
         """
         self.interval = np.array(interval)
         self.approxOrder = int(approxOrder)
-        self.boundaryConditions = boundaryConditions
+        self.elementType = int(elementType)
+        self.dirichletBoundaryConditions = dirichletBoundaryConditions
+
         self.refPointVal = np.eye(self.approxOrder)
-        for it in self.boundaryConditions:
-            self.refPointVal[it[0], it[0]] = it[1]
+        if dirichletBoundaryConditions is not None:
+            for it in self.dirichletBoundaryConditions:
+                self.refPointVal[it[0], it[0]] = it[1]
 
         self.refPointDiffVal = \
             spec.chebDiffMatrix(self.approxOrder, a=-1, b=1).\
                 dot(self.refPointVal)
-        match elemType:
-            case 0:
-                self.elemType = 0
-                a = self.interval[0]; b = self.interval[1]
-                q = (b - a) / 2.0; p = (b + a) / 2.0
-                self.map = lambda x: (q * x + p)
-                self.inverseMap = lambda x: (x - p)/q
 
-                self.derivativeMap = lambda x: 1.0 / (q + x * 0)
-                self.inverseDerivativeMap = lambda x: q + 0
-            case 1:
-                self.elemType = 1
-                if self.interval[0] == -np.inf:
-                    self.map = lambda x: -((1.0 - x) / (1.0 + x) - self.interval[1])
-                    self.inverseMap = lambda x: (x + 1.0 - self.interval[1])/(-x + self.interval[1] + 1.0)
-
-                    self.derivativeMap = lambda x: (x + 1) ** 2 / 2
-                    self.inverseDerivativeMap = lambda x: 2/(x + 1)**2
-                    return
-
-                if self.interval[1] == np.inf:
-                    self.map = lambda x: ((1.0 + x) / (1.0 - x) + self.interval[0])
-                    self.inverseMap = lambda x: (-x + self.interval[0] + 1.0) / (-x + self.interval[0] - 1.0)
-
-                    self.derivativeMap = lambda x: (x - 1) ** 2 / 2
-                    self.inverseDerivativeMap = lambda x: 2/(x - 1) ** 2
-                    return
-            case 2:
-                self.elemType = 2
-                # if self.interval[0] == -np.inf:
-                #     self.map = lambda x: -((1.0 - x) / (1.0 + x) - self.interval[1])
-                #     self.inverseMap = lambda x: (x + 1.0 - self.interval[1])/(-x + self.interval[1] + 1.0)
-                #
-                #     self.derivativeMap = lambda x: (x + 1) ** 2 / 2
-                #     self.inverseDerivativeMap = lambda x: 2/(x + 1)**2
-                #     return
-
-                if self.interval[1] == np.inf:
-                    self.map = lambda x: np.log((1.0 + x) / (1.0 - x) + 1) + self.interval[0]
-                    self.inverseMap = lambda x: np.exp(self.interval[0] - x)*(np.exp(x - self.interval[0]) - 2.0)
-
-                    self.derivativeMap = lambda x: (1.0 - x)
-                    self.inverseDerivativeMap = lambda x: 1/(1.0 - x)
-                    return
-            case 3:
-                self.elemType = 3
-                a = 0;
-                b = np.pi*2
-                q = (b - a) / 2.0;
-                p = (b + a) / 2.0
-                self.map = lambda x: (q * x + p)
-                self.inverseMap = lambda x: (x - p) / q
-
-                self.derivativeMap = lambda x: 1.0 / (q + x * 0)
-                self.inverseDerivativeMap = lambda x: q + 0
-            case 4:
-                self.elemType = 4
-
+        match self.elementType:
+            case ElementType.LINEAR.value:
+                self.__initializeLINEAR()
+            case ElementType.RATIONAL_INF_HALF_SPACE.value:
+                self.__initializeRATIONAL_INF_HALF_SPACE()
+            case ElementType.EXPONENTIAL_INF_HALF_SPACE.value:
+                self.__initializeRATIONAL_INF_HALF_SPACE()
+            case ElementType.PERIODIC_CARDINAL.value:
+                self.__initializePERIODIC_CARDINAL()
 
 
     def evalAtChebPoints(self):
@@ -101,7 +111,7 @@ class basicElement():
             Returns:
                 result: array with the shape: (*x.shape, degree of element)
         """
-        if self.elemType <= 2:
+        if self.elementType <= 2:
             x = np.atleast_1d(x)
             basisMatrix = self.refPointVal
             if x.size == 1:
@@ -111,7 +121,8 @@ class basicElement():
                     return np.array([basisMatrix[-1, :]])
 
             result = spec.barycentricChebInterpolate(basisMatrix, x, a=-1, b=1, axis=0)
-        elif self.elemType == 3:
+
+        elif self.elementType == 3:
             x = self.map(np.atleast_1d(x))
             n = self.approxOrder
 
@@ -138,7 +149,7 @@ class basicElement():
             Returns:
                 result: array with the shape: (*x.shape, degree of element)
         """
-        if self.elemType <= 2:
+        if self.elementType <= 2:
             x = np.atleast_1d(x)
             derivativeBasisMatrix = self.refPointDiffVal
             if x.size == 1:
@@ -149,7 +160,7 @@ class basicElement():
             # xs = np.array(self.imap(x), dtype=np.float)
             result = spec.barycentricChebInterpolate(f=derivativeBasisMatrix, x=x, a=-1, b=1, axis=0) \
                      * np.reshape(self.derivativeMap(x), (*x.shape, 1))
-        elif self.elemType == 3:
+        elif self.elementType == 3:
             x = self.map(np.atleast_1d(x))
             n = self.approxOrder
             xj = 2 * np.pi * np.arange(n) / n

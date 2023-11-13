@@ -1,6 +1,6 @@
 import time
 
-from FiniteElementMethod.element.basicElement import basicElement as belem
+from GalerkinMethod.element.element1d import element1d as belem
 import numpy as np
 import mathematics.approximate as approx
 import mathematics.integrate as integr

@@ -2,15 +2,15 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
 from scipy.interpolate import *
-from FiniteElementMethod.element.elementUtils import *
-from FiniteElementMethod.element.mainElementClass import *
-import FiniteElementMethod.main as fem
+from GalerkinMethod.element.elementUtils import *
+from GalerkinMethod.element.mainElementClass import *
+import GalerkinMethod.main as fem
 import matplotlib.pyplot as plt
 import time as time
 
 
 def schroedinger(N, infN, a, nn):
-    gen_obj = fem.FEM()
+    gen_obj = fem.GalerkinMethod()
     msh = mesh(1)
     f = func()
     msh.gen_mesh(np.array([[0.0 - a, a + 0.0]]), n=[nn], p=[N])

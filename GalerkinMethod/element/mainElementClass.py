@@ -1,20 +1,17 @@
 import numpy as np
 
-from FiniteElementMethod.element.basicElement import basicElement
+from GalerkinMethod.element.element1d import element1d
 import mathematics.approximate as approx
 
 class element():
-    def __init__(self, rectangle, polynomialOrder, mappingType=0, boundaryConditions=None):
+    def __init__(self, rectangle, approxOrder, mappingType=0, boundaryConditions=None):
         self.axes = []
-        self.approxOrder = np.atleast_1d(polynomialOrder)
+        self.approxOrder = np.atleast_1d(approxOrder)
         self.rectangle = np.atleast_2d(rectangle)
         self.dim = len(self.approxOrder)
         self.basicElements = []
         for i in range(self.dim):
-        #     if bc[i] is not None:
-        #         self.dims.append(b_elem(K[i, :], n[i], bc=bc[i], infMap=infMap))
-        #     else:
-            self.basicElements.append(basicElement(self.rectangle[i, :], self.approxOrder[i], mappingType[i]))
+            self.basicElements.append(element1d(self.rectangle[i, :], self.approxOrder[i], mappingType[i]))
 
     def getDim(self):
         return self.dim

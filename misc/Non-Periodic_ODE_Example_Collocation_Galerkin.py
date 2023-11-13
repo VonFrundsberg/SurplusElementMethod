@@ -4,8 +4,8 @@ import scipy.linalg as sp_lin
 import numpy.linalg as np_lin
 import matplotlib.pyplot as plt
 import time as time
-import FiniteElementMethod.element.mainElementClass as elem
-import FiniteElementMethod.element.elementUtils as oper
+import GalerkinMethod.element.mainElementClass as elem
+import GalerkinMethod.element.elementUtils as oper
 import mathematics.integrate as integr
 import scipy.special as special
 from matplotlib.ticker import ScalarFormatter

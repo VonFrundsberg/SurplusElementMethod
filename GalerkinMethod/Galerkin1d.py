@@ -2,7 +2,8 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
 import scipy.linalg as sp_lin
-from FiniteElementMethod.element import mainElementClass as element
+from GalerkinMethod.element import element1d as element
+
 import time as time
 import json
 
@@ -11,16 +12,14 @@ class DirichletBoundaryCondition:
     boundaryPoint: float
     boundaryValue: float
 
-class FEM:
-    def setBilinearForm(self, bilinearFormsList):
-        self.innerForms = [bilinearFormsList[0]]
-        self.boundaryForms = [bilinearFormsList[1], bilinearFormsList[2]]
+class GalerkinMethod1d:
+    def setBilinearForm(self, innerForms, boundaryForms):
+        self.innerForms = innerForms
+        self.boundaryForms = boundaryForms
 
-        return None
+    def setRHSFunctional(self, functionals):
+        self.functionals = functionals
 
-    def setRHSFunctional(self, functional):
-        self.functional = functional
-        return None
     def setDirichletBoundaryConditions(self, boundaryConditions):
 
         self.dirichletBoundaryConditions = []
@@ -30,10 +29,10 @@ class FEM:
 
             dirichletBoundaryCondition.axis = parsedJsonBCinfo["axis"]
             dirichletBoundaryCondition.boundaryPoint = parsedJsonBCinfo["boundaryPoint"]
-            dirichletBoundaryCondition.boundaryValue = parsedJsonBCinfo["value"]
+            dirichletBoundaryCondition.boundaryValue = parsedJsonBCinfo["boundaryValue"]
             self.dirichletBoundaryConditions.append(dirichletBoundaryCondition)
     def initializeMesh(self, mesh):
-        """Set up already made rectangular mesh, which is an object of SurplusElementMethod/FiniteElementMethod/mesh class
+        """Set up already made rectangular mesh, which is an object of SurplusElementMethod/GalerkinMethod/mesh class
 
         Arguments:
         mesh: list of 2 objects [mesh.elements, mesh.neighbours]. Elements contain info about domain decomposition and
@@ -51,9 +50,15 @@ class FEM:
         elementsAmount = self.mesh.getElementsAmount()
         self.elements = [None] * elementsAmount
         for i in range(elementsAmount):
-            tmpElement = self.mesh.elements[i]
-            self.elements[i] = element.element(tmpElement[:, :2], polynomialOrder=tmpElement[:, -2],
-                                               mappingType=tmpElement[:, -1])
+            tmpElementInfo = self.mesh.elements[i][0]
+            interval = tmpElementInfo[:2]
+            for boundaryCondition in self.dirichletBoundaryConditions:
+                if boundaryCondition.boundaryPoint == interval[0] or boundaryCondition.boundaryPoint == interval[1]:
+                    self.elements[i] = element.element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
+                                                       elementType=tmpElementInfo[-1], dirichletBoundaryConditions=boundaryCondition)
+                else:
+                    self.elements[i] = element.element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
+                                                    elementType=tmpElementInfo[-1])
 
     def calculateElements(self):
         """
@@ -69,6 +74,7 @@ class FEM:
 
         innerFormsAmount = len(self.innerForms)
         boundaryFormsAmount = len(self.boundaryForms)
+        rhsFunctionalsAmount = len(self.functionals)
 
         for i in range(elementsAmount):
             innerMatrix = self.innerForms[0](self.elements[i], self.elements[i])
@@ -78,7 +84,9 @@ class FEM:
 
             self.matrixElements[i][i] = sparse.csr_matrix(innerMatrix)
 
-            self.functionalElements[i] = (self.functional(self.elements[i])).flatten()
+            self.functionalElements[i] = (self.functionals[0](self.elements[i])).flatten()
+            for j in range(1, rhsFunctionalsAmount):
+                self.functionalElements[i] += (self.functionals[j](self.elements[i])).flatten()
 
             print(str(i) + ' \'s element calculated')
 

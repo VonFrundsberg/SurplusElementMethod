@@ -1,38 +1,40 @@
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sp_linalg
-import FiniteElementMethod.mesh.mesh as MeshClass
-import FiniteElementMethod.main as fem
-import FiniteElementMethod.element.basicElementUtils as belemUtils
+import GalerkinMethod.mesh.mesh as MeshClass
+import GalerkinMethod.Galerkin1d as galerkin
+import GalerkinMethod.element.element1dUtils as elem1dUtils
 import matplotlib.pyplot as plt
 import time as time
 
 def fun(N, a, nn):
-    finiteElementObject = fem.FEM()
+    galerkinMethodObject = galerkin.GalerkinMethod1d()
 
     gradForm = "integral w(x) grad(u) @ grad(v)"
     boundaryForm1 = "boundaryIntegral w(x) [u] <grad(v) @ n>"
     boundaryForm2 = "boundaryIntegral w(x) [v] <grad(u) @ n>"
 
-    gradForm = lambda trialElement, testElement: belemUtils.integrateBilinearForm1(
-        trialElement[0], testElement[0], lambda x: 1, 500)
-    def boundaryForm1(trialElement: fem.element.element, elementTest: fem.element.element):
-        return belemUtils.evaluateBilinearFormAtBoundary2(
-            trialElement=trialElement[0], testElement=elementTest[0], weight=lambda x: 1)
-    def boundaryForm2(trialElement: fem.element.element, testElement: fem.element.element):
-        return belemUtils.evaluateBilinearFormAtBoundary2(
-            trialElement=testElement[0], testElement=trialElement[0], weight=lambda x: 1)
+    gradForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
+        trialElement, testElement, lambda x: 1, 500)
+
+    def boundaryForm1(trialElement: galerkin.element.element1d, elementTest: galerkin.element.element1d):
+        return elem1dUtils.evaluateBilinearFormAtBoundary2(
+            trialElement=trialElement, testElement=elementTest, weight=lambda x: 1)
+
+    def boundaryForm2(trialElement: galerkin.element.element1d, testElement: galerkin.element.element1d):
+        return elem1dUtils.evaluateBilinearFormAtBoundary2(
+            trialElement=testElement, testElement=trialElement, weight=lambda x: 1)
 
     functional = "integral w(x) u f"
-    functional = lambda testElement: belemUtils.integrateFunctional(
-        testElement=testElement[0], function=lambda x: np.sin(x), weight=lambda x: 1, integrationPointsAmount=500)
+    functional = lambda testElement: elem1dUtils.integrateFunctional(
+        testElement=testElement, function=lambda x: np.sin(x), weight=lambda x: 1, integrationPointsAmount=500)
 
-    finiteElementObject.setBilinearForm([gradForm, boundaryForm1, boundaryForm2])
-    finiteElementObject.setRHSFunctional(functional)
+    galerkinMethodObject.setBilinearForm(innerForms=[gradForm], boundaryForms=[boundaryForm1, boundaryForm2])
+    galerkinMethodObject.setRHSFunctional([functional])
 
-    boundaryConditions = ['{ "axis": 0, "boundaryPoint": "5.0", "value": 0.0}']
+    boundaryConditions = ['{ "axis": 0, "boundaryPoint": "5.0", "boundaryValue": 0.0}']
 
-    finiteElementObject.setDirichletBoundaryConditions(boundaryConditions)
+    galerkinMethodObject.setDirichletBoundaryConditions(boundaryConditions)
 
     mesh = MeshClass.mesh(1)
     mesh.generateUniformMeshOnRectange([0, a], nn, N)
@@ -42,9 +44,9 @@ def fun(N, a, nn):
 
     mesh.fileWrite("elementsData.txt", "neighboursData.txt")
     mesh.fileRead("elementsData.txt", "neighboursData.txt")
-    finiteElementObject.initializeMesh(mesh)
-    finiteElementObject.initializeElements()
-    finiteElementObject.calculateElements()
+    galerkinMethodObject.initializeMesh(mesh)
+    galerkinMethodObject.initializeElements()
+    galerkinMethodObject.calculateElements()
     print('done')
     time.sleep(500)
 
