@@ -14,9 +14,13 @@ class PolyAffineElement:
         self.derivativeMap = lambda x: 1.0 / (q + x * 0)
         self.inverseDerivativeMap = lambda x: q + 0
         self.refPointVal = np.eye(self.approxOrder)
+        print('boundary cds')
         if dirichletBoundaryConditions is not None:
-            for it in self.dirichletBoundaryConditions:
-                self.refPointVal[it[0], it[0]] = it[1]
+            for bc in dirichletBoundaryConditions:
+                print(bc)
+        # if dirichletBoundaryConditions is not None:
+        #     for it in self.dirichletBoundaryConditions:
+        #         self.refPointVal[it[0], it[0]] = it[1]
 
         self.refPointDiffVal = \
             spec.chebDiffMatrix(self.approxOrder, a=-1, b=1).\

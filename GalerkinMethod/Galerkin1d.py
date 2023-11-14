@@ -5,7 +5,6 @@ from GalerkinMethod.element.Element1d import element1d as element
 import json
 
 class DirichletBoundaryCondition:
-    axis: int
     boundaryPoint: float
     boundaryValue: float
 
@@ -24,9 +23,12 @@ class GalerkinMethod1d:
             parsedJsonBCinfo = json.loads(boundaryCondition)
             dirichletBoundaryCondition = DirichletBoundaryCondition()
 
-            dirichletBoundaryCondition.axis = parsedJsonBCinfo["axis"]
-            dirichletBoundaryCondition.boundaryPoint = parsedJsonBCinfo["boundaryPoint"]
-            dirichletBoundaryCondition.boundaryValue = parsedJsonBCinfo["boundaryValue"]
+            context = {
+                'np': np
+            }
+
+            dirichletBoundaryCondition.boundaryPoint = eval(parsedJsonBCinfo["boundaryPoint"], context)
+            dirichletBoundaryCondition.boundaryValue = eval(str(parsedJsonBCinfo["boundaryValue"]), context)
             self.dirichletBoundaryConditions.append(dirichletBoundaryCondition)
     def initializeMesh(self, mesh):
         """Set up already made rectangular mesh, which is an object of SurplusElementMethod/GalerkinMethod/mesh class
@@ -50,6 +52,7 @@ class GalerkinMethod1d:
             tmpElementInfo = self.mesh.elements[i][0]
             interval = tmpElementInfo[:2]
             for boundaryCondition in self.dirichletBoundaryConditions:
+                print(boundaryCondition.boundaryPoint, interval)
                 if boundaryCondition.boundaryPoint == interval[0] or boundaryCondition.boundaryPoint == interval[1]:
                     self.elements[i] = element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
                                                          elementType=tmpElementInfo[-1], dirichletBoundaryConditions=boundaryCondition)

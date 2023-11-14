@@ -29,7 +29,7 @@ def fun(N, a, nn):
     galerkinMethodObject.setBilinearForm(innerForms=[gradForm], boundaryForms=[boundaryForm1, boundaryForm2])
     galerkinMethodObject.setRHSFunctional([functional])
 
-    boundaryConditions = ['{ "axis": 0, "boundaryPoint": "5.0", "boundaryValue": 0.0}']
+    boundaryConditions = ['{"boundaryPoint": "np.pi", "boundaryValue": 0.0}']
 
     galerkinMethodObject.setDirichletBoundaryConditions(boundaryConditions)
 
