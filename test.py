@@ -1,10 +1,7 @@
 import numpy as np
-import scipy.sparse as sparse
-import scipy.sparse.linalg as sp_linalg
 import GalerkinMethod.mesh.mesh as MeshClass
 import GalerkinMethod.Galerkin1d as galerkin
-import GalerkinMethod.element.element1dUtils as elem1dUtils
-import matplotlib.pyplot as plt
+import GalerkinMethod.element.Element1d.element1dUtils as elem1dUtils
 import time as time
 
 def fun(N, a, nn):
@@ -17,11 +14,11 @@ def fun(N, a, nn):
     gradForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
         trialElement, testElement, lambda x: 1, 500)
 
-    def boundaryForm1(trialElement: galerkin.element.element1d, elementTest: galerkin.element.element1d):
+    def boundaryForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
         return elem1dUtils.evaluateBilinearFormAtBoundary2(
             trialElement=trialElement, testElement=elementTest, weight=lambda x: 1)
 
-    def boundaryForm2(trialElement: galerkin.element.element1d, testElement: galerkin.element.element1d):
+    def boundaryForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateBilinearFormAtBoundary2(
             trialElement=testElement, testElement=trialElement, weight=lambda x: 1)
 

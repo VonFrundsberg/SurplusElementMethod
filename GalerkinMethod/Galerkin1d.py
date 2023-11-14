@@ -1,10 +1,7 @@
 import numpy as np
 import scipy.sparse as sparse
-import scipy.sparse.linalg as sp_linalg
-import scipy.linalg as sp_lin
-from GalerkinMethod.element import element1d as element
+from GalerkinMethod.element.Element1d import element1d as element
 
-import time as time
 import json
 
 class DirichletBoundaryCondition:
@@ -54,11 +51,11 @@ class GalerkinMethod1d:
             interval = tmpElementInfo[:2]
             for boundaryCondition in self.dirichletBoundaryConditions:
                 if boundaryCondition.boundaryPoint == interval[0] or boundaryCondition.boundaryPoint == interval[1]:
-                    self.elements[i] = element.element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
-                                                       elementType=tmpElementInfo[-1], dirichletBoundaryConditions=boundaryCondition)
+                    self.elements[i] = element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
+                                                         elementType=tmpElementInfo[-1], dirichletBoundaryConditions=boundaryCondition)
                 else:
-                    self.elements[i] = element.element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
-                                                    elementType=tmpElementInfo[-1])
+                    self.elements[i] = element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
+                                                         elementType=tmpElementInfo[-1])
 
     def calculateElements(self):
         """

@@ -1,6 +1,6 @@
 import numpy as np
 
-from GalerkinMethod.element.element1d import element1d
+from GalerkinMethod.element.Element1d.element1d import Element1d
 import mathematics.approximate as approx
 
 class element():
@@ -11,7 +11,7 @@ class element():
         self.dim = len(self.approxOrder)
         self.basicElements = []
         for i in range(self.dim):
-            self.basicElements.append(element1d(self.rectangle[i, :], self.approxOrder[i], mappingType[i]))
+            self.basicElements.append(Element1d(self.rectangle[i, :], self.approxOrder[i], mappingType[i]))
 
     def getDim(self):
         return self.dim

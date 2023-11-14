@@ -1,8 +1,5 @@
-import time
-
-from GalerkinMethod.element.element1d import element1d as belem
+from GalerkinMethod.element.Element1d.element1d import Element1d as belem
 import numpy as np
-import mathematics.approximate as approx
 import mathematics.integrate as integr
 def integrateBilinearForm1(trialElement: belem, testElement: belem,
                            weight, integrationPointsAmount: int):
