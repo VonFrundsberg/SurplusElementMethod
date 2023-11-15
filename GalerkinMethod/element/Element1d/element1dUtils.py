@@ -17,13 +17,13 @@ def integrateBilinearForm1(trialElement: belem, testElement: belem,
     """
 
     w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
-    w = w*trialElement.inverseDerivativeMap(x)
+    w = w * trialElement.inverseDerivativeMap(x)
     trialD = trialElement.evalDiff(x)
     testD = testElement.evalDiff(x)
 
     mappedX = trialElement.map(x)
 
-    W = weight(mappedX)*w
+    W = w * weight(mappedX)
     D2 = np.einsum('ij,ik->ijk', trialD, testD)
 
 
@@ -31,15 +31,16 @@ def integrateBilinearForm1(trialElement: belem, testElement: belem,
     return resultIntegrals
 
 
-def evaluateBilinearFormAtBoundary2(trialElement: belem, testElement: belem,
-                                    weight):
+def evaluateBilinearFormAtBoundary_20(trialElement: belem, testElement: belem,
+                                      weight):
     """Evaluates bilinear form of the type
         a(u, v) = weight(R) grad u(R) v(R) + weight(L) grad u(L) v(L),
         where u(x) and v(x) are basis functions of elementU element
         L and R are left and right (in inner limit) boundary of elementU interval.
 
         Arguments:
-            elementU:
+            trialElement:
+            testElement:
             weight:
         Returns:
             result: evaluated differences at boundaries
@@ -52,14 +53,15 @@ def evaluateBilinearFormAtBoundary2(trialElement: belem, testElement: belem,
         leftRealSpacePoint = trialElement.inverseMap(leftBoundaryPoint)
         rightRealSpacePoint = trialElement.inverseMap(rightBoundaryPoint)
 
-        leftWeight = weight(leftRealSpacePoint) * trialElement.inverseDerivativeMap(leftBoundaryPoint)
-        rightWeight = weight(rightRealSpacePoint) * trialElement.inverseDerivativeMap(rightBoundaryPoint)
+        leftWeight = weight(leftRealSpacePoint) #* trialElement.inverseDerivativeMap(leftBoundaryPoint)
+        rightWeight = weight(rightRealSpacePoint) #* trialElement.inverseDerivativeMap(rightBoundaryPoint)
 
         leftTrialD = trialElement.evalDiff(leftBoundaryPoint)
         leftTestI = testElement.eval(leftBoundaryPoint)
 
         rightTrialD = trialElement.evalDiff(rightBoundaryPoint)
         rightTestI = testElement.eval(rightBoundaryPoint)
+
         leftEvaluation = leftWeight * np.einsum("ij, ik -> jk", leftTrialD, leftTestI)
         rightEvaluation = rightWeight * np.einsum("ij, ik -> jk", rightTrialD, rightTestI)
         result = rightEvaluation + leftEvaluation
@@ -90,6 +92,71 @@ def evaluateBilinearFormAtBoundary2(trialElement: belem, testElement: belem,
         leftTestI = testElement.eval(leftBoundaryPoint)
 
         leftEvaluation = leftWeight * np.einsum("ij, ik -> jk", leftTrialD, leftTestI)
+        result = leftEvaluation
+        return result
+
+
+def evaluateBilinearFormAtBoundary_21(trialElement: belem, testElement: belem,
+                                    weight):
+    """Evaluates bilinear form of the type
+        a(u, v) = weight(R) u(R) grad v(R) + weight(L) u(L) grad v(L),
+        where u(x) and v(x) are basis functions of elementU element
+        L and R are left and right (in inner limit) boundary of elementU interval.
+
+        Arguments:
+            trialElement:
+            testElement:
+            weight:
+        Returns:
+            result: evaluated differences at boundaries
+    """
+
+    if (np.max(np.abs(trialElement.interval - testElement.interval)) <= np.finfo(float).eps*10):
+        leftBoundaryPoint = trialElement.interval[0]
+        rightBoundaryPoint = trialElement.interval[1]
+
+        leftRealSpacePoint = trialElement.inverseMap(leftBoundaryPoint)
+        rightRealSpacePoint = trialElement.inverseMap(rightBoundaryPoint)
+
+        leftWeight = weight(leftRealSpacePoint)# * trialElement.inverseDerivativeMap(leftBoundaryPoint)
+        rightWeight = weight(rightRealSpacePoint)# * trialElement.inverseDerivativeMap(rightBoundaryPoint)
+
+        leftTrialI = trialElement.eval(leftBoundaryPoint)
+        leftTestD = testElement.evalDiff(leftBoundaryPoint)
+
+        rightTrialI = trialElement.eval(rightBoundaryPoint)
+        rightTestD = testElement.evalDiff(rightBoundaryPoint)
+        leftEvaluation = leftWeight * np.einsum("ij, ik -> jk", leftTrialI, leftTestD)
+        rightEvaluation = rightWeight * np.einsum("ij, ik -> jk", rightTrialI, rightTestD)
+        result = rightEvaluation + leftEvaluation
+        return result
+
+    if(trialElement.interval[1] == testElement.interval[0]):
+        """"Case, where trial functions are on the LHS of test functions"""
+        rightBoundaryPoint = trialElement.interval[1]
+
+        rightRealSpacePoint = trialElement.inverseMap(rightBoundaryPoint)
+
+        rightWeight = weight(rightRealSpacePoint) * trialElement.inverseDerivativeMap(rightBoundaryPoint)
+
+        rightTrialI = trialElement.eval(rightBoundaryPoint)
+        rightTestD = testElement.evalDiff(rightBoundaryPoint)
+        rightEvaluation = rightWeight * np.einsum("ij, ik -> jk", rightTrialI, rightTestD)
+        result = rightEvaluation
+        return result
+
+    if(trialElement.interval[0] == testElement.interval[1]):
+        """Case, where trial functions are on the RHS of test functions"""
+        leftBoundaryPoint = trialElement.interval[0]
+
+        leftRealSpacePoint = trialElement.inverseMap(leftBoundaryPoint)
+
+        leftWeight = weight(leftRealSpacePoint) * trialElement.inverseDerivativeMap(leftBoundaryPoint)
+
+        leftTrialI = trialElement.evalDiff(leftBoundaryPoint)
+        leftTestD = testElement.eval(leftBoundaryPoint)
+
+        leftEvaluation = leftWeight * np.einsum("ij, ik -> jk", leftTrialI, leftTestD)
         result = leftEvaluation
         return result
 

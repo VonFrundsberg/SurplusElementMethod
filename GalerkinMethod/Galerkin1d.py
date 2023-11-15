@@ -1,12 +1,10 @@
 import numpy as np
 import scipy.sparse as sparse
 from GalerkinMethod.element.Element1d import element1d as element
-
+from GalerkinMethod.element.Element1d.DirichletBoundaryCondition import DirichletBoundaryCondition
 import json
 
-class DirichletBoundaryCondition:
-    boundaryPoint: float
-    boundaryValue: float
+
 
 class GalerkinMethod1d:
     def setBilinearForm(self, innerForms, boundaryForms):
@@ -51,13 +49,17 @@ class GalerkinMethod1d:
         for i in range(elementsAmount):
             tmpElementInfo = self.mesh.elements[i][0]
             interval = tmpElementInfo[:2]
+            elementBoundaryConditions = []
             for boundaryCondition in self.dirichletBoundaryConditions:
-                print(boundaryCondition.boundaryPoint, interval)
                 if boundaryCondition.boundaryPoint == interval[0] or boundaryCondition.boundaryPoint == interval[1]:
-                    self.elements[i] = element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
-                                                         elementType=tmpElementInfo[-1], dirichletBoundaryConditions=boundaryCondition)
-                else:
-                    self.elements[i] = element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
+                    elementBoundaryConditions.append(boundaryCondition)
+
+            if len(elementBoundaryConditions) > 0:
+                self.elements[i] = element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
+                                                         elementType=tmpElementInfo[-1],
+                                                         dirichletBoundaryConditions=elementBoundaryConditions)
+            else:
+                 self.elements[i] = element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
                                                          elementType=tmpElementInfo[-1])
 
     def calculateElements(self):
@@ -80,22 +82,23 @@ class GalerkinMethod1d:
             innerMatrix = self.innerForms[0](self.elements[i], self.elements[i])
 
             for j in range(1, innerFormsAmount):
-                innerMatrix += self.innerForms[0](self.elements[i], self.elements[i])
+                innerMatrix += self.innerForms[j](self.elements[i], self.elements[i])
 
-            self.matrixElements[i][i] = sparse.csr_matrix(innerMatrix)
+            self.matrixElements[i][i] = innerMatrix
 
             self.functionalElements[i] = (self.functionals[0](self.elements[i])).flatten()
             for j in range(1, rhsFunctionalsAmount):
                 self.functionalElements[i] += (self.functionals[j](self.elements[i])).flatten()
 
             print(str(i) + ' \'s element calculated')
+            print('its grad matrix')
+            print(self.matrixElements[i][i])
 
             for neighborNumber in self.mesh.neighbours[i]:
-                self.matrixElements[i][i] = self.boundaryForms[0](self.elements[i], self.elements[i])
-                print(self.matrixElements[i][i])
-                for boundaryFormNumber in range(1, boundaryFormsAmount):
+                for boundaryFormNumber in range(boundaryFormsAmount):
+                    print("boundary form ", boundaryFormNumber)
+                    print(self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[i]))
                     self.matrixElements[i][i] += self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[i])
-
                 if i < neighborNumber:
                         self.matrixElements[i][neighborNumber] = self.boundaryForms[0](self.elements[i], self.elements[neighborNumber])
                         for boundaryFormNumber in range(1, boundaryFormsAmount):
@@ -103,6 +106,8 @@ class GalerkinMethod1d:
                                 self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[neighborNumber])
                 else:
                     self.matrixElements[i][neighborNumber] = self.matrixElements[neighborNumber][i].T
+            print("resulting matrix")
+            print(self.matrixElements[i][i])
 
     def solveSLAE(self):
         return None

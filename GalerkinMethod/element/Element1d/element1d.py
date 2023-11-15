@@ -24,7 +24,6 @@ class Element1d:
                 return PeriodicCardinal(self.interval, self.approxOrder, self.dirichletBoundaryConditions)
     def __init__(self, interval, approxOrder, elementType, dirichletBoundaryConditions=None):
         """Constructor of one-dimensional galerkin element
-
         Arguments:
             interval:
             approxOrder:

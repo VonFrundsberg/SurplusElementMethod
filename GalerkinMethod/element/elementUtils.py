@@ -189,9 +189,6 @@ def integrateFunctionalWithMatrixRHS(elementU: element, evaluatedFuncsList,
 
 
     matrixFunction = np.einsum('ij,ik->ijk', evaluatedFuncsList, evaluatedFuncsList)
-
-
-
     resultIntegrals = np.einsum('in, ijk, i -> njk',
                                 evaluatedBasisFunctions, matrixFunction, integrWeight)
     return resultIntegrals

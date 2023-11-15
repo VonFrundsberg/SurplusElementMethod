@@ -1,7 +1,16 @@
 import numpy as np
 from mathematics import spectral as spec
+from GalerkinMethod.element.Element1d.DirichletBoundaryCondition import DirichletBoundaryCondition
 class PolyAffineElement:
-    def __init__(self, interval, approxOrder, dirichletBoundaryConditions=None):
+    """"
+    Basis functions are Lagrange polynomials based on Chebyshev points of second kind:
+    x_j = -cos(j * pi / n), j = 0,...,n
+    "native" interval is [-1, 1], if another interval [a, b] is specified (with finite values a, b),
+     the polynomials are mapped using linear transformation q * x + p, where
+     q = (b - a)/2, p = (b + a)/2.
+     Dirichlet boundary conditions can be specified only at a, b
+    """
+    def __init__(self, interval, approxOrder, dirichletBoundaryConditions : list[DirichletBoundaryCondition]=None):
         self.interval = np.array(interval)
         self.approxOrder = int(approxOrder)
         self.dirichletBoundaryConditions = dirichletBoundaryConditions
@@ -14,17 +23,14 @@ class PolyAffineElement:
         self.derivativeMap = lambda x: 1.0 / (q + x * 0)
         self.inverseDerivativeMap = lambda x: q + 0
         self.refPointVal = np.eye(self.approxOrder)
-        print('boundary cds')
         if dirichletBoundaryConditions is not None:
             for bc in dirichletBoundaryConditions:
-                print(bc)
-        # if dirichletBoundaryConditions is not None:
-        #     for it in self.dirichletBoundaryConditions:
-        #         self.refPointVal[it[0], it[0]] = it[1]
+                if bc.boundaryPoint == self.interval[0]:
+                    self.refPointVal[0, 0] = bc.boundaryValue
+                if bc.boundaryPoint == self.interval[1]:
+                    self.refPointVal[-1, -1] = bc.boundaryValue
 
-        self.refPointDiffVal = \
-            spec.chebDiffMatrix(self.approxOrder, a=-1, b=1).\
-                dot(self.refPointVal)
+        self.refPointDiffVal = spec.chebDiffMatrix(self.approxOrder, a=-1, b=1) @ self.refPointVal
 
     def eval(self, x):
         """ Evaluates basis functions at points x
