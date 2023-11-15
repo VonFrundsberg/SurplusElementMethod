@@ -49,7 +49,7 @@ class PolyAffineElement:
             if x[0] == self.interval[-1]:
                 return np.array([basisMatrix[-1, :]])
 
-        return spec.barycentricChebInterpolate(basisMatrix, x, a=-1, b=1, axis=0)
+        return spec.barycentricChebInterpolate(basisMatrix, x, a=self.interval[0], b=self.interval[1], axis=0)
 
     def evalDiff(self, x):
         """ Evaluates derivatives of basis functions at points x
@@ -67,5 +67,6 @@ class PolyAffineElement:
                     return self.derivativeMap(-1)*np.array([derivativeBasisMatrix[0, :]])
             if x[0] == self.interval[-1]:
                     return self.derivativeMap(1)*np.array([derivativeBasisMatrix[-1, :]])
-        return spec.barycentricChebInterpolate(f=derivativeBasisMatrix, x=x, a=-1, b=1, axis=0) \
+        return spec.barycentricChebInterpolate(f=derivativeBasisMatrix,
+                    x=x, a=self.interval[0], b=self.interval[1], axis=0) \
                      * np.reshape(self.derivativeMap(x), (*x.shape, 1))

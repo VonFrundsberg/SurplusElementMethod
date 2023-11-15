@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.sparse as sparse
+import scipy.sparse.linalg as sparse_linalg
 from GalerkinMethod.element.Element1d import element1d as element
 from GalerkinMethod.element.Element1d.DirichletBoundaryCondition import DirichletBoundaryCondition
 import json
@@ -79,38 +80,52 @@ class GalerkinMethod1d:
         rhsFunctionalsAmount = len(self.functionals)
 
         for i in range(elementsAmount):
-            innerMatrix = self.innerForms[0](self.elements[i], self.elements[i])
+            self.matrixElements[i][i] = self.innerForms[0](self.elements[i], self.elements[i])
 
             for j in range(1, innerFormsAmount):
-                innerMatrix += self.innerForms[j](self.elements[i], self.elements[i])
+                self.matrixElements[i][i] += self.innerForms[j](self.elements[i], self.elements[i])
 
-            self.matrixElements[i][i] = innerMatrix
+            for boundaryFormNumber in range(boundaryFormsAmount):
+                self.matrixElements[i][i] += self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[i])
 
             self.functionalElements[i] = (self.functionals[0](self.elements[i])).flatten()
             for j in range(1, rhsFunctionalsAmount):
                 self.functionalElements[i] += (self.functionals[j](self.elements[i])).flatten()
 
-            print(str(i) + ' \'s element calculated')
-            print('its grad matrix')
-            print(self.matrixElements[i][i])
-
             for neighborNumber in self.mesh.neighbours[i]:
-                for boundaryFormNumber in range(boundaryFormsAmount):
-                    print("boundary form ", boundaryFormNumber)
-                    print(self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[i]))
-                    self.matrixElements[i][i] += self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[i])
                 if i < neighborNumber:
-                        self.matrixElements[i][neighborNumber] = self.boundaryForms[0](self.elements[i], self.elements[neighborNumber])
-                        for boundaryFormNumber in range(1, boundaryFormsAmount):
+                    self.matrixElements[i][neighborNumber] = self.boundaryForms[0](self.elements[i], self.elements[neighborNumber])
+                    for boundaryFormNumber in range(1, boundaryFormsAmount):
                             self.matrixElements[i][neighborNumber] +=\
                                 self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[neighborNumber])
+
+                    """in case of non-adjoint operator"""
+                    # self.matrixElements[neighborNumber][i] = self.boundaryForms[0](self.elements[neighborNumber],
+                    #                                                                    self.elements[i])
+                    # for boundaryFormNumber in range(1, boundaryFormsAmount):
+                    #         self.matrixElements[neighborNumber][i] += \
+                    #             self.boundaryForms[boundaryFormNumber](self.elements[neighborNumber], self.elements[i])
                 else:
-                    self.matrixElements[i][neighborNumber] = self.matrixElements[neighborNumber][i].T
-            print("resulting matrix")
-            print(self.matrixElements[i][i])
+                    self.matrixElements[i][neighborNumber] = (self.matrixElements[neighborNumber][i]).T
 
     def solveSLAE(self):
-        return None
+        for i in range(len(self.elements)):
+            for j in range(len(self.elements)):
+                if self.matrixElements[i][j] is not None:
+                    self.matrixElements[i][j] = sparse.csr_matrix(self.matrixElements[i][j])
+
+        A = sparse.bmat(self.matrixElements)
+        A = sparse.csr_matrix(A)
+
+        ind = (A.getnnz(1) > 0).copy()
+
+        A = A[A.getnnz(1) > 0, :][:, A.getnnz(0) > 0]
+        self.functionalElements = np.hstack(self.functionalElements)
+
+        self.functionalElements = self.functionalElements[ind]
+        sol = sparse_linalg.spsolve(A, self.functionalElements)
+
+        return sol
 
     def solve(self):
         A = sparse.bmat(self.matrixElems)

@@ -3,6 +3,8 @@ import GalerkinMethod.mesh.mesh as MeshClass
 import GalerkinMethod.Galerkin1d as galerkin
 import GalerkinMethod.element.Element1d.element1dUtils as elem1dUtils
 import time as time
+import matplotlib.pyplot as plt
+import mathematics.spectral as spec
 
 def fun(N, a, nn):
     galerkinMethodObject = galerkin.GalerkinMethod1d()
@@ -15,12 +17,12 @@ def fun(N, a, nn):
         trialElement, testElement, lambda x: 1, 500)
 
     def boundaryForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
-        return elem1dUtils.evaluateBilinearFormAtBoundary_20(
-            trialElement=trialElement, testElement=elementTest, weight=lambda x: 0.5)
+        return elem1dUtils.evaluateDG_JumpComponentMain(
+            trialElement=trialElement, testElement=elementTest, weight=lambda x: -1)
 
     def boundaryForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
-        return elem1dUtils.evaluateBilinearFormAtBoundary_21(
-            trialElement=trialElement, testElement=testElement, weight=lambda x: 0.5)
+        return elem1dUtils.evaluateDG_JumpComponentSymmetry(
+            trialElement=trialElement, testElement=testElement, weight=lambda x: -1)
 
     functional = "integral w(x) u f"
     functional = lambda testElement: elem1dUtils.integrateFunctional(
@@ -29,8 +31,8 @@ def fun(N, a, nn):
     galerkinMethodObject.setBilinearForm(innerForms=[gradForm], boundaryForms=[boundaryForm1, boundaryForm2])
     galerkinMethodObject.setRHSFunctional([functional])
     boundaryConditions = []
-    # boundaryConditions = ['{"boundaryPoint": "np.pi", "boundaryValue": 0.0}',
-    #                       '{"boundaryPoint": "0", "boundaryValue": 0.0}']
+    boundaryConditions = ['{"boundaryPoint": "np.pi", "boundaryValue": 0.0}',
+                          '{"boundaryPoint": "0", "boundaryValue": 0.0}']
 
     galerkinMethodObject.setDirichletBoundaryConditions(boundaryConditions)
 
@@ -45,8 +47,15 @@ def fun(N, a, nn):
     galerkinMethodObject.initializeMesh(mesh)
     galerkinMethodObject.initializeElements()
     galerkinMethodObject.calculateElements()
+    solution = galerkinMethodObject.solveSLAE()
+    gridLeft = spec.chebNodes(N, 0, a/2)
+    gridRight = spec.chebNodes(N, a/2, a)
+    grid = np.hstack([gridLeft[1:], gridRight[:-1]])
+    plt.plot(grid, solution - np.sin(grid))
+    # plt.plot(grid, np.sin(grid))
+    plt.show()
     print('done')
-    time.sleep(500)
+    # time.sleep(500)
 
 
-fun(4, np.pi, 2)
+fun(10, np.pi, 2)
