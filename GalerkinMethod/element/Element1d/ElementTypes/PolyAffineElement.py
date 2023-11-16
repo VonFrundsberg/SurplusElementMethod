@@ -32,6 +32,22 @@ class PolyAffineElement:
 
         self.refPointDiffVal = spec.chebDiffMatrix(self.approxOrder, a=-1, b=1) @ self.refPointVal
 
+
+    def evaluateExpansion(self, coefficients: list[float], x: list[float]):
+        """ Evaluates expansion in basis functions with given coefficients at points x
+                            Arguments:
+                                coefficients: list of basis coefficients
+                                x: list of evaluation points
+
+                            Returns:
+                                result: array with the shape: (*x.shape)
+                """
+        x = np.atleast_1d(x)
+        basisMatrix = np.eye(self.approxOrder)
+        evaluatedBasis = spec.barycentricChebInterpolate(basisMatrix, x, a=self.interval[0], b=self.interval[1], axis=0)
+
+        return evaluatedBasis @ coefficients
+
     def eval(self, x):
         """ Evaluates basis functions at points x
 

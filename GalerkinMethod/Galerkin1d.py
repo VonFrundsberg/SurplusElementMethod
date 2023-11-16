@@ -8,6 +8,7 @@ import json
 
 
 class GalerkinMethod1d:
+
     def setBilinearForm(self, innerForms, boundaryForms):
         self.innerForms = innerForms
         self.boundaryForms = boundaryForms
@@ -46,7 +47,7 @@ class GalerkinMethod1d:
         """
         """
         elementsAmount = self.mesh.getElementsAmount()
-        self.elements = [None] * elementsAmount
+        self.elements : list[element.Element1d] = [None] * elementsAmount
         for i in range(elementsAmount):
             tmpElementInfo = self.mesh.elements[i][0]
             interval = tmpElementInfo[:2]
@@ -56,12 +57,13 @@ class GalerkinMethod1d:
                     elementBoundaryConditions.append(boundaryCondition)
 
             if len(elementBoundaryConditions) > 0:
-                self.elements[i] = element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
+                self.elements[i] = (element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
                                                          elementType=tmpElementInfo[-1],
-                                                         dirichletBoundaryConditions=elementBoundaryConditions)
+                                                         dirichletBoundaryConditions=elementBoundaryConditions))
             else:
-                 self.elements[i] = element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
-                                                         elementType=tmpElementInfo[-1])
+                 self.elements[i] = (element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
+                                                         elementType=tmpElementInfo[-1]))
+        # print(len(self.elements))
 
     def calculateElements(self):
         """
@@ -99,7 +101,7 @@ class GalerkinMethod1d:
                             self.matrixElements[i][neighborNumber] +=\
                                 self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[neighborNumber])
 
-                    """in case of non-adjoint operator"""
+                    """in case of non-symmetric operator"""
                     # self.matrixElements[neighborNumber][i] = self.boundaryForms[0](self.elements[neighborNumber],
                     #                                                                    self.elements[i])
                     # for boundaryFormNumber in range(1, boundaryFormsAmount):
@@ -109,6 +111,10 @@ class GalerkinMethod1d:
                     self.matrixElements[i][neighborNumber] = (self.matrixElements[neighborNumber][i]).T
 
     def solveSLAE(self):
+        """Solves system matrixElements @ u = functionalElements
+            Works only for zero Dirichlet boundary conditions
+            Returns:
+                solution in the form of one-dimensional array"""
         for i in range(len(self.elements)):
             for j in range(len(self.elements)):
                 if self.matrixElements[i][j] is not None:
@@ -118,21 +124,32 @@ class GalerkinMethod1d:
         A = sparse.csr_matrix(A)
 
         ind = (A.getnnz(1) > 0).copy()
-
         A = A[A.getnnz(1) > 0, :][:, A.getnnz(0) > 0]
         self.functionalElements = np.hstack(self.functionalElements)
 
         self.functionalElements = self.functionalElements[ind]
-        sol = sparse_linalg.spsolve(A, self.functionalElements)
+        self.solutionWithDirichletBC = np.zeros(ind.shape, dtype=float)
+        solution = sparse_linalg.spsolve(A, self.functionalElements)
+        self.solutionWithDirichletBC[ind] = solution
+        return self.solutionWithDirichletBC
 
-        return sol
+    def evaluateSolutionAtPoints(self, x):
 
-    def solve(self):
-        A = sparse.bmat(self.matrixElems)
-        A = sparse.csr_matrix(A)
-        ind = (A.getnnz(1) > 0).copy()
+        """
 
-        A = A[A.getnnz(1) > 0, :][:, A.getnnz(0) > 0]
-        self.rhs = np.hstack(self.rhs)
+        """
+        elementsAmount = self.mesh.getElementsAmount()
+        evaluatedSolution = np.zeros(x.shape, dtype=float)
+        offset = 0
+        for elementNumber in range(elementsAmount):
+            interval = self.elements[elementNumber].interval
+            elementPointIndices = np.squeeze(np.argwhere((x >= interval[0]) & (x <= interval[1])))
 
-        self.rhs = self.rhs[ind]
+            elementCoefficients = self.solutionWithDirichletBC[offset: offset + self.elements[elementNumber].approxOrder]
+            offset += self.elements[elementNumber].approxOrder
+
+            evaluatedElementOnLocalGrid = self.elements[elementNumber].evaluateExpansion(
+                elementCoefficients, x[elementPointIndices])
+            evaluatedSolution[elementPointIndices] = evaluatedElementOnLocalGrid
+
+        return evaluatedSolution

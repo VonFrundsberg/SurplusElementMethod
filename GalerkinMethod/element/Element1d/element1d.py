@@ -22,6 +22,8 @@ class Element1d:
                 return ExponentialInfHalfSpace(self.interval, self.approxOrder, self.dirichletBoundaryConditions)
             case ElementType.PERIODIC_CARDINAL.value:
                 return PeriodicCardinal(self.interval, self.approxOrder, self.dirichletBoundaryConditions)
+
+
     def __init__(self, interval, approxOrder, elementType, dirichletBoundaryConditions=None):
         """Constructor of one-dimensional galerkin element
         Arguments:
@@ -50,3 +52,6 @@ class Element1d:
         self.evalDiff = self.__elementTypeInstance.evalDiff
         if hasattr(self.__elementTypeInstance, 'evalDiffRefNodes'):
             self.evalDiffRefNodes = self.__elementTypeInstance.evalDiffRefNodes
+
+        if hasattr(self.__elementTypeInstance, 'evaluateExpansion'):
+            self.evaluateExpansion = self.__elementTypeInstance.evaluateExpansion

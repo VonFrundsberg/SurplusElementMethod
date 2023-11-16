@@ -45,7 +45,7 @@ def evaluateDG_JumpComponentMain(trialElement: belem, testElement: belem,
             testElement:
             weight:
         Returns:
-            result: evaluated differences at boundaries
+            result: evaluated values at boundaries
     """
     epsilon = np.finfo(float).eps
     leftRef_LeftLim = trialElement.interval[0] - epsilon
@@ -58,28 +58,6 @@ def evaluateDG_JumpComponentMain(trialElement: belem, testElement: belem,
 
     leftTrialD = trialElement.evalDiff(leftRef_LeftLim) + trialElement.evalDiff(leftRef_RightLim)
     leftTestI = testElement.eval(leftRef_LeftLim) - testElement.eval(leftRef_RightLim)
-    output = False
-    if output:
-        print('trial interval')
-        print(trialElement.interval)
-        print("test interval")
-        print(testElement.interval)
-        print('trial evaluations leftPoint')
-        print(trialElement.evalDiff(leftRef_LeftLim))
-        print(trialElement.evalDiff(leftRef_RightLim))
-
-        print("test evaluations leftPoint")
-        print(testElement.evalDiff(leftRef_LeftLim))
-        print(testElement.evalDiff(leftRef_RightLim))
-
-        print('trial evaluations rightPoint')
-        print(trialElement.evalDiff(rightRef_LeftLim))
-        print(trialElement.evalDiff(rightRef_RightLim))
-
-        print("test evaluations rightPoint")
-        print(testElement.evalDiff(rightRef_LeftLim))
-        print(testElement.evalDiff(rightRef_RightLim))
-        print("NEXT ELEMENT")
 
     rightTrialD = trialElement.evalDiff(rightRef_LeftLim) + trialElement.evalDiff(rightRef_RightLim)
     rightTestI = testElement.eval(rightRef_LeftLim) - testElement.eval(rightRef_RightLim)

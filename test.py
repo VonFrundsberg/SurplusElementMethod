@@ -48,9 +48,9 @@ def fun(N, a, nn):
     galerkinMethodObject.initializeElements()
     galerkinMethodObject.calculateElements()
     solution = galerkinMethodObject.solveSLAE()
-    gridLeft = spec.chebNodes(N, 0, a/2)
-    gridRight = spec.chebNodes(N, a/2, a)
-    grid = np.hstack([gridLeft[1:], gridRight[:-1]])
+    grid = np.linspace(0, a, 1000)
+    solution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
+
     plt.plot(grid, solution - np.sin(grid))
     # plt.plot(grid, np.sin(grid))
     plt.show()
@@ -58,4 +58,4 @@ def fun(N, a, nn):
     # time.sleep(500)
 
 
-fun(10, np.pi, 2)
+fun(10, np.pi, 3)
