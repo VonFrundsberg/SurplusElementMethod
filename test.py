@@ -6,7 +6,7 @@ import time as time
 import matplotlib.pyplot as plt
 import mathematics.spectral as spec
 
-def fun(N, a, nn):
+def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid):
     galerkinMethodObject = galerkin.GalerkinMethod1d()
 
     gradForm = "integral w(x) grad(u) @ grad(v)"
@@ -37,7 +37,10 @@ def fun(N, a, nn):
     galerkinMethodObject.setDirichletBoundaryConditions(boundaryConditions)
 
     mesh = MeshClass.mesh(1)
-    mesh.generateUniformMeshOnRectange([0, a], nn, N)
+    mesh.generateUniformMeshOnRectange([0, infElementBoundary],
+                                       [amountOfElementsOnFiniteGrid],
+                                       [approximationOrder])
+    mesh.extendRectangleToInf_AlongAxis_OneDirection("right", infElementBoundary, 0, 20)
     mesh.establishNeighbours()
 
     np.set_printoptions(precision=3, suppress=True)
@@ -48,13 +51,13 @@ def fun(N, a, nn):
     galerkinMethodObject.initializeElements()
     galerkinMethodObject.calculateElements()
     solution = galerkinMethodObject.solveSLAE()
-    grid = np.linspace(0, a, 1000)
+    grid = np.linspace(0, infElementBoundary, 1000)
     solution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
 
-    plt.plot(grid, solution - np.sin(grid))
+    # plt.plot(grid, solution - np.sin(grid))
     # plt.plot(grid, np.sin(grid))
-    plt.show()
-    print('done')
+    # plt.show()
+    # print('done')
     # time.sleep(500)
 
 
