@@ -47,14 +47,44 @@ def evaluateDG_JumpComponentMain(trialElement: belem, testElement: belem,
         Returns:
             result: evaluated values at boundaries
     """
-    epsilon = np.finfo(float).eps
-    leftRef_LeftLim = trialElement.interval[0] - epsilon
-    leftRef_RightLim = trialElement.interval[0] + epsilon
-    rightRef_LeftLim = trialElement.interval[1] - epsilon
-    rightRef_RightLim = trialElement.interval[1] + epsilon
+    leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
+    leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
+    rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
+    rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
 
     leftWeight = 0.5 * weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
     rightWeight = 0.5 * weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
+
+    output = False
+    if output:
+        print("Main DG component")
+        if trialElement.interval[1] == np.inf:
+            print("Intervals for trial and test elements are: ")
+            print(trialElement.interval, testElement.interval)
+
+            print("Left and right limits of diff TRIAL LEFT point are:")
+            print(trialElement.evalDiff(leftRef_LeftLim))
+            # print(leftRef_RightLim)
+            print(trialElement.evalDiff(leftRef_RightLim))
+
+            print("Left and right limits of diff TEST LEFT point are:")
+            print(testElement.evalDiff(leftRef_LeftLim))
+            print(testElement.evalDiff(leftRef_RightLim))
+
+            print("Left and right limits of diff TRIAL RIGHT point are:")
+            print(trialElement.evalDiff(rightRef_LeftLim))
+            print(trialElement.evalDiff(rightRef_RightLim))
+
+            print("Left and right limits of diff TEST RIGHT point are:")
+            print(testElement.evalDiff(rightRef_LeftLim))
+            print(testElement.evalDiff(rightRef_RightLim))
+
+            print("Weight at left and right points")
+            print(leftWeight, rightWeight)
+
+
+
+
 
     leftTrialD = trialElement.evalDiff(leftRef_LeftLim) + trialElement.evalDiff(leftRef_RightLim)
     leftTestI = testElement.eval(leftRef_LeftLim) - testElement.eval(leftRef_RightLim)
@@ -64,6 +94,12 @@ def evaluateDG_JumpComponentMain(trialElement: belem, testElement: belem,
 
     leftEvaluation = leftWeight * np.einsum("ij, ik -> jk", leftTrialD, leftTestI)
     rightEvaluation = rightWeight * np.einsum("ij, ik -> jk", rightTrialD, rightTestI)
+
+    nansLeft = np.isnan(leftEvaluation)
+    leftEvaluation[nansLeft] = 0.0
+
+    nansRight = np.isnan(rightEvaluation)
+    rightEvaluation[nansRight] = 0.0
     result = rightEvaluation + leftEvaluation
     return result
 def evaluateDG_JumpComponentSymmetry(trialElement: belem, testElement: belem,
@@ -82,11 +118,10 @@ def evaluateDG_JumpComponentSymmetry(trialElement: belem, testElement: belem,
         Returns:
             result: evaluated differences at boundaries
     """
-    epsilon = np.finfo(float).eps
-    leftRef_LeftLim = trialElement.interval[0] - epsilon
-    leftRef_RightLim = trialElement.interval[0] + epsilon
-    rightRef_LeftLim = trialElement.interval[1] - epsilon
-    rightRef_RightLim = trialElement.interval[1] + epsilon
+    leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
+    leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
+    rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
+    rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
 
     leftWeight = 0.5 * weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
     rightWeight = 0.5 * weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
@@ -99,6 +134,13 @@ def evaluateDG_JumpComponentSymmetry(trialElement: belem, testElement: belem,
 
     leftEvaluation = leftWeight * np.einsum("ij, ik -> jk", leftTrialI, leftTestD)
     rightEvaluation = rightWeight * np.einsum("ij, ik -> jk", rightTrialI, rightTestD)
+
+    nansLeft = np.isnan(leftEvaluation)
+    leftEvaluation[nansLeft] = 0.0
+
+    nansRight = np.isnan(rightEvaluation)
+    rightEvaluation[nansRight] = 0.0
+
     result = rightEvaluation + leftEvaluation
     return result
 
@@ -244,7 +286,7 @@ def integrateFunctional(testElement: belem, function, weight,
 
     x = testElement.map(x)
     I = testElement.eval(x)
-    W = function(x)*w
+    W = function(x)*w * weight(x)
 
     resultIntegrals = np.einsum('ij, i -> j', I, W)
 

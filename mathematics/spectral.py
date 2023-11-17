@@ -35,7 +35,7 @@ def barycentricChebInterpolate(f, x, a, b, extrapolation=0, axis=0):
     chebyshevPoints = chebNodes(pointsAmount=f.shape[0], a=a, b=b)
     extrapolatedPoints = np.argwhere((x < a) | (x > b))
     # print(extrapolatedPoints)
-    result = sp_interp.barycentric_interpolate(chebyshevPoints, f, x, axis=axis)
+    result = sp_interp.barycentric_interpolate(chebyshevPoints, f, np.round(x, 32), axis=axis)
     match extrapolation:
         case 0: result[extrapolatedPoints, :] = 0
     return result

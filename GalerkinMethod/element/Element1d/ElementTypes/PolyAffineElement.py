@@ -11,7 +11,7 @@ class PolyAffineElement:
      Dirichlet boundary conditions can be specified only at a, b
     """
     def __init__(self, interval, approxOrder, dirichletBoundaryConditions : list[DirichletBoundaryCondition]=None):
-        self.interval = np.array(interval)
+        self.interval = np.array(interval, dtype=float)
         self.approxOrder = int(approxOrder)
         self.dirichletBoundaryConditions = dirichletBoundaryConditions
 
@@ -59,11 +59,11 @@ class PolyAffineElement:
         """
         x = np.atleast_1d(x)
         basisMatrix = self.refPointVal
-        if x.size == 1:
-            if x[0] == self.interval[0]:
-                return np.array([basisMatrix[0, :]])
-            if x[0] == self.interval[-1]:
-                return np.array([basisMatrix[-1, :]])
+        # if x.size == 1:
+        #     if x[0] == self.interval[0]:
+        #         return np.array([basisMatrix[0, :]])
+        #     if x[0] == self.interval[-1]:
+        #         return np.array([basisMatrix[-1, :]])
 
         return spec.barycentricChebInterpolate(basisMatrix, x, a=self.interval[0], b=self.interval[1], axis=0)
 
@@ -78,11 +78,12 @@ class PolyAffineElement:
         """
         x = np.atleast_1d(x)
         derivativeBasisMatrix = self.refPointDiffVal
-        if x.size == 1:
-            if x[0] == self.interval[0]:
-                    return self.derivativeMap(-1)*np.array([derivativeBasisMatrix[0, :]])
-            if x[0] == self.interval[-1]:
-                    return self.derivativeMap(1)*np.array([derivativeBasisMatrix[-1, :]])
+        # if x.size == 1:
+        #     if x[0] == self.interval[0]:
+        #             return self.derivativeMap(-1)*np.array([derivativeBasisMatrix[0, :]])
+        #     if x[0] == self.interval[-1]:
+        #             return self.derivativeMap(1)*np.array([derivativeBasisMatrix[-1, :]])
+        # print(self.derivativeMap(x))
         return spec.barycentricChebInterpolate(f=derivativeBasisMatrix,
                     x=x, a=self.interval[0], b=self.interval[1], axis=0) \
                      * np.reshape(self.derivativeMap(x), (*x.shape, 1))

@@ -14,25 +14,27 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid):
     boundaryForm2 = "boundaryIntegral w(x) [v] <grad(u) @ n>"
 
     gradForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
-        trialElement, testElement, lambda x: 1, 500)
+        trialElement, testElement, lambda x: x * x, 500)
 
     def boundaryForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentMain(
-            trialElement=trialElement, testElement=elementTest, weight=lambda x: -1)
+            trialElement=trialElement, testElement=elementTest, weight=lambda x: - x * x)
 
     def boundaryForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentSymmetry(
-            trialElement=trialElement, testElement=testElement, weight=lambda x: -1)
+            trialElement=trialElement, testElement=testElement, weight=lambda x: -x * x)
 
     functional = "integral w(x) u f"
     functional = lambda testElement: elem1dUtils.integrateFunctional(
-        testElement=testElement, function=lambda x: np.sin(x), weight=lambda x: 1, integrationPointsAmount=500)
+        testElement=testElement, function=lambda x: np.exp(-x), weight=lambda x: x * x, integrationPointsAmount=500)
 
     galerkinMethodObject.setBilinearForm(innerForms=[gradForm], boundaryForms=[boundaryForm1, boundaryForm2])
     galerkinMethodObject.setRHSFunctional([functional])
-    boundaryConditions = []
-    boundaryConditions = ['{"boundaryPoint": "np.pi", "boundaryValue": 0.0}',
-                          '{"boundaryPoint": "0", "boundaryValue": 0.0}']
+    # boundaryConditions = []
+    # boundaryConditions = ['{"boundaryPoint": "np.pi", "boundaryValue": 0.0}',
+    #                       '{"boundaryPoint": "0", "boundaryValue": 0.0}']
+
+    boundaryConditions = ['{"boundaryPoint": "np.inf", "boundaryValue": 0.0}']
 
     galerkinMethodObject.setDirichletBoundaryConditions(boundaryConditions)
 
@@ -40,10 +42,11 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid):
     mesh.generateUniformMeshOnRectange([0, infElementBoundary],
                                        [amountOfElementsOnFiniteGrid],
                                        [approximationOrder])
-    mesh.extendRectangleToInf_AlongAxis_OneDirection("right", infElementBoundary, 0, 20)
+
+    mesh.extendRectangleToInf_AlongAxis_OneDirection("right", infElementBoundary, 0, approximationOrder)
     mesh.establishNeighbours()
 
-    np.set_printoptions(precision=3, suppress=True)
+    # np.set_printoptions(precision=3, suppress=True)
 
     mesh.fileWrite("elementsData.txt", "neighboursData.txt")
     mesh.fileRead("elementsData.txt", "neighboursData.txt")
@@ -51,9 +54,10 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid):
     galerkinMethodObject.initializeElements()
     galerkinMethodObject.calculateElements()
     solution = galerkinMethodObject.solveSLAE()
-    grid = np.linspace(0, infElementBoundary, 1000)
+    grid = np.linspace(0, infElementBoundary + 10, 1000)
     solution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
-
+    plt.plot(grid, solution)
+    plt.show()
     # plt.plot(grid, solution - np.sin(grid))
     # plt.plot(grid, np.sin(grid))
     # plt.show()
@@ -61,4 +65,4 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid):
     # time.sleep(500)
 
 
-fun(10, np.pi, 3)
+fun(20, 6.0, 3)

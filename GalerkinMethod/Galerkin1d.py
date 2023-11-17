@@ -83,7 +83,6 @@ class GalerkinMethod1d:
 
         for i in range(elementsAmount):
             self.matrixElements[i][i] = self.innerForms[0](self.elements[i], self.elements[i])
-
             for j in range(1, innerFormsAmount):
                 self.matrixElements[i][i] += self.innerForms[j](self.elements[i], self.elements[i])
 
