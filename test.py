@@ -3,10 +3,11 @@ import GalerkinMethod.mesh.mesh as MeshClass
 import GalerkinMethod.Galerkin1d as galerkin
 import GalerkinMethod.element.Element1d.element1dUtils as elem1dUtils
 import time as time
+from mathematics import integrate as integr
 import matplotlib.pyplot as plt
 import mathematics.spectral as spec
 
-def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid):
+def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid, integrationPointsAmount = 500):
     galerkinMethodObject = galerkin.GalerkinMethod1d()
 
     gradForm = "integral w(x) grad(u) @ grad(v)"
@@ -14,19 +15,31 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid):
     boundaryForm2 = "boundaryIntegral w(x) [v] <grad(u) @ n>"
 
     gradForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
-        trialElement, testElement, lambda x: x * x, 500)
+        trialElement, testElement, lambda x: x * x, integrationPointsAmount)
 
     def boundaryForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentMain(
-            trialElement=trialElement, testElement=elementTest, weight=lambda x: - x * x)
+            trialElement=trialElement, testElement=elementTest, weight=lambda x: -x * x)
 
     def boundaryForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentSymmetry(
             trialElement=trialElement, testElement=testElement, weight=lambda x: -x * x)
 
     functional = "integral w(x) u f"
+    def dimensionless_BPL_function(x, gamma: float, beta: float):
+        lessThanOneArgs = np.where(x <= 1)
+        moreThanOneArgs = np.where(x >= 1)
+        result = np.zeros(x.shape)
+        result[lessThanOneArgs] = x[lessThanOneArgs]**(-gamma)
+        result[moreThanOneArgs] = x[moreThanOneArgs]**(-beta)
+        # plt.plot(x, result)
+        # plt.show()
+        return result
+    fromJacobian = 2
+    gamma = 2 - fromJacobian
+    beta = 3 - fromJacobian
     functional = lambda testElement: elem1dUtils.integrateFunctional(
-        testElement=testElement, function=lambda x: np.exp(-x), weight=lambda x: x * x, integrationPointsAmount=500)
+        testElement=testElement, function=lambda x: dimensionless_BPL_function(x, gamma, beta), weight=lambda x: 1, integrationPointsAmount=integrationPointsAmount)
 
     galerkinMethodObject.setBilinearForm(innerForms=[gradForm], boundaryForms=[boundaryForm1, boundaryForm2])
     galerkinMethodObject.setRHSFunctional([functional])
@@ -39,11 +52,11 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid):
     galerkinMethodObject.setDirichletBoundaryConditions(boundaryConditions)
 
     mesh = MeshClass.mesh(1)
-    mesh.generateUniformMeshOnRectange([0, infElementBoundary],
+    mesh.generateSkewedMeshOnRectange([0, infElementBoundary],
                                        [amountOfElementsOnFiniteGrid],
                                        [approximationOrder])
 
-    mesh.extendRectangleToInf_AlongAxis_OneDirection("right", infElementBoundary, 0, approximationOrder)
+    mesh.extendRectangleToInf_AlongAxis_OneDirection("right", infElementBoundary, 0, approximationOrder*2)
     mesh.establishNeighbours()
 
     # np.set_printoptions(precision=3, suppress=True)
@@ -53,16 +66,37 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid):
     galerkinMethodObject.initializeMesh(mesh)
     galerkinMethodObject.initializeElements()
     galerkinMethodObject.calculateElements()
-    solution = galerkinMethodObject.solveSLAE()
-    grid = np.linspace(0, infElementBoundary + 10, 1000)
-    solution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
-    plt.plot(grid, solution)
+    galerkinMethodObject.solveSLAE()
+
+
+    def dimensionless_BPL_asol(x, gamma: float, beta: float):
+        result = np.zeros(x.shape)
+        lessThanOneArgs = np.where(x <= 1)
+        moreThanOneArgs = np.where(x > 1)
+
+        if gamma == 2.0:
+            result[lessThanOneArgs] = (beta - 1.0)/(beta - 2.0) - np.log(x[lessThanOneArgs])
+        if beta == 3.0:
+            result[moreThanOneArgs] = 1/(x[moreThanOneArgs]) * ((4.0 - gamma)/(3.0 - gamma) + np.log(x[moreThanOneArgs]))
+        return result
+
+    w, grid = integr.reg_32_wn(0.0, infElementBoundary + 10, integrationPointsAmount)
+
+    gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
+    calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(grid, 2.0, 3.0)
+    error = np.sum(grid*grid*w*(calculatedDimensionless_BPL_asol - gridSolution)**2)
+    plt.plot(grid, gridSolution - calculatedDimensionless_BPL_asol)
     plt.show()
-    # plt.plot(grid, solution - np.sin(grid))
-    # plt.plot(grid, np.sin(grid))
-    # plt.show()
-    # print('done')
-    # time.sleep(500)
+    return error
 
 
-fun(20, 6.0, 3)
+indices = []
+errors = []
+for i in range(4, 100, 4):
+    indices.append(i)
+    error = fun(i, 4.0, 6, 2000)
+    print(i, error)
+    errors.append(error)
+
+plt.loglog(indices, errors)
+plt.show()

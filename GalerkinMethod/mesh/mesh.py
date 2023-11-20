@@ -51,6 +51,38 @@ class mesh():
         self.setElementsAmount()
 
 
+    def generateSkewedMeshOnRectange(self, rectangle, divisions, polynomialOrder):
+        """
+        """
+
+        divisions = np.atleast_1d(divisions)
+        polynomialOrder = np.atleast_1d(polynomialOrder)
+        rectangle = np.atleast_2d(rectangle)
+        numberOfDimensions = rectangle.shape[0]
+        listOfElementBoundariesOrders = []
+        for i in range(numberOfDimensions):
+            leftGeneralIntervalLimit = rectangle[i, 0]
+            rightGeneralIntervalLimit = rectangle[i, 1]
+            numberOfDivisions = divisions[i]
+
+            #numberOfDivisions + 1 because of how linspace works
+            #duplicate all values after making linspace
+            x = np.linspace(0, 1, numberOfDivisions + 1)
+            x = leftGeneralIntervalLimit + (rightGeneralIntervalLimit - leftGeneralIntervalLimit) * x ** 4
+            elementBoundaries = np.repeat(x, 2)
+            #drop redundant values at boundary -> reshape arrays into (a, b) intervals
+            elementBoundaries = np.reshape((elementBoundaries[1: -1]), [int((elementBoundaries.size - 2)/2), 2])
+            #now we add information about order of approximating space in i's dimension
+            polynomialOrders = polynomialOrder[i]*np.ones(divisions[i])
+            mappingType = np.zeros(divisions[i])
+            elementBoundariesOrders = np.hstack([elementBoundaries, polynomialOrders[:, None], mappingType[:, None]])
+            listOfElementBoundariesOrders.append(elementBoundariesOrders)
+
+        #take outer product of lists and we're done
+        elementsList = np.array(list(itertools.product(*listOfElementBoundariesOrders)))
+        self.elements = elementsList
+        self.setElementsAmount()
+
     def setElementsAmount(self):
         self.elementsAmount = np.shape(self.elements)[0]
 
@@ -158,6 +190,7 @@ class mesh():
                     infElement = self.elements[elementNumber + offset].copy()
                     infElement[axis, 0] = infElementBoundary
                     infElement[axis, 1] = np.inf
+                    infElement[axis, 2] = approximationOrder
                     infElement[axis, -1] = ElementType.RATIONAL_INF_HALF_SPACE.value
                     self.elements = np.insert(self.elements, elementNumber + 1 + offset, infElement, axis=0)
                     offset += 1

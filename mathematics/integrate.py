@@ -54,6 +54,25 @@ def reg_32_wn(a=-1, b=1, n=20):
     # weights = np.concatenate(weights).ravel()
     return weights, points
 
+
+def log_16_wn(a=-1, b=1, n=20):
+    xLog, wLog = data["log_16"]
+    xReg, wReg = data["reg_32"]
+    A = 10
+    B = 14
+    h = 1 / (n + A + B - 1)
+    left_points = (b - a) * xLog * h + a
+    mid_points = (b - a) * (A * h + np.arange(n) * h) + a
+
+    right_points = ((b - a) * (1 - xReg * h) + a)[::-1]
+
+    left_weights = wLog * (b - a) * h
+    mid_weights = np.ones(n) * (b - a) * h
+    right_weights = wReg[::-1] * (b - a) * h
+    points = np.hstack([left_points, mid_points, right_points])
+    weights = np.hstack([left_weights, mid_weights, right_weights])
+    return weights, points
+
 def reg_22_wn(a=-1, b=1, n=20):
     x, w = data["reg_22"]
     A = 21
@@ -65,10 +84,8 @@ def reg_22_wn(a=-1, b=1, n=20):
     left_weights = w * (b - a) * h
     mid_weights = np.ones(n) * (b - a) * h
     right_weights = w[::-1] * (b - a) * h
-    points = np.array([left_points, mid_points, right_points])
-    weights = np.array([left_weights, mid_weights, right_weights])
-    points = np.concatenate(points).ravel()
-    weights = np.concatenate(weights).ravel()
+    points = np.hstack([left_points, mid_points, right_points])
+    weights = np.hstack([left_weights, mid_weights, right_weights])
     return weights, points
 
 def clenshaw_wn(n=20):
