@@ -92,22 +92,22 @@ class GalerkinMethod1d:
             self.functionalElements[i] = (self.functionals[0](self.elements[i])).flatten()
             for j in range(1, rhsFunctionalsAmount):
                 self.functionalElements[i] += (self.functionals[j](self.elements[i])).flatten()
+            if len(self.mesh.neighbours) > 0:
+                for neighborNumber in self.mesh.neighbours[i]:
+                    if i < neighborNumber:
+                        self.matrixElements[i][neighborNumber] = self.boundaryForms[0](self.elements[i], self.elements[neighborNumber])
+                        for boundaryFormNumber in range(1, boundaryFormsAmount):
+                                self.matrixElements[i][neighborNumber] +=\
+                                    self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[neighborNumber])
 
-            for neighborNumber in self.mesh.neighbours[i]:
-                if i < neighborNumber:
-                    self.matrixElements[i][neighborNumber] = self.boundaryForms[0](self.elements[i], self.elements[neighborNumber])
-                    for boundaryFormNumber in range(1, boundaryFormsAmount):
-                            self.matrixElements[i][neighborNumber] +=\
-                                self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[neighborNumber])
-
-                    """in case of non-symmetric operator"""
-                    # self.matrixElements[neighborNumber][i] = self.boundaryForms[0](self.elements[neighborNumber],
-                    #                                                                    self.elements[i])
-                    # for boundaryFormNumber in range(1, boundaryFormsAmount):
-                    #         self.matrixElements[neighborNumber][i] += \
-                    #             self.boundaryForms[boundaryFormNumber](self.elements[neighborNumber], self.elements[i])
-                else:
-                    self.matrixElements[i][neighborNumber] = (self.matrixElements[neighborNumber][i]).T
+                        """in case of non-symmetric operator"""
+                        # self.matrixElements[neighborNumber][i] = self.boundaryForms[0](self.elements[neighborNumber],
+                        #                                                                    self.elements[i])
+                        # for boundaryFormNumber in range(1, boundaryFormsAmount):
+                        #         self.matrixElements[neighborNumber][i] += \
+                        #             self.boundaryForms[boundaryFormNumber](self.elements[neighborNumber], self.elements[i])
+                    else:
+                        self.matrixElements[i][neighborNumber] = (self.matrixElements[neighborNumber][i]).T
 
     def solveSLAE(self):
         """Solves system matrixElements @ u = functionalElements

@@ -5,14 +5,11 @@ import GalerkinMethod.element.Element1d.element1dUtils as elem1dUtils
 import time as time
 from mathematics import integrate as integr
 import matplotlib.pyplot as plt
+import scipy.optimize as sp_opt
 import mathematics.spectral as spec
 
-def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid, integrationPointsAmount = 500):
+def fun(meshArg, approximationOrder, mappingType, integrationPointsAmount = 500):
     galerkinMethodObject = galerkin.GalerkinMethod1d()
-
-    gradForm = "integral w(x) grad(u) @ grad(v)"
-    boundaryForm1 = "boundaryIntegral w(x) [u] <grad(v) @ n>"
-    boundaryForm2 = "boundaryIntegral w(x) [v] <grad(u) @ n>"
 
     gradForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
         trialElement, testElement, lambda x: x * x, integrationPointsAmount)
@@ -25,7 +22,6 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid, in
         return elem1dUtils.evaluateDG_JumpComponentSymmetry(
             trialElement=trialElement, testElement=testElement, weight=lambda x: -x * x)
 
-    functional = "integral w(x) u f"
     def dimensionless_BPL_function(x, gamma: float, beta: float):
         lessThanOneArgs = np.where(x <= 1)
         moreThanOneArgs = np.where(x >= 1)
@@ -43,23 +39,15 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid, in
 
     galerkinMethodObject.setBilinearForm(innerForms=[gradForm], boundaryForms=[boundaryForm1, boundaryForm2])
     galerkinMethodObject.setRHSFunctional([functional])
-    # boundaryConditions = []
-    # boundaryConditions = ['{"boundaryPoint": "np.pi", "boundaryValue": 0.0}',
-    #                       '{"boundaryPoint": "0", "boundaryValue": 0.0}']
 
     boundaryConditions = ['{"boundaryPoint": "np.inf", "boundaryValue": 0.0}']
 
     galerkinMethodObject.setDirichletBoundaryConditions(boundaryConditions)
 
     mesh = MeshClass.mesh(1)
-    mesh.generateSkewedMeshOnRectange([0, infElementBoundary],
-                                       [amountOfElementsOnFiniteGrid],
-                                       [approximationOrder])
-
-    mesh.extendRectangleToInf_AlongAxis_OneDirection("right", infElementBoundary, 0, approximationOrder*2)
+    mesh.generateProvidedMeshOnRectange([meshArg],
+                                       [approximationOrder], [mappingType])
     mesh.establishNeighbours()
-
-    # np.set_printoptions(precision=3, suppress=True)
 
     mesh.fileWrite("elementsData.txt", "neighboursData.txt")
     mesh.fileRead("elementsData.txt", "neighboursData.txt")
@@ -81,26 +69,62 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid, in
         return result
 
 
-    w, grid = integr.log_16_wn(0.0, 1.0, integrationPointsAmount)
+    w, grid = integr.log_16_wn(0.0, mesh.elements[0][0][1], integrationPointsAmount)
 
     gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
+    a = mesh.elements[0][0][1]
+    error = np.sum(w*(2*np.log(grid)*(gridSolution - 2.0) + (gridSolution - 2.0)**2)) + a * (2.0 + (-2.0 + np.log(a))*np.log(a))
 
-    errorFrom0to1 = np.sum(w*(2*np.log(grid)*(gridSolution - 2.0) + (gridSolution - 2.0)**2)) + 2.0
+    for i in range(1, mesh.elementsAmount - 1):
+        w, grid = integr.reg_22_wn(mesh.elements[i][0][0], mesh.elements[i][0][1], integrationPointsAmount)
+        calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(grid, 2.0, 3.0)
+        gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
+        error += np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
 
-    w, grid = integr.reg_22_wn(-1.0, 1.0, integrationPointsAmount)
-    calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(grid, 2.0, 3.0)
-    # errorFrom1toInf = np.sum(w * (2 * calculatedDimensionless_BPL_asol - gridSolution) ** 2)
+    w, grid = integr.reg_32_wn(-1, 1, integrationPointsAmount)
+
+    mappedGrid = galerkinMethodObject.elements[-1].map(grid)
+    calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(mappedGrid, 2.0, 3.0)
+    gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(mappedGrid)
+    # plt.plot(grid, calculatedDimensionless_BPL_asol)
+    # plt.plot(grid, gridSolution)
+    # plt.show()
+    error += np.sum(w * galerkinMethodObject.elements[-1].derivativeMap(grid) * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
+    # plt.plot(grid, w * galerkinMethodObject.elements[-1].derivativeMap(grid) * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
+    # plt.show()
     # plt.plot(grid, gridSolution - calculatedDimensionless_BPL_asol)
     # plt.show()
-    return errorFrom0to1
+    return error
 
 
 indices = []
 errors = []
-for i in range(4, 100, 1):
+for i in range(4, 100, 4):
     indices.append(i)
-    error = fun(i, 4.0, 6, 2000)
-    print(i, error)
+    bounds =[(0.0, 0.5), (0.5, 1.0), (1.0, 5.0),
+             (0.0, 1.0),  (0.0, 1.0),  (0.0, 1.0), (0.0, 1.0)]
+    def lambdaFun(x):
+        approxOrdersAmount = i*4
+        totalApproxWeight = np.sum(x[3:])
+        approxOrdersFloat = approxOrdersAmount*np.array([x[3:]/totalApproxWeight], dtype=float)
+        approxOrders = np.array(approxOrdersFloat, dtype=int) + 4*np.ones([4], dtype=int)
+        mesh = [[0.0, x[0], x[1], x[2], np.inf]]
+        result = fun(mesh, np.squeeze(approxOrders), [0, 0, 0, 1], 2000)
+        return result
+
+    error = sp_opt.direct(lambdaFun, bounds, maxiter=20)
+
+    x = error.get('x')
+    approxOrdersAmount = i * 4
+    totalApproxWeight = np.sum(x[3:])
+    approxOrdersFloat = approxOrdersAmount * np.array([x[3:] / totalApproxWeight], dtype=float)
+    approxOrders = np.array(approxOrdersFloat, dtype=int) + 2 * np.ones([4], dtype=int)
+    mesh = [[0.0, x[0], x[1], x[2], np.inf]]
+    result = fun(mesh, np.squeeze(approxOrders), [0, 0, 0, 1], 2000)
+    print(i)
+    print(np.squeeze(mesh))
+    print(np.squeeze(approxOrders))
+    print(result)
     errors.append(error)
 
 plt.loglog(indices, errors)

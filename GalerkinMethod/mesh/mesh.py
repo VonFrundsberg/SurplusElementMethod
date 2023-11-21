@@ -50,9 +50,31 @@ class mesh():
         self.elements = elementsList
         self.setElementsAmount()
 
+    def generateProvidedMeshOnRectange(self, rectangleMesh, polynomialOrder, mappingType):
+        """
+        """
 
+        polynomialOrder = np.atleast_2d(polynomialOrder)
+        rectangle = np.atleast_2d(rectangleMesh)
+        mappingType = np.atleast_2d(mappingType)
+        numberOfDimensions = rectangle.shape[0]
+        listOfElementBoundariesOrders = []
+        for i in range(numberOfDimensions):
+
+            elementBoundaries = np.repeat(rectangle[i, :], 2)
+            #drop redundant values at boundary -> reshape arrays into (a, b) intervals
+            elementBoundaries = np.reshape((elementBoundaries[1: -1]), [int((elementBoundaries.size - 2)/2), 2])
+            #now we add information about order of approximating space in i's dimension
+            elementBoundariesOrders = np.hstack([elementBoundaries, polynomialOrder[i, :, np.newaxis], mappingType[i, :, np.newaxis]])
+            listOfElementBoundariesOrders.append(elementBoundariesOrders)
+
+        #take outer product of lists and we're done
+        elementsList = np.array(list(itertools.product(*listOfElementBoundariesOrders)))
+        self.elements = elementsList
+        self.setElementsAmount()
     def generateSkewedMeshOnRectange(self, rectangle, divisions, polynomialOrder):
         """
+        NO DESCRIPTION
         """
 
         divisions = np.atleast_1d(divisions)
@@ -167,6 +189,7 @@ class mesh():
         Creates self.elements, self.neighbours and sets self.elementsAmount
         """
         elements = np.genfromtxt(elementsFileName)
+        elements = np.atleast_2d(elements)
         amountOfElements, elementRowLength = elements.shape
         self.elements = np.reshape(elements, [amountOfElements, int(elementRowLength/4), 4])
         fromNeighboursFile = open(neighboursFileName, "r+")
