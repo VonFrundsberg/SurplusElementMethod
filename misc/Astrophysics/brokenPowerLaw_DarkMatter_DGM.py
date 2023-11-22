@@ -99,32 +99,39 @@ def fun(meshArg, approximationOrder, mappingType, integrationPointsAmount = 500)
 
 indices = []
 errors = []
+
+amountOfAdditionalInterval = 5
 for i in range(4, 100, 4):
     indices.append(i)
-    bounds =[(0.0, 0.5), (0.5, 1.0), (1.0, 5.0),
-             (0.0, 1.0),  (0.0, 1.0),  (0.0, 1.0), (0.0, 1.0)]
+    bounds = (amountOfAdditionalInterval)*[(0.0, 0.2)] +\
+            (amountOfAdditionalInterval + 1) * [(0.1, 1.0)]
+    # bounds = np.array(bounds)
     def lambdaFun(x):
-        approxOrdersAmount = i*4
-        totalApproxWeight = np.sum(x[3:])
-        approxOrdersFloat = approxOrdersAmount*np.array([x[3:]/totalApproxWeight], dtype=float)
-        approxOrders = np.array(approxOrdersFloat, dtype=int) + 4*np.ones([4], dtype=int)
-        mesh = [[0.0, x[0], x[1], x[2], np.inf]]
-        result = fun(mesh, np.squeeze(approxOrders), [0, 0, 0, 1], 2000)
+        approxOrdersAmount = i
+        totalApproxWeight = np.sum(x[amountOfAdditionalInterval:])
+        approxOrdersFloat = approxOrdersAmount*np.array([x[amountOfAdditionalInterval:]/totalApproxWeight], dtype=float)
+        approxOrders = np.array(approxOrdersFloat, dtype=int) + 2*np.ones([amountOfAdditionalInterval + 1], dtype=int)
+        mesh = np.hstack([0.0, *np.cumsum(x[:amountOfAdditionalInterval]), np.inf])
+        elemTypes = np.zeros(amountOfAdditionalInterval + 1, dtype=int)
+        elemTypes[-1] = 1
+        result = fun(mesh, np.squeeze(approxOrders), elemTypes, 2000)
         return result
 
-    error = sp_opt.direct(lambdaFun, bounds, maxiter=20)
+    error = sp_opt.direct(func=lambdaFun,
+                            bounds=bounds, maxiter=50)
 
     x = error.get('x')
-    approxOrdersAmount = i * 4
-    totalApproxWeight = np.sum(x[3:])
-    approxOrdersFloat = approxOrdersAmount * np.array([x[3:] / totalApproxWeight], dtype=float)
-    approxOrders = np.array(approxOrdersFloat, dtype=int) + 2 * np.ones([4], dtype=int)
-    mesh = [[0.0, x[0], x[1], x[2], np.inf]]
-    result = fun(mesh, np.squeeze(approxOrders), [0, 0, 0, 1], 2000)
-    print(i)
+    approxOrdersAmount = i
+    totalApproxWeight = np.sum(x[amountOfAdditionalInterval:])
+    approxOrdersFloat = approxOrdersAmount * np.array([x[amountOfAdditionalInterval:] / totalApproxWeight], dtype=float)
+    approxOrders = np.array(approxOrdersFloat, dtype=int) + 2 * np.ones([amountOfAdditionalInterval + 1], dtype=int)
+    mesh = np.hstack([0.0, *np.cumsum(x[:amountOfAdditionalInterval]), np.inf])
+    elemTypes = np.zeros(amountOfAdditionalInterval + 1, dtype=int)
+    elemTypes[-1] = 1
+    result = fun(mesh, np.squeeze(approxOrders), elemTypes, 2000)
+    print(i, result)
     print(np.squeeze(mesh))
     print(np.squeeze(approxOrders))
-    print(result)
     errors.append(error)
 
 plt.loglog(indices, errors)
