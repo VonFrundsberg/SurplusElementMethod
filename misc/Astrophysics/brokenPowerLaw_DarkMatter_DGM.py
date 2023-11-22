@@ -7,7 +7,7 @@ from mathematics import integrate as integr
 import matplotlib.pyplot as plt
 import scipy.optimize as sp_opt
 import mathematics.spectral as spec
-
+from scipy import integrate as integrate
 def fun(meshArg, approximationOrder, mappingType, integrationPointsAmount = 500):
     galerkinMethodObject = galerkin.GalerkinMethod1d()
 
@@ -73,15 +73,19 @@ def fun(meshArg, approximationOrder, mappingType, integrationPointsAmount = 500)
 
     gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
     a = mesh.elements[0][0][1]
-    error = np.sum(w*(2*np.log(grid)*(gridSolution - 2.0) + (gridSolution - 2.0)**2)) + a * (2.0 + (-2.0 + np.log(a))*np.log(a))
 
+    error = np.sum(w*(2*np.log(grid)*(gridSolution - 2.0) + (gridSolution - 2.0)**2)) + a * (2.0 + (-2.0 + np.log(a))*np.log(a))
+    errors = np.array([], dtype=float)
+    errors = np.append(errors, error)
     for i in range(1, mesh.elementsAmount - 1):
-        w, grid = integr.reg_22_wn(mesh.elements[i][0][0], mesh.elements[i][0][1], integrationPointsAmount)
+
+        w, grid = integr.reg_32_wn(mesh.elements[i][0][0], mesh.elements[i][0][1], integrationPointsAmount)
         calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(grid, 2.0, 3.0)
         gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
+        # print(mesh.elements[i][0][0], mesh.elements[i][0][1], np.sum(w * (calculatedDimensionless_BPL_asol) ** 2))
         error += np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
-
-    w, grid = integr.reg_32_wn(-1, 1, integrationPointsAmount)
+        errors = np.append(errors, np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2))
+    w, grid = integr.reg_22_wn(-1, 1, 3000)
 
     mappedGrid = galerkinMethodObject.elements[-1].map(grid)
     calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(mappedGrid, 2.0, 3.0)
@@ -89,50 +93,89 @@ def fun(meshArg, approximationOrder, mappingType, integrationPointsAmount = 500)
     # plt.plot(grid, calculatedDimensionless_BPL_asol)
     # plt.plot(grid, gridSolution)
     # plt.show()
-    error += np.sum(w * galerkinMethodObject.elements[-1].derivativeMap(grid) * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
+    # print(np.sum(w * (calculatedDimensionless_BPL_asol) ** 2))
+    # integrable = lambda x: galerkinMethodObject.elements[-1].inverseDerivativeMap(x) * \
+    #                        (dimensionless_BPL_asol(galerkinMethodObject.elements[-1].map(x),3, 2))
+    # plt.plot(grid, calculatedDimensionless_BPL_asol - gridSolution)
+    # plt.plot(grid, gridSolution)
+    # plt.show()
+    error += np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
+    errors = np.append(errors, np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2))
     # plt.plot(grid, w * galerkinMethodObject.elements[-1].derivativeMap(grid) * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
     # plt.show()
     # plt.plot(grid, gridSolution - calculatedDimensionless_BPL_asol)
     # plt.show()
-    return error
+    nonZeroAmount = galerkinMethodObject.getAmountOfNonZeroSLAE_elements()
+    return nonZeroAmount, error, errors
 
 
 indices = []
 errors = []
 
-amountOfAdditionalInterval = 5
-for i in range(4, 100, 4):
+amountOfAdditionalIntervalBefore1 = 5
+amountOfAdditionalIntervalAfter1 = 5
+curApproxOrders = 2*np.ones([amountOfAdditionalIntervalBefore1 + amountOfAdditionalIntervalAfter1], dtype=int)
+# curApproxOrders[-1] = 10
+
+# bounds = (amountOfAdditionalInterval + 1) * [(0.0, 1.0)]
+RangeBefore1 = np.arange(0, amountOfAdditionalIntervalBefore1)
+RangeAfter1 = np.arange(1, amountOfAdditionalIntervalAfter1) + 1
+# mesh = np.hstack([0.0, *np.cumsum(x[:amountOfAdditionalInterval]), np.inf])
+MeshBefore1 = np.hstack([0.0, (((1 / 4) ** (RangeBefore1))[::-1])])
+MeshAfter1 = np.hstack([RangeAfter1 * 1, np.inf])
+
+Mesh = np.hstack([MeshBefore1, MeshAfter1])
+print(Mesh)
+elemTypes = np.zeros(amountOfAdditionalIntervalBefore1 + amountOfAdditionalIntervalAfter1, dtype=int)
+elemTypes[-1] = 1
+
+# totalApproxWeight = np.sum(x)
+        # approxOrdersFloat = approxOrdersAmount*np.array([x/totalApproxWeight], dtype=float)
+        # approxOrders = np.array(approxOrdersFloat, dtype=int)
+
+for i in range(0, 100, 1):
     indices.append(i)
-    bounds = (amountOfAdditionalInterval)*[(0.0, 0.2)] +\
-            (amountOfAdditionalInterval + 1) * [(0.1, 1.0)]
-    # bounds = np.array(bounds)
-    def lambdaFun(x):
-        approxOrdersAmount = i
-        totalApproxWeight = np.sum(x[amountOfAdditionalInterval:])
-        approxOrdersFloat = approxOrdersAmount*np.array([x[amountOfAdditionalInterval:]/totalApproxWeight], dtype=float)
-        approxOrders = np.array(approxOrdersFloat, dtype=int) + 2*np.ones([amountOfAdditionalInterval + 1], dtype=int)
-        mesh = np.hstack([0.0, *np.cumsum(x[:amountOfAdditionalInterval]), np.inf])
-        elemTypes = np.zeros(amountOfAdditionalInterval + 1, dtype=int)
-        elemTypes[-1] = 1
-        result = fun(mesh, np.squeeze(approxOrders), elemTypes, 2000)
+    def lambdaFun(approxOrders, j):
+        tmpApproxOrders = approxOrders.copy()
+        tmpApproxOrders[j] += 1
+        result = fun(Mesh, np.squeeze(tmpApproxOrders), elemTypes, 2000)
         return result
 
-    error = sp_opt.direct(func=lambdaFun,
-                            bounds=bounds, maxiter=50)
+    argMax = 0
+    nonZero, Max, errors = lambdaFun(curApproxOrders, 0)
 
-    x = error.get('x')
-    approxOrdersAmount = i
-    totalApproxWeight = np.sum(x[amountOfAdditionalInterval:])
-    approxOrdersFloat = approxOrdersAmount * np.array([x[amountOfAdditionalInterval:] / totalApproxWeight], dtype=float)
-    approxOrders = np.array(approxOrdersFloat, dtype=int) + 2 * np.ones([amountOfAdditionalInterval + 1], dtype=int)
-    mesh = np.hstack([0.0, *np.cumsum(x[:amountOfAdditionalInterval]), np.inf])
-    elemTypes = np.zeros(amountOfAdditionalInterval + 1, dtype=int)
-    elemTypes[-1] = 1
-    result = fun(mesh, np.squeeze(approxOrders), elemTypes, 2000)
-    print(i, result)
-    print(np.squeeze(mesh))
-    print(np.squeeze(approxOrders))
-    errors.append(error)
+
+    for j in range(1, amountOfAdditionalIntervalBefore1 + amountOfAdditionalIntervalAfter1):
+        nonZero, error, errors = lambdaFun(curApproxOrders, j)
+        if error < Max:
+            Max = error
+            argMax = j
+    curApproxOrders[argMax] += 1
+    # print(errors)
+    # plt.plot(errors)
+    # plt.show()
+    print(nonZero, Max, *curApproxOrders)
+
+    # error = sp_opt.direct(func=lambdaFun,
+    #                         bounds=bounds, maxiter=10)
+
+    # x = error.get('x')
+    # approxOrdersAmount = i
+    # totalApproxWeight = np.sum(x)
+    # approxOrdersFloat = approxOrdersAmount * np.array([x / totalApproxWeight], dtype=float)
+    # approxOrders = np.array(approxOrdersFloat, dtype=int) + 2 * np.ones([amountOfAdditionalInterval + 1], dtype=int)
+    # Range = np.arange(0, amountOfAdditionalInterval)
+    # # mesh = np.hstack([0.0, *np.cumsum(x[:amountOfAdditionalInterval]), np.inf])
+    # Mesh = np.hstack([0.0, (((1/4)**(-1 + Range))[::-1]), np.inf])
+    # # print(mesh)
+    # elemTypes = np.zeros(amountOfAdditionalInterval + 1, dtype=int)
+    # elemTypes[-1] = 1
+    #
+    # result = fun(Mesh, np.squeeze(approxOrders), elemTypes, 2000)
+    # print(i, result)
+    # print(np.squeeze(Mesh))
+    # print(np.squeeze(approxOrders))
+    # errors.append(error)
 
 plt.loglog(indices, errors)
 plt.show()

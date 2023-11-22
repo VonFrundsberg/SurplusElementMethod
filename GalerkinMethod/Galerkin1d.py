@@ -109,6 +109,9 @@ class GalerkinMethod1d:
                     else:
                         self.matrixElements[i][neighborNumber] = (self.matrixElements[neighborNumber][i]).T
 
+
+    def getAmountOfNonZeroSLAE_elements(self):
+        return self.A.count_nonzero()
     def solveSLAE(self):
         """Solves system matrixElements @ u = functionalElements
             Works only for zero Dirichlet boundary conditions
@@ -124,6 +127,7 @@ class GalerkinMethod1d:
 
         ind = (A.getnnz(1) > 0).copy()
         A = A[A.getnnz(1) > 0, :][:, A.getnnz(0) > 0]
+        self.A = A
         self.functionalElements = np.hstack(self.functionalElements)
 
         self.functionalElements = self.functionalElements[ind]

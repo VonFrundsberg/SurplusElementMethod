@@ -7,7 +7,7 @@ from mathematics import integrate as integr
 import matplotlib.pyplot as plt
 import mathematics.spectral as spec
 
-def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid, integrationPointsAmount = 500):
+def fun(approximationOrder,  integrationPointsAmount = 500):
     galerkinMethodObject = galerkin.GalerkinMethod1d()
 
     gradForm = "integral w(x) grad(u) @ grad(v)"
@@ -70,20 +70,22 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid, in
 
     errorFrom0to1 = np.sum(w*(2*np.log(grid)*(gridSolution - 2.0) + (gridSolution - 2.0)**2)) + 2.0
 
-    # w, grid = integr.reg_22_wn(-1.0, 1.0, integrationPointsAmount)
-    calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(grid, 2.0, 3.0)
-    # errorFrom1toInf = np.sum(w * (2 * calculatedDimensionless_BPL_asol - gridSolution) ** 2)
+    w, grid = integr.reg_22_wn(-1.0, 1.0, integrationPointsAmount)
+    map = lambda x: (1 + x)/(1 - x) + 1
+    calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(map(grid), 2.0, 3.0)
+    gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(map(grid))
+    errorFrom1toInf = np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
     # plt.plot(grid, gridSolution - calculatedDimensionless_BPL_asol)
     # plt.show()
-    return errorFrom0to1
+    return galerkinMethodObject.getAmountOfNonZeroSLAE_elements(), errorFrom0to1 + errorFrom1toInf
 
 
 indices = []
 errors = []
 for i in range(4, 100, 1):
     indices.append(i)
-    error = fun(i, 4.0, 6, 2000)
-    print(i, error)
+    nonzero, error = fun(i, 2000)
+    print(nonzero, error)
     errors.append(error)
 
 plt.loglog(indices, errors)
