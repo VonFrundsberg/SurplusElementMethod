@@ -136,11 +136,75 @@ class GalerkinMethod1d:
         self.solutionWithDirichletBC[ind] = solution
         return self.solutionWithDirichletBC
 
+
+    def calculateMeshElementProperties(self):
+        elemInnerProperties = []
+        elemBoundaryProperties = []
+
+        for elem in self.elements:
+            h = elem.interval[1] - elem.interval[0]
+            if h == np.inf:
+                h = 1.0
+            p = elem.approxOrder
+            elemInnerProperties.append(h/p**2)
+
+
+        for i in range(len(self.elements) - 2):
+            hPrev = self.elements[i].interval[1] - self.elements[i].interval[0]
+            hNext = self.elements[i + 1].interval[1] - self.elements[i + 1].interval[0]
+
+            pPrev = self.elements[i].approxOrder
+            pNext = self.elements[i + 1].approxOrder
+            elemBoundaryProperties.append(0.5*(hPrev + hNext)/(pPrev**2 + pNext**2))
+
+        hPrev = self.elements[-2].interval[1] - self.elements[-2].interval[0]
+        hNext = 1 - self.elements[-1].interval[0]
+
+        pPrev = self.elements[-2].approxOrder
+        pNext = self.elements[-1].approxOrder
+        elemBoundaryProperties.append(0.5 * (hPrev + hNext) / (pPrev ** 2 + pNext ** 2))
+
+        elemInnerProperties = np.atleast_1d(elemInnerProperties)
+        elemBoundaryProperties = np.atleast_1d(elemBoundaryProperties)
+
+        cT = np.finfo(float).max
+        cG = 0.0
+        print(elemInnerProperties, elemBoundaryProperties)
+
+        for i in range(len(self.elements) - 1):
+            cLeft = elemBoundaryProperties[i]/elemInnerProperties[i]
+            cRight = elemBoundaryProperties[i]/elemInnerProperties[i + 1]
+            cMin = min(cLeft, cRight)
+            cMax = max(cLeft, cRight)
+            # print(elemInnerProperties[i]*cMin, " < ", elemBoundaryProperties[i])
+            # print(elemInnerProperties[i + 1] * cMin, " < ", elemBoundaryProperties[i])
+            #
+            # print(elemBoundaryProperties[i], " < ", elemInnerProperties[i]*cMax)
+            # print(elemBoundaryProperties[i], " < ", elemInnerProperties[i + 1]*cMax)
+            if cT > cMin:
+                cT = cMin
+            if cG < cMax:
+                cG = cMax
+
+        # for i in range(len(self.elements) - 1):
+        #     print(self.elements[i].interval[1])
+        #     print(elemInnerProperties[i] * cT, " < ", elemBoundaryProperties[i])
+        #     print(elemInnerProperties[i + 1] * cT, " < ", elemBoundaryProperties[i])
+        #
+        #     print(elemBoundaryProperties[i], " < ", elemInnerProperties[i] * cG)
+        #     print(elemBoundaryProperties[i], " < ", elemInnerProperties[i + 1] * cG)
+        c_ab = 4 * np.sqrt(5/3)
+        c_a = 2 * np.sqrt(10/3)
+        C_a_ab = 2 * max(3.0 + c_ab, 2 + c_a)
+        C_sigma = 4*cG*C_a_ab
+        print(C_sigma)
+
     def evaluateSolutionAtPoints(self, x):
 
         """
 
         """
+        x = np.atleast_1d(x)
         elementsAmount = self.mesh.getElementsAmount()
         evaluatedSolution = np.zeros(x.shape, dtype=float)
         offset = 0

@@ -1,11 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-data = np.loadtxt('toPlotData.txt')
+data = np.loadtxt('toPlotData/[ 0.  1. inf].txt')
 
 
 # Read data from the file
-# with open('toPlotData.txt', 'r') as file:
+# with open('[ 0.  1. inf].txt', 'r') as file:
 #     lines = file.readlines()
 #
 # # Extract x and y values from the data, ignoring the rightmost list
