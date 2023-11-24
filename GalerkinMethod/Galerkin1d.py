@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sparse_linalg
+import scipy.linalg as sp_linalg
 from GalerkinMethod.element.Element1d import element1d as element
 from GalerkinMethod.element.Element1d.DirichletBoundaryCondition import DirichletBoundaryCondition
 import json
@@ -8,7 +9,7 @@ import json
 
 
 class GalerkinMethod1d:
-
+    A: sparse.csr_matrix
     def setBilinearForm(self, innerForms, boundaryForms):
         self.innerForms = innerForms
         self.boundaryForms = boundaryForms
@@ -112,6 +113,11 @@ class GalerkinMethod1d:
 
     def getAmountOfNonZeroSLAE_elements(self):
         return self.A.count_nonzero()
+
+    def checkPositiveEigenvalues(self):
+        A = self.A.toarray()
+        eigvals = sp_linalg.eigvals(A)
+        print(eigvals)
     def solveSLAE(self):
         """Solves system matrixElements @ u = functionalElements
             Works only for zero Dirichlet boundary conditions
@@ -160,7 +166,7 @@ class GalerkinMethod1d:
             elemBoundaryProperties.append(0.5*(hPrev + hNext)/(pPrev**2 + pNext**2))
 
         hPrev = self.elements[-2].interval[1] - self.elements[-2].interval[0]
-        hNext = 1 - self.elements[-1].interval[0]
+        hNext = 1
 
         pPrev = self.elements[-2].approxOrder
         pNext = self.elements[-1].approxOrder
@@ -199,12 +205,13 @@ class GalerkinMethod1d:
         c_a = 2 * np.sqrt(10/3)
         C_a_ab = 2 * max(3.0 + c_ab, 2 + c_a)
         C_sigma = 4*cG*C_a_ab
-
-        elemBoundaryProperties = C_sigma * elemBoundaryProperties
+        # print(elemBoundaryProperties)
+        elemBoundaryProperties = C_sigma / elemBoundaryProperties
         # self.elemBoundaryProperties = elemBoundaryProperties
 
         """fix for spherical poisson problem"""
         self.elemBoundaryProperties = np.hstack([0.0, elemBoundaryProperties, 0.0])
+
         def sigmaDGM_ErrorTerm(x):
             if x == self.elements[0].interval[0]:
                 return self.elemBoundaryProperties[0]
