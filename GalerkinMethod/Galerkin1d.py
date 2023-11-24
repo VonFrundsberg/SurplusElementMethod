@@ -125,6 +125,8 @@ class GalerkinMethod1d:
         A = sparse.bmat(self.matrixElements)
         A = sparse.csr_matrix(A)
 
+
+
         ind = (A.getnnz(1) > 0).copy()
         A = A[A.getnnz(1) > 0, :][:, A.getnnz(0) > 0]
         self.A = A
@@ -169,7 +171,7 @@ class GalerkinMethod1d:
 
         cT = np.finfo(float).max
         cG = 0.0
-        print(elemInnerProperties, elemBoundaryProperties)
+        # print(elemInnerProperties, elemBoundaryProperties)
 
         for i in range(len(self.elements) - 1):
             cLeft = elemBoundaryProperties[i]/elemInnerProperties[i]
@@ -197,7 +199,20 @@ class GalerkinMethod1d:
         c_a = 2 * np.sqrt(10/3)
         C_a_ab = 2 * max(3.0 + c_ab, 2 + c_a)
         C_sigma = 4*cG*C_a_ab
-        print(C_sigma)
+
+        elemBoundaryProperties = C_sigma * elemBoundaryProperties
+        # self.elemBoundaryProperties = elemBoundaryProperties
+
+        """fix for spherical poisson problem"""
+        self.elemBoundaryProperties = np.hstack([0.0, elemBoundaryProperties, 0.0])
+        def sigmaDGM_ErrorTerm(x):
+            if x == self.elements[0].interval[0]:
+                return self.elemBoundaryProperties[0]
+            for i in range(len(self.elements)):
+                if x == self.elements[i].interval[1]:
+                    return self.elemBoundaryProperties[i + 1]
+        self.sigmaDGM_ErrorTerm = sigmaDGM_ErrorTerm
+        # print(self.elemBoundaryProperties)
 
     def evaluateSolutionAtPoints(self, x):
 

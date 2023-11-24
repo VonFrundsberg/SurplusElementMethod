@@ -144,6 +144,76 @@ def evaluateDG_JumpComponentSymmetry(trialElement: belem, testElement: belem,
     result = rightEvaluation + leftEvaluation
     return result
 
+
+def evaluateDG_ErrorComponent(trialElement: belem, testElement: belem,
+                                 weight):
+    """Evaluates bilinear form of the type
+        a(u, v) = weight(R) [u(R-) - u(R+)] * [v(R-) - v(R+)] +
+         weight(L) [u(L-) - u(L+)] [v(L-) - v(L+)),
+        where u(x)  are basis functions of trialElement
+        and v(x)  are basis functions of testElement
+        L and R are left and right (in inner limit) boundary of elementU interval.
+
+        Arguments:
+            trialElement:
+            testElement:
+            weight:
+        Returns:
+            result: evaluated values at boundaries
+    """
+    leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
+    leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
+    rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
+    rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
+
+    leftWeight = weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
+    rightWeight = weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
+
+    output = False
+    if output:
+        print("Main DG component")
+        if trialElement.interval[1] == np.inf:
+            print("Intervals for trial and test elements are: ")
+            print(trialElement.interval, testElement.interval)
+
+            print("Left and right limits of diff TRIAL LEFT point are:")
+            print(trialElement.evalDiff(leftRef_LeftLim))
+            # print(leftRef_RightLim)
+            print(trialElement.evalDiff(leftRef_RightLim))
+
+            print("Left and right limits of diff TEST LEFT point are:")
+            print(testElement.evalDiff(leftRef_LeftLim))
+            print(testElement.evalDiff(leftRef_RightLim))
+
+            print("Left and right limits of diff TRIAL RIGHT point are:")
+            print(trialElement.evalDiff(rightRef_LeftLim))
+            print(trialElement.evalDiff(rightRef_RightLim))
+
+            print("Left and right limits of diff TEST RIGHT point are:")
+            print(testElement.evalDiff(rightRef_LeftLim))
+            print(testElement.evalDiff(rightRef_RightLim))
+
+            print("Weight at left and right points")
+            print(leftWeight, rightWeight)
+
+    leftTrialI = trialElement.eval(leftRef_LeftLim) - trialElement.eval(leftRef_RightLim)
+    leftTestI = testElement.eval(leftRef_LeftLim) - testElement.eval(leftRef_RightLim)
+
+    rightTrialI = trialElement.eval(rightRef_LeftLim) - trialElement.eval(rightRef_RightLim)
+    rightTestI = testElement.eval(rightRef_LeftLim) - testElement.eval(rightRef_RightLim)
+
+    leftEvaluation = leftWeight * np.einsum("ij, ik -> jk",
+                                            leftTrialI, leftTestI)
+    rightEvaluation = rightWeight * np.einsum("ij, ik -> jk",
+                                              rightTrialI, rightTestI)
+
+    nansLeft = np.isnan(leftEvaluation)
+    leftEvaluation[nansLeft] = 0.0
+
+    nansRight = np.isnan(rightEvaluation)
+    rightEvaluation[nansRight] = 0.0
+    result = rightEvaluation + leftEvaluation
+    return result
 def evaluateBilinearFormAtBoundary_20(trialElement: belem, testElement: belem, weight):
     """Evaluates bilinear form of the type
         a(u, v) = weight(R) grad u(R) v(R) + weight(L) grad u(L) v(L),

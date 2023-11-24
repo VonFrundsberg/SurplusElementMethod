@@ -23,6 +23,9 @@ def fun(meshArg, approximationOrder, mappingType, integrationPointsAmount = 500)
         return elem1dUtils.evaluateDG_JumpComponentSymmetry(
             trialElement=trialElement, testElement=testElement, weight=lambda x: -x * x)
 
+
+
+
     def dimensionless_BPL_function(x, gamma: float, beta: float):
         lessThanOneArgs = np.where(x <= 1)
         moreThanOneArgs = np.where(x >= 1)
@@ -32,14 +35,7 @@ def fun(meshArg, approximationOrder, mappingType, integrationPointsAmount = 500)
         # plt.plot(x, result)
         # plt.show()
         return result
-    fromJacobian = 2
-    gamma = 2 - fromJacobian
-    beta = 3 - fromJacobian
-    functional = lambda testElement: elem1dUtils.integrateFunctional(
-        testElement=testElement, function=lambda x: dimensionless_BPL_function(x, gamma, beta), weight=lambda x: 1, integrationPointsAmount=integrationPointsAmount)
 
-    galerkinMethodObject.setBilinearForm(innerForms=[gradForm], boundaryForms=[boundaryForm1, boundaryForm2])
-    galerkinMethodObject.setRHSFunctional([functional])
 
     boundaryConditions = ['{"boundaryPoint": "np.inf", "boundaryValue": 0.0}']
 
@@ -54,11 +50,28 @@ def fun(meshArg, approximationOrder, mappingType, integrationPointsAmount = 500)
     mesh.fileRead("elementsData.txt", "neighboursData.txt")
     galerkinMethodObject.initializeMesh(mesh)
     galerkinMethodObject.initializeElements()
+    galerkinMethodObject.calculateMeshElementProperties()
+    fromJacobian = 2
+    gamma = 2 - fromJacobian
+    beta = 3 - fromJacobian
+    functional = lambda testElement: elem1dUtils.integrateFunctional(
+        testElement=testElement, function=lambda x: dimensionless_BPL_function(x, gamma, beta), weight=lambda x: 1,
+        integrationPointsAmount=integrationPointsAmount)
+
+    def boundaryForm3(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+        return elem1dUtils.evaluateDG_ErrorComponent(
+            trialElement=trialElement, testElement=testElement,
+            weight=lambda x: galerkinMethodObject.sigmaDGM_ErrorTerm(x) * x * x)
+
+    galerkinMethodObject.setBilinearForm(innerForms=[gradForm],
+                                         boundaryForms=[boundaryForm1, boundaryForm2, boundaryForm3])
+    galerkinMethodObject.setRHSFunctional([functional])
+
     galerkinMethodObject.calculateElements()
     galerkinMethodObject.solveSLAE()
-    galerkinMethodObject.calculateMeshElementProperties()
 
-    time.sleep(500)
+
+    # time.sleep(500)
 
 
     def dimensionless_BPL_asol(x, gamma: float, beta: float):
@@ -137,7 +150,7 @@ errors = []
 amountOfAdditionalIntervalBefore1 = 5
 amountOfAdditionalIntervalAfter1 = 5
 MeshBefore1 = np.array([0.0, 0.01, 1.0])
-MeshAfter1 = np.array([np.inf])
+MeshAfter1 = np.array([100.0, np.inf])
 curApproxOrders = 2*np.ones([MeshBefore1.size + MeshAfter1.size - 1], dtype=int)
 # curApproxOrders[-1] = 10
 
