@@ -104,16 +104,18 @@ def fun(meshArg, approximationOrder, mappingType, gamma: float, beta: float, int
         w, grid = integr.reg_22_wn(0.0, mesh.elements[0][0][1], integrationPointsAmount)
         gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
         calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(grid, gamma, beta)
-        error += np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
-        errors = np.append(errors, np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2))
+        local_error = np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
+        error += local_error
+        errors = np.append(errors, local_error)
 
 
     for i in range(1, mesh.elementsAmount - 1):
         w, grid = integr.reg_22_wn(mesh.elements[i][0][0], mesh.elements[i][0][1], integrationPointsAmount)
         calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(grid, gamma, beta)
         gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
-        error += np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
-        errors = np.append(errors, np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2))
+        local_error =  np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
+        error += local_error
+        errors = np.append(errors, local_error)
 
     if beta == 3.0:
         lambdaFunc = lambda x: (dimensionless_BPL_asol(x, 2.0, 3.0) - galerkinMethodObject.evaluateSolutionAtPoints(x))**2
@@ -127,77 +129,91 @@ def fun(meshArg, approximationOrder, mappingType, gamma: float, beta: float, int
         calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(mappedGrid, gamma, beta)
         integrable = galerkinMethodObject.elements[-1].inverseDerivativeMap(mappedGrid) * \
                                     (gridSolution - calculatedDimensionless_BPL_asol)**2
-        error += np.sum(w * integrable)
-        errors = np.append(errors, np.sum(w * integrable))
+        local_error = np.sum(w * integrable)
+        error += local_error
+        errors = np.append(errors, local_error)
 
     nonZeroAmount = galerkinMethodObject.getAmountOfNonZeroSLAE_elements()
     return nonZeroAmount, error, errors
 
 
-indices = []
-errors = []
 
-amountOfAdditionalIntervalBefore1 = 5
-amountOfAdditionalIntervalAfter1 = 5
-MeshBefore1 = np.array([0.0, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 0.01])
-MeshAfter1 = np.array([1.0, np.inf])
-curApproxOrders = 2*np.ones([MeshBefore1.size + MeshAfter1.size - 1], dtype=int)
-# curApproxOrders = np.arrar([])
-# curApproxOrders[-1] = 10
+def solveWithOptimizedMesh():
+    indices = []
+    errors = []
+    amountOfAdditionalIntervals = 1
+    # curApproxOrders = 2 * np.ones([MeshBefore1.size + MeshAfter1.size - 1], dtype=int)
+    bounds = (amountOfAdditionalIntervals + 1) * [(0.0, 1.0)]
+    Mesh = np.ones(5)
+    elemTypes = np.ones(5)
+    def costFunction(x):
+        approxOrders = 2*np.ones([2], dtype=int)
+        result = fun(meshArg=Mesh, approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
+                     gamma=1, beta=4, integrationPointsAmount=2000)[1]
+        return
 
-# bounds = (amountOfAdditionalInterval + 1) * [(0.0, 1.0)]
-RangeBefore1 = np.arange(0, amountOfAdditionalIntervalBefore1)
-RangeAfter1 = np.arange(1, amountOfAdditionalIntervalAfter1) + 1
-# mesh = np.hstack([0.0, *np.cumsum(x[:amountOfAdditionalInterval]), np.inf])
-# MeshBefore1 = np.hstack([0.0, (((1 / 4) ** (RangeBefore1))[::-1])])
+def solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders):
+    print("mesh", Mesh)
+    elemTypes = np.zeros(approxOrders.size, dtype=int)
+    elemTypes[-1] = 1
+    nonZero, Max, errors = fun(meshArg=Mesh, approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
+                               gamma=2, beta=3, integrationPointsAmount=2000)
+    # argMaxError = np.argmax(errors)
+    print("errors: ", errors)
+    print("mesh", Mesh)
+    print("approxOrders: ", approxOrders)
+    print("amount of non-zero", nonZero)
 
-# MeshAfter1 = np.hstack([RangeAfter1 * 1, np.inf])
+def solveWith_MeshOptimization_GivenApproxOrders(initGrid, approxOrders):
 
+    coefficientBounds = (approxOrders.size - 1) * [(0, 10)]
+    global maxError
+    def costFunc(x):
+        global maxError
+        tmpGrid = initGrid.copy()
+        tmpGrid[1: -1] *= x
+        Mesh = np.hstack(tmpGrid)
+        elemTypes = np.zeros(approxOrders.size, dtype=int)
+        elemTypes[-1] = 1
+        result = fun(meshArg=Mesh, approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
+                                   gamma=2, beta=3, integrationPointsAmount=2000)[1]
+        # print(result, Mesh)
 
-Mesh = np.hstack([MeshBefore1, MeshAfter1])
-print("mesh", Mesh)
-elemTypes = np.zeros(MeshBefore1.size + MeshAfter1.size - 1, dtype=int)
-elemTypes[-1] = 1
+        if result < maxError:
+            maxError = result
+            showBestError(x)
+        return result
+    def showBestError(point):
+        global maxError
+        tmpGrid = initGrid.copy()
+        tmpGrid[1: -1] *= point
+        Mesh = np.hstack(tmpGrid)
+        elemTypes = np.zeros(approxOrders.size, dtype=int)
+        elemTypes[-1] = 1
+        nonZero, Max, errors = fun(meshArg=np.hstack(Mesh),
+                                   approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
+                                   gamma=2, beta=3, integrationPointsAmount=2000)
+        print("error: ", Max, "mesh: ", Mesh,  "orders: ", approxOrders,"nonZeroAmount: ", nonZero, "errors: ", errors)
+        maxError = Max
+        # print("approxOrders: ", approxOrders)
+        # print("amount of non-zero", nonZero)
 
-# totalApproxWeight = np.sum(x)
-        # approxOrdersFloat = approxOrdersAmount*np.array([x/totalApproxWeight], dtype=float)
-        # approxOrders = np.array(approxOrdersFloat, dtype=int)
+    showBestError(np.ones(approxOrders.size - 1))
+    # optimizedResult = sp_opt.dual_annealing(costFunc, coefficientBounds, callback=lambda x: showBestError(x))
+    optimizedResult = sp_opt.direct(lambda x: costFunc(x), coefficientBounds)
+    # optimizedMesh = optimizedResult.get("x")
+    # print(optimizedMesh)
+    # elemTypes = np.zeros(approxOrders.size, dtype=int)
+    # elemTypes[-1] = 1
+    # nonZero, Max, errors = fun(meshArg=np.hstack([0.0, *optimizedMesh, np.inf]), approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
+    #                            gamma=2, beta=3, integrationPointsAmount=2000)
+    # print("errors: ", errors)
+    # print("mesh", optimizedMesh)
+    # print("approxOrders: ", approxOrders)
+    # print("amount of non-zero", nonZero)
 
+Mesh = np.array([0.0, 1.0, 10.0, np.inf], dtype=float)
+approxOrders = np.array([2, 2, 5], dtype=int)
+# solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
 
-
-
-for i in range(0, 100, 1):
-    indices.append(i)
-    nonZero, Max, errors = fun(meshArg=Mesh, approximationOrder=np.squeeze(curApproxOrders), mappingType=elemTypes,
-                 gamma=2, beta=4, integrationPointsAmount=2000)
-    print(nonZero, Max, *curApproxOrders, *errors)
-    curApproxOrders += np.ones(curApproxOrders.size, dtype=int)
-    # def lambdaFun(param: float, maxParam: int):
-    #     # tmpApproxOrders = approxOrders.copy()
-    #     approxOrders = 2*np.ones([2], dtype=int)
-    #     approxOrders[0] += int(param)
-    #     approxOrders[1] += maxParam - int(param)
-    #     # print(approxOrders)
-    #     result = fun(meshArg=Mesh, approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
-    #                  gamma=1, beta=4, integrationPointsAmount=2000)[1]
-    #     return result
-
-    # argMax = 0
-    # nonZero, Max, errors = lambdaFun(curApproxOrders, 0)
-
-    # searchResult = sp_opt.direct(lambda x: lambdaFun(x, i + 1), bounds=[(0, i + 1)], maxiter=10)
-    # print(searchResult)
-    # for perturbedOrderIter in range(1, MeshBefore1.size + MeshAfter1.size - 1):
-    #     nonZero, error, errors = lambdaFun(curApproxOrders, perturbedOrderIter)
-    #     if error < Max:
-    #         Max = error
-    #         argMax = perturbedOrderIter
-    # curApproxOrders[argMax] += 1
-    # print(errors)
-    # plt.plot(errors)
-    # plt.show()
-    # print(nonZero, Max, *curApproxOrders, *errors)
-
-
-plt.loglog(indices, errors)
-plt.show()
+solveWith_MeshOptimization_GivenApproxOrders(Mesh, approxOrders)

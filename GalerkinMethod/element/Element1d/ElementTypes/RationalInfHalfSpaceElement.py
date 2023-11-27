@@ -17,11 +17,12 @@ class RationalInfHalfSpaceElement:
             return
 
         if self.interval[1] == np.inf:
-            self.map = lambda x: ((1.0 + x) / (1.0 - x) + self.interval[0])
-            self.inverseMap = lambda x: (-x + self.interval[0] + 1.0) / (-x + self.interval[0] - 1.0)
+            L = self.interval[0]
+            self.map = lambda x: (L*(1.0 + x) / (1.0 - x) + self.interval[0])
+            self.inverseMap = lambda x: (-x + self.interval[0] + L) / (-x + self.interval[0] - L)
 
-            self.derivativeMap = lambda x: (x - 1) ** 2 / 2
-            self.inverseDerivativeMap = lambda x: 2 / (x - 1) ** 2
+            self.derivativeMap = lambda x: (x - 1) ** 2 / (2 * L)
+            self.inverseDerivativeMap = lambda x: 2 * L / (x - 1) ** 2
 
         self.refPointVal = np.eye(self.approxOrder)
         if dirichletBoundaryConditions is not None:
