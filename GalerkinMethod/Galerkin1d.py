@@ -40,12 +40,14 @@ class GalerkinMethod1d:
         corresponding class
 
         Returns:
-        Nothing, creates self.mesh field in FEM class
+        None
         """
         self.mesh = mesh
 
     def initializeElements(self):
         """
+        For each element specified in mesh and dirichletBoundaryConditions,
+        creates an object of Element1d Type
         """
         elementsAmount = self.mesh.getElementsAmount()
         self.elements : list[element.Element1d] = [None] * elementsAmount
@@ -68,7 +70,7 @@ class GalerkinMethod1d:
 
     def calculateElements(self):
         """
-        For each element in self.mesh, calculates its discretized version,
+        For each element in self.elements, calculates its discretized version,
          using previously initialized bilinearForms, and RHS functional
                 """
         elementsAmount = self.mesh.getElementsAmount()
@@ -146,6 +148,15 @@ class GalerkinMethod1d:
 
 
     def calculateMeshElementProperties(self):
+        """For spherically symmetric Poisson problem on unbounded domain.
+        Calculates C_sigma / d(x_i), where x_i represent each boundary,
+        except for 0 and inf.
+        d(x_i) is defined as
+        d(x_i) := 0.5 * (h_{i + 1} + h_i) / (p_{i + 1}^2 + p_i^2).
+        C_sigma := 4 * C_G * C_{ab}^a, where C_{ab}^a is defined as in the paper.
+        C_G is chosen so that
+        d(x_i) <= C_G ()??????????????????????????
+        """
         elemInnerProperties = []
         elemBoundaryProperties = []
 

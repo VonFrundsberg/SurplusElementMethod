@@ -10,6 +10,10 @@ import mathematics.spectral as spec
 from scipy import integrate as integrate
 
 
+
+"""SUPRESS WARNINGS"""
+import warnings
+warnings.filterwarnings("ignore")
 def dimensionless_BPL_asol(x, gamma: float, beta: float):
     x = np.atleast_1d(x)
     result = np.zeros(x.shape)
@@ -119,7 +123,7 @@ def fun(meshArg, approximationOrder, mappingType, gamma: float, beta: float, int
 
     if beta == 3.0:
         lambdaFunc = lambda x: (dimensionless_BPL_asol(x, 2.0, 3.0) - galerkinMethodObject.evaluateSolutionAtPoints(x))**2
-        integral = integrate.quad(func=lambdaFunc, a=galerkinMethodObject.elements[-1].interval[0], b=np.inf, epsabs=1e-16, epsrel=1e-16, limit=100)
+        integral = integrate.quad(func=lambdaFunc, a=galerkinMethodObject.elements[-1].interval[0], b=np.inf, epsabs=1e-16, epsrel=1e-16, limit=200)
         error += integral[0]
         errors = np.append(errors, integral[0])
     else:
@@ -164,15 +168,55 @@ def solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders):
     print("approxOrders: ", approxOrders)
     print("amount of non-zero", nonZero)
 
-def solveWith_MeshOptimization_GivenApproxOrders(initGrid, approxOrders):
+def solveWith_MeshOptimization_GivenApproxOrders_DIRECT(
+        initGrid, approxOrders, boundsMultiplier = 2.0):
 
-    coefficientBounds = (approxOrders.size - 1) * [(0, 10)]
+    init_h = np.diff(initGrid)[:-1]
+    bounds_h = list(map(lambda x: (0, x * boundsMultiplier), init_h))
+    global maxError
+
+    def costFunc(x):
+        global maxError
+        if np.min(x) <= 0:
+            return np.inf
+        Mesh = np.hstack([0.0, *np.cumsum(x), np.inf])
+        elemTypes = np.zeros(approxOrders.size, dtype=int)
+        elemTypes[-1] = 1
+        result = fun(meshArg=Mesh, approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
+                     gamma=2, beta=3, integrationPointsAmount=2000)[1]
+        # print(result, Mesh)
+
+        if result < maxError:
+            maxError = result
+            showBestError(x)
+        return result
+
+    def showBestError(point):
+        global maxError
+        Mesh = np.hstack([0.0, *np.cumsum(point), np.inf])
+        elemTypes = np.zeros(approxOrders.size, dtype=int)
+        elemTypes[-1] = 1
+        nonZero, Max, errors = fun(meshArg=np.hstack(Mesh),
+                                   approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
+                                   gamma=2, beta=3, integrationPointsAmount=2000)
+        print("error: ", Max, "mesh: ", Mesh, "orders: ", approxOrders, "nonZeroAmount: ", nonZero, "errors: ", errors)
+        maxError = Max
+        # print("approxOrders: ", approxOrders)
+        # print("amount of non-zero", nonZero)
+
+    showBestError(init_h)
+    optimizedResult = sp_opt.direct(costFunc, bounds_h)
+
+
+def solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(initGrid, approxOrders):
+
+    init_h = np.diff(initGrid)[:-1]
     global maxError
     def costFunc(x):
         global maxError
-        tmpGrid = initGrid.copy()
-        tmpGrid[1: -1] *= x
-        Mesh = np.hstack(tmpGrid)
+        if np.min(x) <= 0:
+            return np.inf
+        Mesh = np.hstack([0.0, *np.cumsum(x), np.inf])
         elemTypes = np.zeros(approxOrders.size, dtype=int)
         elemTypes[-1] = 1
         result = fun(meshArg=Mesh, approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
@@ -185,9 +229,7 @@ def solveWith_MeshOptimization_GivenApproxOrders(initGrid, approxOrders):
         return result
     def showBestError(point):
         global maxError
-        tmpGrid = initGrid.copy()
-        tmpGrid[1: -1] *= point
-        Mesh = np.hstack(tmpGrid)
+        Mesh = np.hstack([0.0, *np.cumsum(point), np.inf])
         elemTypes = np.zeros(approxOrders.size, dtype=int)
         elemTypes[-1] = 1
         nonZero, Max, errors = fun(meshArg=np.hstack(Mesh),
@@ -198,22 +240,47 @@ def solveWith_MeshOptimization_GivenApproxOrders(initGrid, approxOrders):
         # print("approxOrders: ", approxOrders)
         # print("amount of non-zero", nonZero)
 
-    showBestError(np.ones(approxOrders.size - 1))
-    # optimizedResult = sp_opt.dual_annealing(costFunc, coefficientBounds, callback=lambda x: showBestError(x))
-    optimizedResult = sp_opt.direct(lambda x: costFunc(x), coefficientBounds)
-    # optimizedMesh = optimizedResult.get("x")
-    # print(optimizedMesh)
-    # elemTypes = np.zeros(approxOrders.size, dtype=int)
-    # elemTypes[-1] = 1
-    # nonZero, Max, errors = fun(meshArg=np.hstack([0.0, *optimizedMesh, np.inf]), approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
-    #                            gamma=2, beta=3, integrationPointsAmount=2000)
-    # print("errors: ", errors)
-    # print("mesh", optimizedMesh)
-    # print("approxOrders: ", approxOrders)
-    # print("amount of non-zero", nonZero)
+    showBestError(init_h)
+    optimizedResult = sp_opt.basinhopping(costFunc, init_h)
 
-Mesh = np.array([0.0, 1.0, 10.0, np.inf], dtype=float)
-approxOrders = np.array([2, 2, 5], dtype=int)
+
+def solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(initGrid, approxOrders):
+
+    init_h = np.diff(initGrid)[:-1]
+    global maxError
+    def costFunc(x):
+        global maxError
+        if np.min(x) <= 0:
+            return np.inf
+        Mesh = np.hstack([0.0, *np.cumsum(x), np.inf])
+        elemTypes = np.zeros(approxOrders.size, dtype=int)
+        elemTypes[-1] = 1
+        result = fun(meshArg=Mesh, approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
+                                   gamma=2, beta=3, integrationPointsAmount=2000)[1]
+        # print(result, Mesh)
+
+        if result < maxError:
+            maxError = result
+            showBestError(x)
+        return result
+    def showBestError(point):
+        global maxError
+        Mesh = np.hstack([0.0, *np.cumsum(point), np.inf])
+        elemTypes = np.zeros(approxOrders.size, dtype=int)
+        elemTypes[-1] = 1
+        nonZero, Max, errors = fun(meshArg=np.hstack(Mesh),
+                                   approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
+                                   gamma=2, beta=3, integrationPointsAmount=2000)
+        print("error: ", Max, "mesh: ", Mesh,  "orders: ", approxOrders,"nonZeroAmount: ", nonZero, "errors: ", errors)
+        maxError = Max
+        # print("approxOrders: ", approxOrders)
+        # print("amount of non-zero", nonZero)
+
+    showBestError(init_h)
+    optimizedResult = sp_opt.basinhopping(costFunc, init_h)
+Mesh = np.array([0.         ,0.04, 0.14, 1.0, 7.0, 16.0, np.inf], dtype=float)
+approxOrders = np.array([2, 3, 4, 6, 6, 4], dtype=int)
 # solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
 
-solveWith_MeshOptimization_GivenApproxOrders(Mesh, approxOrders)
+# solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(Mesh, approxOrders)
+solveWith_MeshOptimization_GivenApproxOrders_DIRECT(Mesh, approxOrders, boundsMultiplier=4)
