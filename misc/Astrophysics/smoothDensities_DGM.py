@@ -259,12 +259,12 @@ def solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(initGrid, approxOr
 
     showBestError(init_h)
     optimizedResult = sp_opt.basinhopping(costFunc, init_h)
-for i in range(34, 100):
+for i in range(32, 100):
     # Mesh = np.array([0.0, 1e-14, 1e-13, 1e-12, 1e-11, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1.0, 10.0, 100, 1000, np.inf], dtype=float)
     # approxOrders = i*np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], dtype=int)
     # approxOrders[0] = 10
     # solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
-    Mesh = np.array([0.0, 20.0, 200.0, np.inf], dtype=float)
+    Mesh = np.array([0.0, 10.0, 100, 1000.0, np.inf], dtype=float)
     approxOrders = i * np.ones(Mesh.size - 1, dtype=int)
     # stronglyReducedOrder = int(approxOrders[-1]/2)
     # halfReducedOrder = int(approxOrders[-1])

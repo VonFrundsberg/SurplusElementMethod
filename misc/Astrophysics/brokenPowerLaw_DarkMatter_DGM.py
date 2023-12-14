@@ -114,7 +114,7 @@ def fun(meshArg, approximationOrder, mappingType, gamma: float, beta: float, int
 
     error = 0.0
     errors = np.array([], dtype=float)
-    relativeErrors = np.array([], dtype=float)
+    # relativeErrors = np.array([], dtype=float)
     errors = np.array([], dtype=float)
     if gamma == 2.0:
         w, grid = integr.log_16_wn(0.0, mesh.elements[0][0][1], integrationPointsAmount)
@@ -122,7 +122,7 @@ def fun(meshArg, approximationOrder, mappingType, gamma: float, beta: float, int
         a = mesh.elements[0][0][1]
         error += np.sum(w*(2*np.log(grid)*(gridSolution - 2.0) + (gridSolution - 2.0)**2)) + a * (2.0 + (-2.0 + np.log(a))*np.log(a))
         errors = np.append(errors, error)
-        relativeErrors = np.append(relativeErrors, error/squaredIntegralGamma2Beta3SolutionKernel(a))
+        # relativeErrors = np.append(relativeErrors, error/squaredIntegralGamma2Beta3SolutionKernel(a))
     elif gamma < 2.0:
         w, grid = integr.reg_22_wn(0.0, mesh.elements[0][0][1], integrationPointsAmount)
         gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
@@ -139,28 +139,28 @@ def fun(meshArg, approximationOrder, mappingType, gamma: float, beta: float, int
         local_error = np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
         error += local_error
         errors = np.append(errors, local_error)
-        relativeErrors = np.append(relativeErrors, local_error/squaredIntegralGamma2Beta3SolutionMoreThanOne(mesh.elements[i][0][0], mesh.elements[i][0][1]))
+        # relativeErrors = np.append(relativeErrors, local_error/squaredIntegralGamma2Beta3SolutionMoreThanOne(mesh.elements[i][0][0], mesh.elements[i][0][1]))
 
 
-    if beta == 3.0:
-        lambdaFunc = lambda x: (dimensionless_BPL_asol(x, 2.0, 3.0) - galerkinMethodObject.evaluateSolutionAtPoints(x))**2
-        integral = integrate.quad(func=lambdaFunc, a=galerkinMethodObject.elements[-1].interval[0], b=np.inf, epsabs=1e-16, epsrel=1e-16, limit=200)
-        error += integral[0]
-        errors = np.append(errors, integral[0])
-        relativeErrors = np.append(relativeErrors, local_error/squaredIntegralGamma2Beta3SolutionInf(galerkinMethodObject.elements[-1].interval[0]))
-    else:
-        w, grid = integr.reg_22_wn(-1.0, 1.0, integrationPointsAmount)
-        mappedGrid = galerkinMethodObject.elements[-1].map(grid)
-        gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(mappedGrid)
-        calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(mappedGrid, gamma, beta)
-        integrable = galerkinMethodObject.elements[-1].inverseDerivativeMap(mappedGrid) * \
+    # if beta == 3.0:
+    #     lambdaFunc = lambda x: (dimensionless_BPL_asol(x, 2.0, 3.0) - galerkinMethodObject.evaluateSolutionAtPoints(x))**2
+    #     integral = integrate.quad(func=lambdaFunc, a=galerkinMethodObject.elements[-1].interval[0], b=np.inf, epsabs=1e-16, epsrel=1e-16, limit=200)
+    #     error += integral[0]
+    #     errors = np.append(errors, integral[0])
+    #     # relativeErrors = np.append(relativeErrors, local_error/squaredIntegralGamma2Beta3SolutionInf(galerkinMethodObject.elements[-1].interval[0]))
+    # else:
+    w, grid = integr.reg_22_wn(-1.0, 1.0, integrationPointsAmount)
+    mappedGrid = galerkinMethodObject.elements[-1].map(grid)
+    gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(mappedGrid)
+    calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(mappedGrid, gamma, beta)
+    integrable = galerkinMethodObject.elements[-1].inverseDerivativeMap(mappedGrid) * \
                                     (gridSolution - calculatedDimensionless_BPL_asol)**2
-        local_error = np.sum(w * integrable)
-        error += local_error
-        errors = np.append(errors, local_error)
+    local_error = np.sum(w * integrable)
+    error += local_error
+    errors = np.append(errors, local_error)
 
     nonZeroAmount = galerkinMethodObject.getAmountOfNonZeroSLAE_elements()
-    return nonZeroAmount, error, relativeErrors
+    return nonZeroAmount, error, errors
 
 
 
@@ -184,9 +184,11 @@ def solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders):
     elemTypes[-1] = 1
     nonZero, Max, errors = fun(meshArg=Mesh, approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
                                gamma=2, beta=3, integrationPointsAmount=5000)
-    # argMaxError = np.argmax(errors)
-    print(nonZero, Max)
+
+    print("error: ", Max, "mesh: ", Mesh, "orders: ", approxOrders, "nonZeroAmount: ", nonZero, "errors: ", errors)
     # print("amount of non-zero: ", nonZero)
+    print("error: ", Max, "orders: ", approxOrders, "nonZeroAmount: ", nonZero, "errors: ", errors)
+
     # print("error: ", Max)
     # print("errors: ", errors)
     # print("mesh: ", Mesh)
@@ -199,7 +201,7 @@ def solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(
     init_h = np.diff(initGrid)[:-1]
     bounds_h = list(map(lambda x: (0, x * boundsMultiplier), init_h))
     global maxError
-
+    maxError = np.finfo(float).max
     def costFunc(x):
         global maxError
         if np.min(x) <= 0:
@@ -213,7 +215,7 @@ def solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(
 
         if result < maxError:
             maxError = result
-            showBestError(x)
+            # showBestError(x)
         return result
 
     def showBestError(point):
@@ -229,9 +231,9 @@ def solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(
         # print("approxOrders: ", approxOrders)
         # print("amount of non-zero", nonZero)
 
-    showBestError(init_h)
+    # showBestError(init_h)
     optimizedResult = sp_opt.direct(costFunc, bounds_h)
-
+    showBestError(optimizedResult.get('x'))
 
 
 def solveWith_MeshOptimization_GivenApproxOrders_DIRECT_gridVariant(
@@ -309,11 +311,23 @@ def solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(initGrid, approxOr
 
     showBestError(init_h)
     optimizedResult = sp_opt.basinhopping(costFunc, init_h)
-for i in range(1, 20):
-    Mesh = np.array([0.0, 1e-14, 1e-13, 1e-12, 1e-11, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1.0, 10.0, 100, 1000, np.inf], dtype=float)
+for i in range(2, 60):
+    # Mesh = np.array([0.0, 1e-14, 1e-13, 1e-12, 1e-11, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1.0, 10.0, 100, 1000, np.inf], dtype=float)
     # approxOrders = i*np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], dtype=int)
     # approxOrders[0] = 10
     # solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
-
+    Mesh = np.array([0.0, 1e-14, 1e-13, 1e-12, 1e-11, 1e-10,
+                     1e-9, 1e-8, 1e-7, 1e-6,
+                     1e-5, 1e-4, 1e-3, 1e-2, 1e-1,
+                     1.0, 1e+1, 1e+2, 1e+3, np.inf], dtype=float)
+    approxOrders = i * np.ones(Mesh.size - 1, dtype=int)
+    m=12
+    for j in range(m):
+        approxOrders[j] = max(2, int(i / (m - j)))
+    approxOrders[-1] = max(int(i/1.5), 2)
+    for j in range(len(approxOrders)):
+        approxOrders[j] = min(25, approxOrders[j])
+    # for j in range(2):
+    #     approxOrders[-1 - j] = max(2, int(i / (2 - j)))
     # solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(Mesh, approxOrders)
     solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
