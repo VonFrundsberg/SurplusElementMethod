@@ -119,7 +119,11 @@ class GalerkinMethod1d:
     def checkPositiveEigenvalues(self):
         A = self.A.toarray()
         eigvals = sp_linalg.eigvals(A)
-        print(eigvals)
+        realParts = np.real(eigvals)
+        if np.min(realParts) >= 0.0:
+            print("all eigs are positive")
+        else:
+            print("some eigs aren't poisitive, amount of negative is: ", np.size(np.where(realParts < 0)))
     def solveSLAE(self):
         """Solves system matrixElements @ u = functionalElements
             Works only for zero Dirichlet boundary conditions
