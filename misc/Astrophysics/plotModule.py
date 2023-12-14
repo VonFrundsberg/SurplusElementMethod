@@ -41,6 +41,7 @@ for line in file:
 for i in range(len(dataset)):
         dataset[i] = np.array(dataset[i], dtype=float)
 datasets.append(dataset)
+
 plt.figure()
 for i in range(3):
     plt.loglog(np.sum(datasets[i][2], axis=1), datasets[i][0], label=f'Dataset {i+1}')
@@ -52,7 +53,12 @@ plt.grid(True)
 plt.show()
 
 for i in range(3):
-    plt.loglog(datasets[i][3], datasets[i][0])
+    plt.loglog(datasets[i][3], datasets[i][0], label=f'Dataset {i+1}')
+plt.xlabel('non-zero matrices elements')
+plt.ylabel('Errors')
+plt.title('Errors vs non-zero elements')
+plt.legend()
+plt.grid(True)
 plt.show()
 # Read data from the file
 # with open('[ 0.  1. inf].txt', 'r') as file:

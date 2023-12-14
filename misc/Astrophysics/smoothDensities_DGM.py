@@ -77,13 +77,14 @@ def fun(meshArg, approximationOrder, mappingType, asol, func, integrationPointsA
 
     mesh.fileWrite("elementsData.txt", "neighboursData.txt")
     mesh.fileRead("elementsData.txt", "neighboursData.txt")
-    galerkinMethodObject.initializeMesh(mesh)
-    galerkinMethodObject.initializeElements()
-    galerkinMethodObject.calculateMeshElementProperties()
 
     functional = lambda testElement: elem1dUtils.integrateFunctional(
         testElement=testElement, function=lambda x: func(x), weight=lambda x: x * x * 4 * np.pi,
         integrationPointsAmount=integrationPointsAmount)
+
+    galerkinMethodObject.initializeMesh(mesh)
+    galerkinMethodObject.initializeElements()
+    galerkinMethodObject.calculateMeshElementProperties()
 
     def boundaryForm3(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_ErrorComponent(
@@ -258,17 +259,17 @@ def solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(initGrid, approxOr
 
     showBestError(init_h)
     optimizedResult = sp_opt.basinhopping(costFunc, init_h)
-for i in range(2, 100):
+for i in range(34, 100):
     # Mesh = np.array([0.0, 1e-14, 1e-13, 1e-12, 1e-11, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1.0, 10.0, 100, 1000, np.inf], dtype=float)
     # approxOrders = i*np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], dtype=int)
     # approxOrders[0] = 10
     # solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
-    Mesh = np.array([0.0, 5.0, 40.0, 100.0, np.inf], dtype=float)
+    Mesh = np.array([0.0, 20.0, 200.0, np.inf], dtype=float)
     approxOrders = i * np.ones(Mesh.size - 1, dtype=int)
-    stronglyReducedOrder = int(approxOrders[-1]/2)
-    halfReducedOrder = int(approxOrders[-1])
-    approxOrders[-1] = max(stronglyReducedOrder, 2)
-    approxOrders[-2] = max(halfReducedOrder, 2)
+    # stronglyReducedOrder = int(approxOrders[-1]/2)
+    # halfReducedOrder = int(approxOrders[-1])
+    # approxOrders[-1] = max(stronglyReducedOrder, 2)
+    # approxOrders[-2] = max(halfReducedOrder, 2)
     # solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(Mesh, approxOrders)
     # solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders, NFW_asol, NFW_function)
     solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(Mesh, approxOrders, NFW_asol, NFW_function)
