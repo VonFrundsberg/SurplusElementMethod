@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import time as time
-filename = 'toPlotData/NFW.txt'
+filename = 'toPlotData/BPL_FIXED_MESH.txt'
 file = open(filename, 'r')
 datasets = []
 
@@ -29,11 +29,11 @@ for line in file:
                                  .replace(':', ''))
         splittedLine = lineWithoutAuxSymbols.split()
         errorIndex = splittedLine.index('error')
-        meshIndex = splittedLine.index('mesh')
+        # meshIndex = splittedLine.index('mesh')
         ordersIndex = splittedLine.index('orders')
         nonZeroIndex = splittedLine.index('nonZeroAmount')
         errors.append(splittedLine[errorIndex + 1])
-        meshes.append(splittedLine[meshIndex + 1: ordersIndex])
+        # meshes.append(splittedLine[meshIndex + 1: ordersIndex])
         orders.append(splittedLine[ordersIndex + 1: nonZeroIndex])
         # print(splittedLine[ordersIndex + 1: nonZeroIndex])
         nonZeros.append(splittedLine[nonZeroIndex + 1])
