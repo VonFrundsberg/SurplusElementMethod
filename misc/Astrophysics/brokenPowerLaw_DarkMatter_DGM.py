@@ -179,20 +179,11 @@ def solveWithOptimizedMesh():
         return
 
 def solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders):
-    # print("mesh", Mesh)
     elemTypes = np.zeros(approxOrders.size, dtype=int)
     elemTypes[-1] = 1
     nonZero, Max, errors = fun(meshArg=Mesh, approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
                                gamma=2, beta=3, integrationPointsAmount=5000)
-
-    # print("error: ", Max, "mesh: ", Mesh, "orders: ", approxOrders, "nonZeroAmount: ", nonZero, "errors: ", errors)
-    # print("amount of non-zero: ", nonZero)
     print("error: ", Max, "orders: ", approxOrders, "nonZeroAmount: ", nonZero, "errors: ", errors)
-
-    # print("error: ", Max)
-    # print("errors: ", errors)
-    # print("mesh: ", Mesh)
-    # print("approxOrders: ", approxOrders)
     return errors
 
 
@@ -315,12 +306,12 @@ def solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(initGrid, approxOr
 np.set_printoptions(threshold=np.inf)
 np.set_printoptions(linewidth=np.inf)
 
-Mesh = np.array([0.0, 1e-14, 1e-13, 1e-12,
-                     1e-11, 1e-10, 1e-9, 1e-8,
-                     1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1,
-                     1.0, 1e+1, 1e+2, 1e+3, np.inf], dtype=float)
-# Mesh = np.array([0.0, 3*1e-3, 1.0, np.inf], dtype=float)
-maxOrders = 100*np.ones(Mesh.size - 1, dtype=int)
+# Mesh = np.array([0.0, 1e-14, 1e-13, 1e-12,
+#                      1e-11, 1e-10, 1e-9, 1e-8,
+#                      1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1,
+#                      1.0, 1e+1, 1e+2, 1e+3, np.inf], dtype=float)
+Mesh = np.array([0.0, 5*1e-2, 5*1e-2, 5*1e-1, 1.0, 2.0, np.inf], dtype=float)
+# maxOrders = 100*np.ones(Mesh.size - 1, dtype=int)
 for i in range(2, 60):
     # approxOrders[0] = 10
     # solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
@@ -329,27 +320,14 @@ for i in range(2, 60):
     #     1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0, 1e+2, 1e+3, np.inf], dtype=float)
 
     approxOrders = i * np.ones(Mesh.size - 1, dtype=int)
-    for j in range(len(approxOrders)):
-        approxOrders[j] = min(approxOrders[j], maxOrders[j])
-    # approxOrders[0] = min(approxOrders[0], 6)
-    # approxOrders[1] = min(approxOrders[1], 6)
-    # approxOrders[2] = min(approxOrders[2], 6)
-    # approxOrders[3] = min(approxOrders[3], 6)
-    # approxOrders[4] = min(approxOrders[4], 9)
-    # approxOrders[5] = min(approxOrders[5], 10)
-    # m=6
-    # for j in range(m):
-    #     approxOrders[j] = max(2, int(i / (m - j)))
-    # # approxOrders[0] = max(int(i/2.5), 2)
-    # # approxOrders[1] = max(int(i/2), 2)
-    # # approxOrders[2] = max(int(i/1.5), 2)
-    # approxOrders[-1] = max(int(i/1.5), 2)
+    # for j in range(len(approxOrders)):
+    #     approxOrders[j] = min(approxOrders[j], maxOrders[j])
     # for j in range(len(approxOrders)):
     #     approxOrders[j] = min(30, approxOrders[j])
     # for j in range(2):
     #     approxOrders[-1 - j] = max(2, int(i / (2 - j)))
     # solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(Mesh, approxOrders)
-    # solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(Mesh, approxOrders)
-    errors = solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
-    smallEnoughErrors = np.argwhere(errors < 1e-16)
-    maxOrders[smallEnoughErrors] = approxOrders[smallEnoughErrors]
+    solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(Mesh, approxOrders)
+    # errors = solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
+    # smallEnoughErrors = np.argwhere(errors < 1e-15)
+    # maxOrders[smallEnoughErrors] = approxOrders[smallEnoughErrors]

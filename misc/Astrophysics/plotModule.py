@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import scienceplots
 import numpy as np
 import time as time
 filename = 'toPlotData/BPL_FIXED_MESH.txt'
@@ -41,9 +42,9 @@ for line in file:
 for i in range(len(dataset)):
         dataset[i] = np.array(dataset[i], dtype=float)
 datasets.append(dataset)
-
+# plt.style.use(['science', 'pgf'])
 plt.figure()
-for i in range(3):
+for i in range(4):
     plt.loglog(np.sum(datasets[i][2], axis=1), datasets[i][0], label=f'Dataset {i+1}')
 plt.xlabel('Total Orders')
 plt.ylabel('Errors')
@@ -52,7 +53,7 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
-for i in range(3):
+for i in range(4):
     plt.loglog(datasets[i][3], datasets[i][0], label=f'Dataset {i+1}')
 plt.xlabel('non-zero matrices elements')
 plt.ylabel('Errors')

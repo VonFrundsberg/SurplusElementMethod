@@ -138,7 +138,8 @@ def solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders, asol, func):
     elemTypes[-1] = 1
     nonZero, Max, errors = fun(meshArg=Mesh, approximationOrder=np.squeeze(approxOrders), mappingType=elemTypes,
                                asol=asol, func=func, integrationPointsAmount=5000)
-    print(nonZero, Max)
+    print("error: ", Max, "mesh: ", Mesh, "orders: ", approxOrders, "nonZeroAmount: ", nonZero, "errors: ", errors)
+
 
 def solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(
         initGrid, approxOrders, asol, func, boundsMultiplier = 2.0):
@@ -259,17 +260,21 @@ def solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(initGrid, approxOr
 
     showBestError(init_h)
     optimizedResult = sp_opt.basinhopping(costFunc, init_h)
-for i in range(32, 100):
+np.set_printoptions(threshold=np.inf)
+np.set_printoptions(linewidth=np.inf)
+for i in range(9, 20):
     # Mesh = np.array([0.0, 1e-14, 1e-13, 1e-12, 1e-11, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1.0, 10.0, 100, 1000, np.inf], dtype=float)
     # approxOrders = i*np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], dtype=int)
     # approxOrders[0] = 10
     # solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
-    Mesh = np.array([0.0, 10.0, 100, 1000.0, np.inf], dtype=float)
+
+
+    Mesh = np.array([0.0, 3.0, np.inf], dtype=float)
     approxOrders = i * np.ones(Mesh.size - 1, dtype=int)
     # stronglyReducedOrder = int(approxOrders[-1]/2)
     # halfReducedOrder = int(approxOrders[-1])
     # approxOrders[-1] = max(stronglyReducedOrder, 2)
     # approxOrders[-2] = max(halfReducedOrder, 2)
     # solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(Mesh, approxOrders)
-    # solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders, NFW_asol, NFW_function)
-    solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(Mesh, approxOrders, NFW_asol, NFW_function)
+    solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders, sphere_asol, sphere_function)
+    # solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(Mesh, approxOrders, plummer_asol, plummer_function)
