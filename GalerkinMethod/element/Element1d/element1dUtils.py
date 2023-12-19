@@ -351,7 +351,7 @@ def integrateFunctional(testElement: belem, function, weight,
             Returns:
                 result: an integral of functional
         """
-    w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
+    w, x = integr.reg_22_wn(a=-1, b=1, n=integrationPointsAmount)
     w = w*testElement.inverseDerivativeMap(x)
 
     x = testElement.map(x)

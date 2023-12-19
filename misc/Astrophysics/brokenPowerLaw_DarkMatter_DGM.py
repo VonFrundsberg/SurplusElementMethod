@@ -306,20 +306,21 @@ def solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(initGrid, approxOr
 np.set_printoptions(threshold=np.inf)
 np.set_printoptions(linewidth=np.inf)
 
-# Mesh = np.array([0.0, 1e-14, 1e-13, 1e-12,
-#                      1e-11, 1e-10, 1e-9, 1e-8,
-#                      1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1,
-#                      1.0, 1e+1, 1e+2, 1e+3, np.inf], dtype=float)
-Mesh = np.array([0.0, 5*1e-2, 5*1e-2, 5*1e-1, 1.0, 2.0, np.inf], dtype=float)
+Mesh = np.array([0.0, 1e-12,
+                     1e-11, 1e-10, 1e-9, 1e-8,
+                     1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1,
+                     1.0, 1e+1, 1e+2, 1e+3, np.inf], dtype=float)
+# Mesh = np.array([0.0, 5*1e-2, 5*1e-2, 5*1e-1, 1.0, 2.0, np.inf], dtype=float)
 # maxOrders = 100*np.ones(Mesh.size - 1, dtype=int)
-for i in range(2, 60):
+for i in range(30, 31):
     # approxOrders[0] = 10
     # solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
     # Mesh = np.array([
     #     0.0, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5,
     #     1e-4, 1e-3, 1e-2, 1e-1, 1.0, 10.0, 1e+2, 1e+3, np.inf], dtype=float)
 
-    approxOrders = i * np.ones(Mesh.size - 1, dtype=int)
+    approxOrders = 30 * np.ones(Mesh.size - 1, dtype=int)
+    approxOrders[0] = i
     # for j in range(len(approxOrders)):
     #     approxOrders[j] = min(approxOrders[j], maxOrders[j])
     # for j in range(len(approxOrders)):
@@ -327,7 +328,7 @@ for i in range(2, 60):
     # for j in range(2):
     #     approxOrders[-1 - j] = max(2, int(i / (2 - j)))
     # solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(Mesh, approxOrders)
-    solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(Mesh, approxOrders)
-    # errors = solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
+    # solveWith_MeshOptimization_GivenApproxOrders_DIRECT_hVariant(Mesh, approxOrders)
+    errors = solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
     # smallEnoughErrors = np.argwhere(errors < 1e-15)
     # maxOrders[smallEnoughErrors] = approxOrders[smallEnoughErrors]

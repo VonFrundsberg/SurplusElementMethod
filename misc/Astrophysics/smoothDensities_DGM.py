@@ -35,7 +35,7 @@ def NFW_asol(x):
 def sphere_function(x):
         x = np.atleast_1d(x)
         lessThanOneArgs = np.where(x <= 1)
-        moreThanOneArgs = np.where(x >= 1)
+        moreThanOneArgs = np.where(x > 1)
         result = np.zeros(x.shape)
         result[lessThanOneArgs] = 1
         result[moreThanOneArgs] = 0
@@ -124,6 +124,9 @@ def fun(meshArg, approximationOrder, mappingType, asol, func, integrationPointsA
     mappedGrid = galerkinMethodObject.elements[-1].map(grid)
     gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(mappedGrid)
     calculatedDimensionless_BPL_asol = asol(mappedGrid)
+    # plt.loglog(galerkinMethodObject.elements[-1].inverseDerivativeMap(mappedGrid)*
+    #          (gridSolution - calculatedDimensionless_BPL_asol)**2)
+    # plt.show()
     integrable = galerkinMethodObject.elements[-1].inverseDerivativeMap(mappedGrid) * \
                                     (gridSolution - calculatedDimensionless_BPL_asol)**2
     local_error = np.sum(w * integrable)
@@ -262,14 +265,14 @@ def solveWith_MeshOptimization_GivenApproxOrders_BASINHOPPING(initGrid, approxOr
     optimizedResult = sp_opt.basinhopping(costFunc, init_h)
 np.set_printoptions(threshold=np.inf)
 np.set_printoptions(linewidth=np.inf)
-for i in range(9, 20):
+for i in range(2, 21):
     # Mesh = np.array([0.0, 1e-14, 1e-13, 1e-12, 1e-11, 1e-10, 1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1.0, 10.0, 100, 1000, np.inf], dtype=float)
     # approxOrders = i*np.array([2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2], dtype=int)
     # approxOrders[0] = 10
     # solveWith_GivenMesh_GivenApproxOrders(Mesh, approxOrders)
 
 
-    Mesh = np.array([0.0, 3.0, np.inf], dtype=float)
+    Mesh = np.array([0.0, 1.0, np.inf], dtype=float)
     approxOrders = i * np.ones(Mesh.size - 1, dtype=int)
     # stronglyReducedOrder = int(approxOrders[-1]/2)
     # halfReducedOrder = int(approxOrders[-1])

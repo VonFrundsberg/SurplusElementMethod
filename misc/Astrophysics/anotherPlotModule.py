@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import scienceplots
-filename = 'toPlotData/NFW.txt'
+filename = 'toPlotData/easyOnes.txt'
 file = open(filename, 'r')
 datasets = []
 
@@ -47,17 +47,24 @@ plt.style.use(['science','ieee', 'grid'])
 plt.rcParams.update({'figure.dpi': '300'})
 line_styles = ['-', '--', ':', '-.']
 # labels = ['$v^{optimized \, p}_{BPL}$', '$v^{fixed \, p}_{BPL}$', '$v^3_{BPL}$', '$v^6_{BPL}$']
-labels = ['$v^{2}_{NFW}$', '$v^{3}_{NFW}$', '$v^{4}_{NFW}$']
+labels = ['$v^{kernel}_{BPL}$', '$v^{outer}_{BPL}$', '$v^{shell}_{BPL}$']
 for i in range(3):
     orders_sum = np.sum(datasets[i][2], axis=1)
     # orders_sum = datasets[i][3]
+    # if i == 0:
+    #     orders_sum = datasets[i][2][:, 0]
+    # if i == 1:
+    #     orders_sum = datasets[i][2][:, -1]
+    # if i == 2:
+    #     orders_sum = datasets[i][2][:, -4]
+
     errors = datasets[i][0]
 
         # Use different line styles for each dataset
 
     plt.loglog(orders_sum, errors, label=labels[i], linestyle=line_styles[i])
 
-    plt.xlabel('Degrees of freedom')
+    plt.xlabel('Approximation Order')
     plt.ylabel('Error')
     # plt.xlabel('Non-zero elements')
     # plt.title('Errors vs Total Orders')
@@ -67,8 +74,12 @@ for i in range(3):
     # tick_labels = np.array(np.log10(tick_positions), dtype=int)
     # plt.xticks(tick_positions, [f'$10^{{{pos}}}$' for pos in tick_labels])
     # plt.tick_params(axis='y', which='both', labelright=True, labelleft=False)
-    tick_positions = [4, 6, 8, 12, 40, 60, 80, 120]
-    plt.xticks(tick_positions, [f'{pos}' for pos in tick_positions])
+    # tick_positions = [2, 3, 20, 30]
+    # plt.xticks(tick_positions, [f'{pos}' for pos in tick_positions])
+
+    # tick_positions = [1e+1, 1e-1, 1e-3, 1e-5, 1e-7, 1e-9, 1e-11, 1e-13, 1e-15, 1e-17]
+    # tick_labels = np.array(np.log10(tick_positions), dtype=int)
+    # plt.yticks(tick_positions, [f'$10^{{{pos}}}$' for pos in tick_labels])
     plt.legend()
 
     # Customize grid appearance
