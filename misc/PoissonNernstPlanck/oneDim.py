@@ -150,13 +150,13 @@ phi0 = 0.0;
 
 # print(phi1, alpha)
 potential = x.copy()
-w, n = integr.reg_22_wn(0, 1, 1000)
+w, nodes = integr.reg_22_wn(0, 1, 1000)
 for C0 in [3.0]:
     concentration_values = []
     for V_r in spec.chebNodes(10, 0, 100):
         phi1 = F * V_r / 1000 / R / T
         concentration = C1 * x.copy() + C0 * (1 - x.copy())
-        for i in range(50):
+        for i in range(100):
             vectorPhi = potential
             # phiFunction = lambda x: spec.barycentricChebInterpolate(vectorPhi, x, 0, 1, extrapolation=1)
             phiD = D @ vectorPhi
@@ -169,20 +169,33 @@ for C0 in [3.0]:
 
             # cI = spec.chebTransform(I)
             # c_phiD = spec.chebTransform(phiD)
-            xC = spec.barycentricChebInterpolate(I, n, a=0, b=1, extrapolation=1, axis=0)
+            # xC = spec.barycentricChebInterpolate(I, n, a=0, b=1, extrapolation=1, axis=0)
             # print(xC.shape)
-            integralElement = xC.T * phiD_Function(n)*w
-            integralElement = np.sum(integralElement, axis=1)
-            # print(integralElement.shape)
-            j = integralElement + concentration[-1] - concentration[0]
-            # cheb_poly.chebmul(cI, c_phiD)
-            # time.sleep(500)
-            j *= -1
-            concentrationRHS = j
-            concentrationRHS[0] = C0
-            # concentrationRHS[-1] = C1
-            concentration = sp.solve(concentrationOperator, concentrationRHS)
+            # integralElement = xC.T * phiD_Function(n) * w
+            integralElement = (spec.barycentricChebInterpolate(concentration, nodes, a=0, b=1, extrapolation=1) *
+                               phiD_Function(nodes) * w)
+            integralElement = np.sum(integralElement)
+            for m in range(1):
 
+                # print(integralElement.shape)
+                # concentration_xs = spec.barycentricChebInterpolate(concentration, n, a=0, b=1, extrapolation=1)
+                # concentration_xs *= (concentration_xs <= 0)
+                # errorTerm = np.sum(w * concentration_xs)
+                # errorTerm = min(0, np.min(concentration))
+                j = integralElement + concentration[-1] - concentration[0]
+                # print(j)
+                # print(errorTerm)
+                # cheb_poly.chebmul(cI, c_phiD)
+                # time.sleep(500)
+                j *= -1
+                concentrationRHS = np.ones(n) * j
+                print(j)
+                concentrationRHS[0] = C0
+                # concentrationRHS[-1] = C1
+                concentration = sp.solve(concentrationOperator, concentrationRHS)
+
+            plt.plot(x, concentration)
+            plt.show()
             potentialOperator = D @ D
             potentialOperator[0, :] = 0.0
             # potentialOperator[-1, :] = D[-1, :]
@@ -191,18 +204,24 @@ for C0 in [3.0]:
             potentialOperator[0, 0] = 1.0
             potentialOperator[-1, -1] = 1.0
 
-            potentialRHS = -(alpha) * z * concentration
+            potentialRHS = -(alpha) * z * np.abs(concentration)
             potentialRHS[0] = phi0
             potentialRHS[-1] = phi1
             prevPotential = potential.copy()
             # potential = 0.5*(prevPotential + sp.solve(potentialOperator, potentialRHS))
             potential = (sp.solve(potentialOperator, potentialRHS))
-            error = np.max(np.abs(prevPotential - potential))
-            # print(error)
+            plt.plot(x, potential)
+            plt.show()
+            error = np.max(prevPotential - potential)
+            print(error)
         # print(error)
-        # plt.plot(x, concentration)
-        # plt.plot(x, potential)
-        # plt.show()
+        plt.plot(x, concentration)
+        concentration_xs = spec.barycentricChebInterpolate(concentration, nodes, a=0, b=1, extrapolation=1)
+        concentration_xs *= (concentration_xs <= 0)
+        errorTerm = np.sum(w * concentration_xs)
+        print(errorTerm)
+        plt.plot(x, potential)
+        plt.show()
         # print(potential[-1])
         # concentration_values.append([error, j, concentration[-1]])
         # print("calculated experimental Nernst Vm: ", R * T / F / z * np.log(concentration[0] / 99.0) * 1000)
@@ -212,7 +231,7 @@ for C0 in [3.0]:
         phiD_Function = lambda x: spec.barycentricChebInterpolate(D @ potential, x, 0, 1, extrapolation=1)
         phiFunction = lambda x: spec.barycentricChebInterpolate(potential, x, 0, 1, extrapolation=1)
         concentration_Function = lambda x: spec.barycentricChebInterpolate(concentration, x, 0, 1, extrapolation=1)
-        j = np.sum(concentration_Function(n)*phiD_Function(n)*w) + concentration[-1] - concentration[0]
+        j = np.sum(concentration_Function(nodes)*phiD_Function(nodes)*w) + concentration[-1] - concentration[0]
         # anotherJ = (concentration[-1] * np.exp(phi1) - concentration[0] * np.exp(phi0)) / integr.reg_32(
         #                  lambda x: np.exp(z * phiFunction(x)), a=0, b=1, n=2000);
         # print(j - anotherJ)
