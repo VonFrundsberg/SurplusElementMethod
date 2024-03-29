@@ -126,7 +126,7 @@ import scipy.linalg as sp
 import matplotlib.pyplot as plt
 import time as time
 from numpy.polynomial import chebyshev as cheb_poly
-n = 100
+n = 5
 # WORKS ONLY FOR Z = 1
 z = 1
 D = spec.chebDiffMatrix(n, 0, 1)
@@ -143,7 +143,7 @@ alpha = f * f * l * l / (R * T * e * e_r) * 100
 potential_values = spec.chebNodes(50, 1, 150)
 
 # V_r = 90.0
-C0 = 1.0;
+C0 = 3.0;
 C1 = 99.0;
 phi0 = 0.0;
 # phi1 = F * V_r / 1000 / R / T
@@ -151,51 +151,52 @@ phi0 = 0.0;
 # print(phi1, alpha)
 potential = x.copy()
 w, nodes = integr.reg_22_wn(0, 1, 1000)
+np.set_printoptions(precision=3, suppress=True)
 for C0 in [3.0]:
     concentration_values = []
     for V_r in spec.chebNodes(10, 0, 100):
         phi1 = F * V_r / 1000 / R / T
         concentration = C1 * x.copy() + C0 * (1 - x.copy())
-        for i in range(100):
+        for i in range(10):
             vectorPhi = potential
-            # phiFunction = lambda x: spec.barycentricChebInterpolate(vectorPhi, x, 0, 1, extrapolation=1)
             phiD = D @ vectorPhi
-            phiD_Function = lambda x: spec.barycentricChebInterpolate(phiD, x, 0, 1, extrapolation=1)
-            concentrationOperator = -D - z * I * phiD
+            phiFunction = lambda x: spec.barycentricChebInterpolate(phiD, x, 0, 1, extrapolation=1)
+
+            I = np.eye(n)
+            concentrationOperator = -(D @ np.diag(x)).T - (I @ np.diag(x) @ phiD) + I
+            # print(D)
+            integralElementF = lambda x: (spec.barycentricChebInterpolate(I, x, a=0, b=1, extrapolation=1).T *
+                               phiFunction(x))
+            prevX = x[0]
+            integrals = []
+            for currentX in x[1:]:
+                integrals.append(integr.reg_32(f=integralElementF, a=prevX, b=currentX, n=10))
+                # print("integrals over: ", [prevX, currentX])
+                # print(integr.reg_32(f=integralElementF, a=prevX, b=currentX, n=10))
+                prevX = currentX
+            integralsArr = np.array(integrals)
+            integralsArr = np.vstack([np.zeros([1, n]), np.array(integrals)])
+            # print("before cumsum")
+            # print(integralsArr)
+            integralsArr = np.cumsum(integralsArr, axis=0)
+            concentrationOperator += integralsArr.T
+            # print("after cumsum")
+            # print(integralsArr)
             concentrationOperator[0, :] = 0
             # concentrationOperator[-1, :] = 0
             concentrationOperator[0, 0] = 1.0
             # concentrationOperator[-1, -1] = 1.0
-
-            # cI = spec.chebTransform(I)
-            # c_phiD = spec.chebTransform(phiD)
-            # xC = spec.barycentricChebInterpolate(I, n, a=0, b=1, extrapolation=1, axis=0)
-            # print(xC.shape)
-            # integralElement = xC.T * phiD_Function(n) * w
-            integralElement = (spec.barycentricChebInterpolate(concentration, nodes, a=0, b=1, extrapolation=1) *
-                               phiD_Function(nodes) * w)
-            integralElement = np.sum(integralElement)
-            for m in range(1):
-
-                # print(integralElement.shape)
-                # concentration_xs = spec.barycentricChebInterpolate(concentration, n, a=0, b=1, extrapolation=1)
-                # concentration_xs *= (concentration_xs <= 0)
-                # errorTerm = np.sum(w * concentration_xs)
-                # errorTerm = min(0, np.min(concentration))
-                j = integralElement + concentration[-1] - concentration[0]
-                # print(j)
-                # print(errorTerm)
-                # cheb_poly.chebmul(cI, c_phiD)
-                # time.sleep(500)
-                j *= -1
-                concentrationRHS = np.ones(n) * j
-                print(j)
-                concentrationRHS[0] = C0
-                # concentrationRHS[-1] = C1
-                concentration = sp.solve(concentrationOperator, concentrationRHS)
+            # print(concentrationOperator)
+            concentrationRHS = np.ones(n, dtype=float) * C0
+            concentrationRHS[0] = C0
+            # print(concentrationRHS)
+            # concentrationRHS[-1] = C1
+            print(concentrationOperator)
+            concentration = sp.solve(concentrationOperator, concentrationRHS)
 
             plt.plot(x, concentration)
             plt.show()
+            time.sleep(500)
             potentialOperator = D @ D
             potentialOperator[0, :] = 0.0
             # potentialOperator[-1, :] = D[-1, :]
@@ -204,14 +205,14 @@ for C0 in [3.0]:
             potentialOperator[0, 0] = 1.0
             potentialOperator[-1, -1] = 1.0
 
-            potentialRHS = -(alpha) * z * np.abs(concentration)
+            potentialRHS = -(alpha) * z * concentration
             potentialRHS[0] = phi0
             potentialRHS[-1] = phi1
             prevPotential = potential.copy()
             # potential = 0.5*(prevPotential + sp.solve(potentialOperator, potentialRHS))
             potential = (sp.solve(potentialOperator, potentialRHS))
-            plt.plot(x, potential)
-            plt.show()
+            # plt.plot(x, potential)
+            # plt.show()
             error = np.max(prevPotential - potential)
             print(error)
         # print(error)
@@ -219,7 +220,7 @@ for C0 in [3.0]:
         concentration_xs = spec.barycentricChebInterpolate(concentration, nodes, a=0, b=1, extrapolation=1)
         concentration_xs *= (concentration_xs <= 0)
         errorTerm = np.sum(w * concentration_xs)
-        print(errorTerm)
+        # print(errorTerm)
         plt.plot(x, potential)
         plt.show()
         # print(potential[-1])
@@ -235,6 +236,7 @@ for C0 in [3.0]:
         # anotherJ = (concentration[-1] * np.exp(phi1) - concentration[0] * np.exp(phi0)) / integr.reg_32(
         #                  lambda x: np.exp(z * phiFunction(x)), a=0, b=1, n=2000);
         # print(j - anotherJ)
+        print("j is ", j)
         concentration_values.append([V_r, concentration[-1], -j, NernstConcentration])
         # print("concentraction values are: ", concentration[0], concentration[-1])
         # print(potential[0], potential[-1])

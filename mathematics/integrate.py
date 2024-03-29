@@ -26,7 +26,6 @@ def reg_32(f, a=-1, b=1, n=20):
     h = 1 / (n + 2 * A - 1)
     points = np.append((b - a) * x * h + a, (b - a) * (A * h + np.arange(n) * h) + a)
     points = np.append(points, ((b - a) * (1 - x * h) + a)[::-1])
-
     S = f(points)
     if len(S.shape) > 1:
         return (b - a) * h * (
