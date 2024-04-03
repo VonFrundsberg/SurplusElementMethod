@@ -128,7 +128,7 @@ import time as time
 import warnings
 warnings.filterwarnings("ignore")
 from numpy.polynomial import chebyshev as cheb_poly
-n = 200
+n = 5
 # WORKS ONLY FOR Z = 1
 z = 1
 D = spec.chebDiffMatrix(n, 0, 1)
@@ -168,6 +168,7 @@ for C0 in [3.0]:
             I = np.eye(n)
             # concentrationOperator = -(np.diag(x) @ D) - (I @ np.diag(x) @ np.diag(phiD)) + I
             concentrationOperator = -(D) - (np.diag(phiD))
+            print(concentrationOperator)
             # print()
             # integralElementF = lambda x: (spec.barycentricChebInterpolate(I, x, a=0, b=1, extrapolation=1).T *
             #                    phiFunction(x))
