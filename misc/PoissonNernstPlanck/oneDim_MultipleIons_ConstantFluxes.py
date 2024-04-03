@@ -9,32 +9,32 @@ warnings.filterwarnings("ignore")
 n = 50
 ionsAmount = 3
 z = np.array([1.0, 1.0, -1.0])
-concentration_coeffs = np.array([1.0, 0.04, 0.45])
-diffusion_coeffs = np.array([1.96, 1.33, 2.03])
+# concentration_coeffs = np.array([1.0, 0.04, 0.45])
+# diffusion_coeffs = np.array([1.96, 1.33, 2.03])
+diffusion_coeffs = np.ones(ionsAmount, dtype=float)
 # concentration_coeffs = diffusion_coeffs
 D = spec.chebDiffMatrix(n, 0, 1)
 I = np.eye(n)
 x = spec.chebNodes(n, 0, 1)
 R = 8.31431
-T = 24.0 + 273.0
+T = 18.0 + 273.0
 f = 9.64853
 F = f * 10 ** 4
 l = 9.0
 e = 8.854187
 e_r = 10
 alpha = f * f * l * l / (R * T * e * e_r) * 100
-potential_values = spec.chebNodes(50, 1, 150)
-
+partition_coefficients = np.array([1.0, 0.04, 0.45])
 # V_r = 90.0
-C0 = np.array([3.0, 152.0, 180.0])
-C1 = np.array([345.0, 72.0, 61.0])
+C0 = np.array([3.0, 152.0, 180.0]) * partition_coefficients
+C1 = np.array([345.0, 72.0, 61.0]) * partition_coefficients
 phi0 = 0.0;
 # phi1 = F * V_r / 1000 / R / T
 
 # print(phi1, alpha)
 weights, nodes = integr.reg_22_wn(0, 1, 1000)
 np.set_printoptions(precision=3, suppress=True)
-V_r = 60
+V_r = 100
 phi1 = F * V_r / 1000 / R / T
 
 potential = x.copy() * phi1
@@ -44,12 +44,12 @@ vectorPhi = potential
 phiD = D @ vectorPhi
 phiD_Function = lambda x: spec.barycentricChebInterpolate(phiD, x, 0, 1, extrapolation=1)
 evaluatedConcentrations = spec.barycentricChebInterpolate(concentrations.T, nodes, 0, 1, 1, axis=0)
-fluxes = diffusion_coeffs*(-z*np.sum(phiD_Function(nodes) * evaluatedConcentrations.T * weights, axis=1)
-                           + concentrations[:, 0] - concentrations[:, -1])
+fluxes = diffusion_coeffs*(-np.sum(phiD_Function(nodes) * evaluatedConcentrations.T * weights, axis=1)
+                           - z*(concentrations[:, -1] - concentrations[:, 0]))
+
 concentrationOperators = [None] * ionsAmount
 for currentConcentrationIndex in range(ionsAmount):
-    concentrationOperators[currentConcentrationIndex] = ((-concentration_coeffs[currentConcentrationIndex]*
-                             ((D) + z[currentConcentrationIndex]*(np.diag(phiD)))))
+    concentrationOperators[currentConcentrationIndex] = D
 
 
 del currentConcentrationIndex
@@ -66,44 +66,49 @@ potentialOperator[-1, -1] = 1.0
 for globalIterationIndex in range(100):
     # plt.plot(x, concentrations.T)
     # plt.show()
-    for concentrationInterationIndex in range(ionsAmount):
+    plt.plot(nodes, evaluatedConcentrations)
+    plt.show()
 
-        concentrationOperators[concentrationInterationIndex] = -(z[concentrationInterationIndex]*
-                                                                ((diffusion_coeffs[concentrationInterationIndex]*
-                                 ((D) + z[concentrationInterationIndex]*(np.diag(phiD))))))
+    # for concentrationInterationIndex in range(ionsAmount - 1, -1, -1):
+    for concentrationInterationIndex in range(ionsAmount):
+        concentrationOperators[concentrationInterationIndex] = -\
+            diffusion_coeffs[concentrationInterationIndex]*\
+            (z[concentrationInterationIndex]*
+            (D + z[concentrationInterationIndex]*(np.diag(phiD))))
         concentrationOperators[concentrationInterationIndex, 0, :] = 0.0
         concentrationOperators[concentrationInterationIndex, 0, 0] = 1.0
 
         fluxesSum = -np.ones(n)*\
-                    (np.sum(z[:concentrationInterationIndex]*fluxes[:concentrationInterationIndex]) +\
-                    np.sum(z[concentrationInterationIndex + 1:]*fluxes[concentrationInterationIndex + 1:]))
+                    (np.sum(fluxes[:concentrationInterationIndex]) +\
+                    np.sum(fluxes[concentrationInterationIndex + 1:]))
         fluxesSum[0] = C0[concentrationInterationIndex]
         # print(fluxes)
         # print("fluxes sum before solution: ", fluxesSum)
         concentrations[concentrationInterationIndex, :] = sp.solve(concentrationOperators[concentrationInterationIndex], fluxesSum)
-        print(concentrationInterationIndex)
+        print("concentration of: ", concentrationInterationIndex)
         # print(concentrations[concentrationInterationIndex])
 
         evaluatedConcentrations = spec.barycentricChebInterpolate(concentrations.T, nodes, 0, 1, 1, axis=0)
-        plt.plot(nodes, evaluatedConcentrations)
-        plt.show()
-        fluxes = diffusion_coeffs*(-z*np.sum(phiD_Function(nodes) * evaluatedConcentrations.T * weights, axis=1)
-                  + concentrations[:, 0] - concentrations[:, -1])
+        fluxes = diffusion_coeffs * (-np.sum(phiD_Function(nodes) * evaluatedConcentrations.T * weights, axis=1)
+                                     - z * (concentrations[:, -1] - concentrations[:, 0]))
+        # plt.plot(x, concentrations[concentrationInterationIndex, :])
+        # plt.show()
+        print("fluxes: ", fluxes)
+        potentialRHS = -(alpha) * np.sum(z * concentrations.T, axis=1)*0
+        potentialRHS[0] = phi0
+        potentialRHS[-1] = phi1
+        potential = sp.solve(potentialOperator, potentialRHS)
+        phiD = D @ potential
+        phiD_Function = lambda x: spec.barycentricChebInterpolate(phiD, x, 0, 1, extrapolation=1)
         # print("fluxes after solution: ", fluxes)
         # print(concentrations[concentrationInterationIndex])
         # print(fluxes[concentrationInterationIndex])
         # plt.plot(x, concentrations[concentrationInterationIndex, :])
         # plt.show()
-        potentialRHS = -(alpha) * np.sum(z * concentrations.T, axis=1)
-        potentialRHS[0] = phi0
-        potentialRHS[-1] = phi1
-        potential = sp.solve(potentialOperator, potentialRHS)
-        vectorPhi = potential
-        phiD = D @ vectorPhi
-        phiD_Function = lambda x: spec.barycentricChebInterpolate(phiD, x, 0, 1, extrapolation=1)
 
-        plt.plot(x, potential)
-        plt.show()
+
+        # plt.plot(x, potential)
+        # plt.show()
 
 
 
