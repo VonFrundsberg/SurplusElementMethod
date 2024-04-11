@@ -8,82 +8,122 @@ import matplotlib.pyplot as plt
 import mathematics.spectral as spec
 
 
-def generalKohnShamRoutine(nucleusCharge: int, approximationOrder, integrationPointsAmount = 500):
-    galerkinMethodObject = galerkin.GalerkinMethod1d()
-    kineticTerm = "-0.5 * integral x**2 grad(u) @ grad(v)"
-    kineticTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
-        trialElement, testElement, lambda x: -0.5 * x * x, integrationPointsAmount)
+def generalKohnShamRoutine(nucleusCharge: int , initialDensity, approximationOrder, integrationPointsAmount = 500):
 
-    V_externalTerm = "-integral nucleusCharge * x * u * v"
-    V_externalTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
-        trialElement, testElement, lambda x: - nucleusCharge * x, integrationPointsAmount)
+    galerkinPoisson = galerkin.GalerkinMethod1d("LE")
+    galerkinPoissonMesh = MeshClass.mesh(1)
+    galerkinSchrodingerMesh = MeshClass.mesh(1)
+    def generatePoissonMesh():
+        file = open("elementsDataPoisson.txt", "w")
+        file.write("0.0 inf " + str(approximationOrder) + " 1.0")
+        file.close()
+        galerkinPoissonMesh.fileRead("elementsDataPoisson.txt", "neighboursDataPoisson.txt")
+    def generateSchrodingerMesh():
+        file = open("elementsDataSchrodinger.txt", "w")
+        file.write("0.0 10.0 " + str(approximationOrder) + " 0.0")
+        file.close()
+        galerkinSchrodingerMesh.fileRead("elementsDataSchrodinger.txt",
+                                         "neighboursDataSchrodinger.txt")
+    def poissonOperator():
+        gradForm = "integral x * x grad(u) @ grad(v)"
+        gradForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
+            trialElement, testElement, lambda x: x * x, integrationPointsAmount)
+        return gradForm
+    def poissonFunctional(density):
+        functional = "- 4 * pi * integral x * x * density f"
+        return lambda testElement: elem1dUtils.integrateFunctional(
+        testElement=testElement,
+        function=lambda x: -4 * np.pi * density(x), weight=lambda x: x * x,
+        integrationPointsAmount=integrationPointsAmount)
+
+    galerkinSchrodinger = galerkin.GalerkinMethod1d("EIG")
+    def staticSchrodingerOperatorPart():
+        kineticTerm = "0.5 * integral x**2 grad(u) @ grad(v)"
+        kineticTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
+            trialElement, testElement, lambda x: 0.5 * x * x, integrationPointsAmount)
+
+        V_externalTerm = "-integral nucleusCharge * x * u * v"
+        V_externalTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
+            trialElement, testElement, lambda x: -nucleusCharge * x, integrationPointsAmount)
+
+        sphericalHarmonicsTerm = "0.5 * l * (l + 1) * integral u * v"
+        l = 0
+        sphericalHarmonicsTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
+            trialElement, testElement, lambda x: 0.5 * l * (l + 1), integrationPointsAmount)
+        return kineticTerm, V_externalTerm, sphericalHarmonicsTerm
+
+    PoissonBoundaryConditions = ['{"boundaryPoint": "np.inf", "boundaryValue": 0.0}']
+    SchrodingerBoundaryConditions = ['{"boundaryPoint": "10.0", "boundaryValue": 0.0}']
+
+    galerkinPoisson.setBilinearForm(innerForms=[poissonOperator()], boundaryForms=[])
+    generatePoissonMesh()
+    galerkinPoisson.setDirichletBoundaryConditions(PoissonBoundaryConditions)
+
+    generateSchrodingerMesh()
+    galerkinSchrodinger.setDirichletBoundaryConditions(SchrodingerBoundaryConditions)
+    constantSchrodingerOperator = staticSchrodingerOperatorPart()
+
+    def variableSchrodingerPart(density):
+        galerkinPoisson.setRHSFunctional([poissonFunctional(density=density)])
+
+        galerkinPoisson.initializeMesh(galerkinPoissonMesh)
+        galerkinPoisson.initializeElements()
+        galerkinPoisson.calculateElements()
+        galerkinPoisson.solveSLAE()
+
+        V_HartreeTerm = "integral x * x * poissonSolution * u * v"
+        V_HartreeTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
+            trialElement, testElement, lambda x: x * x * galerkinPoisson.evaluateSolutionAtPoints(x),
+            integrationPointsAmount)
+        """FROM ROMANOWSKI 2007"""
+        r_s = lambda x: (3.0/(4.0 * np.pi * x))**(1.0/3.0)
+        c_x = -(3.0/(2.0 * np.pi))**(2.0/3.0)
+        potentialV_x = lambda x: c_x/r_s(x)
+        V_xTerm = "integral x * x * V_x * u * v"
+        V_xTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
+            trialElement, testElement, lambda x: x * x * potentialV_x(x),
+            integrationPointsAmount)
+
+        a = 0.0621814
+        b = 3.72744
+        c = 12.9352
+
+        x0 = -0.10498
+        q = np.sqrt(4.0 * c - b*b)
+        f1 = 2.0 * b / q
+        sqrt_rs = lambda r_s: np.sqrt(r_s)
+
+        P = lambda r_s, x: r_s + b * x + c
+        f2 = -b * x0/(x0 * x0 + b * x0 + c)
+        f3 = 2.0 * (b + 2.0 * x0) * f2 / q
+        D = lambda r_s, x: r_s/P(r_s, x)
+        Y = lambda r_s, x: np.arctan(q/(2.0 * x + b))
+        W = lambda r_s, x: (x - x0)**2/P(r_s, x)
+
+        eps_c = lambda r_s, x: a / 2.0 * (np.log(D(r_s, x)) + f1 * Y(r_s, x) + f2 * np.log(W(r_s, x)) + f3*Y(r_s, x))
+        potentialV_c = lambda r_s, x: eps_c(r_s, x) - a/6.0 * (c * (x - x0) - b * x * x0)/((x - x0) * P(r_s, x))
+        r_dependent_V_c = lambda r: potentialV_c(r_s(r), np.sqrt(r_s(r)))
+
+        V_cTerm = "integral x * x * V_c * u * v"
+        V_cTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
+            trialElement, testElement, lambda x: x * x * r_dependent_V_c(x),
+            integrationPointsAmount)
+
+        return V_HartreeTerm, V_xTerm, V_cTerm
 
 
-    functional = "integral w(x) u f"
-    def dimensionless_BPL_function(x, gamma: float, beta: float):
-        lessThanOneArgs = np.where(x <= 1)
-        moreThanOneArgs = np.where(x >= 1)
-        result = np.zeros(x.shape)
-        result[lessThanOneArgs] = x[lessThanOneArgs]**(-gamma)
-        result[moreThanOneArgs] = x[moreThanOneArgs]**(-beta)
-        return result
-
-    fromJacobian = 2
-    functional = lambda testElement: elem1dUtils.integrateFunctional(
-        testElement=testElement, function=lambda x: dimensionless_BPL_function(x, gamma - fromJacobian, beta - fromJacobian), weight=lambda x: 1, integrationPointsAmount=integrationPointsAmount)
-
-    galerkinMethodObject.setBilinearForm(innerForms=[gradForm], boundaryForms=[])
-    galerkinMethodObject.setRHSFunctional([functional])
-    # boundaryConditions = []
-    # boundaryConditions = ['{"boundaryPoint": "np.pi", "boundaryValue": 0.0}',
-    #                       '{"boundaryPoint": "0", "boundaryValue": 0.0}']
-
-    boundaryConditions = ['{"boundaryPoint": "np.inf", "boundaryValue": 0.0}']
-
-    galerkinMethodObject.setDirichletBoundaryConditions(boundaryConditions)
-
-    mesh = MeshClass.mesh(1)
-    f = open("elementsDataSpectral.txt", "w")
-    f.write("0.0 inf " + str(approximationOrder) + " 1.0")
-    f.close()
-    mesh.fileRead("elementsDataSpectral.txt", "neighboursDataSpectral.txt")
-    galerkinMethodObject.initializeMesh(mesh)
-    galerkinMethodObject.initializeElements()
-    galerkinMethodObject.calculateElements()
-    galerkinMethodObject.solveSLAE()
-
-    error = 0.0
-    errors = np.array([], dtype=float)
-    errorFrom0to1 = 0
-    if gamma == 2.0:
-        a = 1.0
-        w, grid = integr.log_16_wn(0.0, a, integrationPointsAmount)
-        gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
-        errorFrom0to1 += np.sum(w * (2 * np.log(grid) * (gridSolution - 2.0) + (gridSolution - 2.0) ** 2)) + a * (
-                    2.0 + (-2.0 + np.log(a)) * np.log(a))
-    elif gamma < 2.0:
-        w, grid = integr.reg_22_wn(0.0, 1.0, integrationPointsAmount)
-        gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
-        calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(grid, gamma, beta)
-        errorFrom0to1 += np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
-
-    w, grid = integr.reg_22_wn(-1.0, 1.0, integrationPointsAmount)
-    map = lambda x: (1 + x)/(1 - x) + 1
-    calculatedDimensionless_BPL_asol = dimensionless_BPL_asol(map(grid), gamma, beta)
-    gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(map(grid))
-    errorFrom1toInf = np.sum(w * (calculatedDimensionless_BPL_asol - gridSolution) ** 2)
+    galerkinSchrodinger.setBilinearForm([constantSchrodingerOperator,
+                                         variableSchrodingerPart(initialDensity)], [])
+    print("done")
+    time.sleep(500)
 
 
-    return galerkinMethodObject.getAmountOfNonZeroSLAE_elements(), errorFrom0to1 + errorFrom1toInf
 
 
-indices = []
-errors = []
-for i in range(4, 100, 1):
-    indices.append(i)
-    nonzero, error = fun(i, gamma=1, beta=4, integrationPointsAmount=2000)
-    print(nonzero, error)
-    errors.append(error)
 
-plt.loglog(indices, errors)
-plt.show()
+
+
+generalKohnShamRoutine(nucleusCharge=2,
+                       initialDensity=lambda x: np.exp(-x),
+                       approximationOrder=10,
+                       integrationPointsAmount=500)

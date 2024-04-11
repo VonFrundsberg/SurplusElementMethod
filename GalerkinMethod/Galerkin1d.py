@@ -10,9 +10,14 @@ import json
 
 class GalerkinMethod1d:
     A: sparse.csr_matrix
-    def setBilinearForm(self, innerForms, boundaryForms):
+    methodType: str
+    def __init__(self, methodType: str):
+        self.methodType = methodType
+    def setBilinearForm(self, innerForms, boundaryForms, rhsForm = None):
         self.innerForms = innerForms
         self.boundaryForms = boundaryForms
+        if rhsForm is not None:
+            self.rhsForm - rhsForm
 
     def setRHSFunctional(self, functionals):
         self.functionals = functionals
@@ -83,7 +88,6 @@ class GalerkinMethod1d:
         innerFormsAmount = len(self.innerForms)
         boundaryFormsAmount = len(self.boundaryForms)
         rhsFunctionalsAmount = len(self.functionals)
-
         for i in range(elementsAmount):
             self.matrixElements[i][i] = self.innerForms[0](self.elements[i], self.elements[i])
             for j in range(1, innerFormsAmount):

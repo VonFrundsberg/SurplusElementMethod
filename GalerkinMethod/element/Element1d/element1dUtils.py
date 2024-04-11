@@ -19,7 +19,6 @@ def integrateBilinearForm0(trialElement: belem, testElement: belem,
 
     w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
     mappedX = trialElement.map(x)
-
     w = w * trialElement.inverseDerivativeMap(x)
     trialD = trialElement.eval(mappedX)
     testD = testElement.eval(mappedX)
@@ -46,7 +45,6 @@ def integrateBilinearForm1(trialElement: belem, testElement: belem,
 
     w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
     mappedX = trialElement.map(x)
-
     w = w * trialElement.inverseDerivativeMap(x)
     trialD = trialElement.evalDiff(mappedX)
     testD = testElement.evalDiff(mappedX)
