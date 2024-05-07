@@ -10,9 +10,13 @@ import json
 
 class GalerkinMethod1d:
     A: sparse.csr_matrix
-    def setBilinearForm(self, innerForms, boundaryForms):
+    methodType: str
+    def __init__(self, methodType: str):
+        self.methodType = methodType
+    def setBilinearForm(self, innerForms, boundaryForms, rhsForms = []):
         self.innerForms = innerForms
         self.boundaryForms = boundaryForms
+        self.rhsForms = rhsForms
 
     def setRHSFunctional(self, functionals):
         self.functionals = functionals
@@ -67,8 +71,13 @@ class GalerkinMethod1d:
                  self.elements[i] = (element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2],
                                                          elementType=tmpElementInfo[-1]))
         # print(len(self.elements))
-
     def calculateElements(self):
+        if self.methodType == "LE":
+            self.__calculateElements_LE()
+        if self.methodType == "EIG":
+            self.__calculateElements_EIG()
+
+    def __calculateElements_LE(self):
         """
         For each element in self.elements, calculates its discretized version,
          using previously initialized bilinearForms, and RHS functional
@@ -83,7 +92,6 @@ class GalerkinMethod1d:
         innerFormsAmount = len(self.innerForms)
         boundaryFormsAmount = len(self.boundaryForms)
         rhsFunctionalsAmount = len(self.functionals)
-
         for i in range(elementsAmount):
             self.matrixElements[i][i] = self.innerForms[0](self.elements[i], self.elements[i])
             for j in range(1, innerFormsAmount):
@@ -112,6 +120,53 @@ class GalerkinMethod1d:
                     else:
                         self.matrixElements[i][neighborNumber] = (self.matrixElements[neighborNumber][i]).T
 
+    def __calculateElements_EIG(self):
+        """
+        For each element in self.elements, calculates its discretized version,
+         using previously initialized bilinearForms, assuming the problem is:
+          (bilinearForms + boundaryForms) u = lambda rhsForms u
+                """
+        elementsAmount = self.mesh.getElementsAmount()
+
+        self.lhsMatrixElements = [None] * elementsAmount
+        self.rhsMatrixElements = [None] * elementsAmount
+        for i in range(elementsAmount):
+            self.lhsMatrixElements[i] = [None] * elementsAmount
+            self.rhsMatrixElements[i] = [None] * elementsAmount
+
+
+        innerFormsAmount = len(self.innerForms)
+        boundaryFormsAmount = len(self.boundaryForms)
+        rhsFormsAmount = len(self.rhsForms)
+        for i in range(elementsAmount):
+            self.lhsMatrixElements[i][i] = self.innerForms[0](self.elements[i], self.elements[i])
+            self.rhsMatrixElements[i][i] = self.rhsForms[0](self.elements[i], self.elements[i])
+
+            for j in range(1, innerFormsAmount):
+                self.lhsMatrixElements[i][i] += self.innerForms[j](self.elements[i], self.elements[i])
+            for j in range(1, rhsFormsAmount):
+                self.rhsMatrixElements[i][i] += self.rhsForms[j](self.elements[i], self.elements[i])
+
+            for boundaryFormNumber in range(boundaryFormsAmount):
+                self.lhsMatrixElements[i][i] += self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[i])
+
+
+            if len(self.mesh.neighbours) > 0:
+                for neighborNumber in self.mesh.neighbours[i]:
+                    if i < neighborNumber:
+                        self.lhsMatrixElements[i][neighborNumber] = self.boundaryForms[0](self.elements[i], self.elements[neighborNumber])
+                        for boundaryFormNumber in range(1, boundaryFormsAmount):
+                                self.lhsMatrixElements[i][neighborNumber] +=\
+                                    self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[neighborNumber])
+
+                        """in case of non-symmetric operator"""
+                        # self.matrixElements[neighborNumber][i] = self.boundaryForms[0](self.elements[neighborNumber],
+                        #                                                                    self.elements[i])
+                        # for boundaryFormNumber in range(1, boundaryFormsAmount):
+                        #         self.matrixElements[neighborNumber][i] += \
+                        #             self.boundaryForms[boundaryFormNumber](self.elements[neighborNumber], self.elements[i])
+                    else:
+                        self.lhsMatrixElements[i][neighborNumber] = (self.lhsMatrixElements[neighborNumber][i]).T
 
     def getAmountOfNonZeroSLAE_elements(self):
         return self.A.count_nonzero()
@@ -124,6 +179,32 @@ class GalerkinMethod1d:
             print("all eigs are positive")
         else:
             print("some eigs aren't poisitive, amount of negative is: ", np.size(np.where(realParts < 0)))
+
+    def solveEIG_denseMatrix(self):
+        """Only for single-domain case.
+           Only for zero Dirichlet or Neumann boundary conditions
+            Solves generalized eigenvalue problem:
+            lhsMatrixElements @ u = lambda * rhsMatrixElements @ u
+
+            Returns:
+                ALL eigenpairs"""
+
+        A = self.lhsMatrixElements[0][0]
+        B = self.rhsMatrixElements[0][0]
+
+        ind = ~(A==0).all(1)
+        A = A[~(A==0).all(1), :][:, ~(A==0).all(0)]
+        B = B[~(B == 0).all(1), :][:, ~(B == 0).all(0)]
+        self.A = A
+        self.B = B
+
+        values, vectors = sp_linalg.eigh(A, B)
+
+        self.solutionWithDirichletBC = np.zeros(ind.shape, dtype=float)
+        self.solutionWithDirichletBC[ind] = vectors[:, -1]
+
+        return values, vectors
+
     def solveSLAE(self):
         """Solves system matrixElements @ u = functionalElements
             Works only for zero Dirichlet boundary conditions
@@ -257,3 +338,4 @@ class GalerkinMethod1d:
             evaluatedSolution[elementPointIndices] = evaluatedElementOnLocalGrid
 
         return evaluatedSolution
+

@@ -27,9 +27,10 @@ def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
         r[i - 1] = min(R_MAX, r_delta)
         if r[i-1] == R_MAX:
             print(i, " rank exceeded R_MAX, TT approximation error may be high")
-        cores.append(np.reshape(v[: r[i - 1]], [r[i-1], shape[i], r[i]]))
+
+        cores.append((np.reshape(np.diag(np.sqrt(s[:r[i - 1]])) @ v[: r[i - 1]], [r[i-1], shape[i], r[i]])))
         leftShapeProd = leftShapeProd * r[i - 1]/shape[i]/r[i]
-        tensor = np.dot(u[:, : r[i - 1]], np.diag(s[:r[i-1]]))
+        tensor = np.dot(u[:, : r[i - 1]], np.diag(np.sqrt(s[:r[i-1]])))
     cores.append(np.reshape(tensor, [1, shape[0], r[0]]))
     cores = cores[::-1]
     return cores

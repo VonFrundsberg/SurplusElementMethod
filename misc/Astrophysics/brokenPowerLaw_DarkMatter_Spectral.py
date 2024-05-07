@@ -69,7 +69,7 @@ def fun(approximationOrder, gamma:float, beta:float, integrationPointsAmount = 5
     f = open("elementsDataSpectral.txt", "w")
     f.write("0.0 inf " + str(approximationOrder) + " 1.0")
     f.close()
-    mesh.fileRead("elementsDataSpectral.txt", "neighboursDataSpectral.txt")
+    mesh.fileRead("elementsDataSpectral.txt", "neighboursDataPoisson.txt")
     galerkinMethodObject.initializeMesh(mesh)
     galerkinMethodObject.initializeElements()
     galerkinMethodObject.calculateElements()
