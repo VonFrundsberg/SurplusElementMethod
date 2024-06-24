@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import mathematics.spectral as spec
 
 
-def generalKohnShamRoutine(nucleusCharge: int , initialDensity, approximationOrder, integrationPointsAmount = 500):
+def generalKohnShamRoutine(nucleusCharge: int , electronsAmount: int, initialDensity, approximationOrder, integrationPointsAmount = 500):
 
     galerkinPoisson = galerkin.GalerkinMethod1d("LE")
     galerkinPoissonMesh = MeshClass.mesh(1)
@@ -31,9 +31,10 @@ def generalKohnShamRoutine(nucleusCharge: int , initialDensity, approximationOrd
         return gradForm
     def poissonFunctional(densityArg):
         functional = "- 4 * pi * integral x * x * density f"
+        normalizationConstant = integr.reg_32(densityArg, a=0, b=10, n=integrationPointsAmount)
         return lambda testElement: elem1dUtils.integrateFunctional(
         testElement=testElement,
-        function=lambda x: -4 * np.pi * densityArg(x), weight=lambda x: x * x,
+        function=lambda x: - 4 * np.pi * densityArg(x) /normalizationConstant * electronsAmount , weight=lambda x: x * x,
         integrationPointsAmount=integrationPointsAmount)
 
     galerkinSchrodinger = galerkin.GalerkinMethod1d("EIG")
@@ -93,7 +94,7 @@ def generalKohnShamRoutine(nucleusCharge: int , initialDensity, approximationOrd
         #     integrationPointsAmount)
         V_xTerm = "-(3/pi)**(1/3) * integral x * x * density**(1/3) * u * v"
         V_xTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
-            trialElement, testElement, lambda x: - (3.0/np.pi)**(1.0/3.0) * x * x * densityArg(x)**(1.0/3.0),
+            trialElement, testElement, lambda x: - 0 * (3.0/np.pi)**(1.0/3.0) * x * x * densityArg(x)**(1.0/3.0),
             integrationPointsAmount)
 
         a = 0.0621814
@@ -118,23 +119,25 @@ def generalKohnShamRoutine(nucleusCharge: int , initialDensity, approximationOrd
 
         V_cTerm = "integral x * x * V_c * u * v"
         V_cTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
-            trialElement, testElement, lambda x: x * x * r_dependent_V_c(densityArg(x)),
+            trialElement, testElement, lambda x: 0 * x * x * r_dependent_V_c(densityArg(x)),
             integrationPointsAmount)
 
         return V_HartreeTerm, V_xTerm, V_cTerm
     density = initialDensity
     # print(constantSchrodingerOperator[-1])
-    for iterationNumber in range(10):
+    for iterationNumber in range(20):
         galerkinSchrodinger.setBilinearForm([*constantSchrodingerOperator[:-1],
                                              *variableSchrodingerPart(density)], [],
                                             rhsForms=[constantSchrodingerOperator[-1]])
         galerkinSchrodinger.calculateElements()
         eigvals, eigvecs = galerkinSchrodinger.solveEIG_denseMatrix()
-
+        hartree_energy = 4*np.pi*integr.reg_32(lambda x: x * x * density(x) * galerkinPoisson.evaluateSolutionAtPoints(x), a=0,
+                                       b=10, n=integrationPointsAmount)
         density = lambda x: galerkinSchrodinger.evaluateSolutionAtPoints(x)**2
-        print(eigvals[:3])
-        plt.plot(eigvecs[:, :3])
-        plt.show()
+        # print(eigvals[:3])
+        print(eigvals[0], hartree_energy, eigvals[0] - 0.5*hartree_energy)
+        # plt.plot(eigvecs[:, :3])
+        # plt.show()
 
 
     print("done")
@@ -145,8 +148,8 @@ def generalKohnShamRoutine(nucleusCharge: int , initialDensity, approximationOrd
 
 
 
-
-generalKohnShamRoutine(nucleusCharge=2,
-                       initialDensity=lambda x: np.exp(-x),
-                       approximationOrder=50,
+alpha = 1.0
+generalKohnShamRoutine(nucleusCharge=2, electronsAmount=2,
+                       initialDensity=lambda x: (2.0*(2.0 * alpha/ np.pi)**(3.0/4.0)*(np.exp(-alpha * x**2)))**2,
+                       approximationOrder=100,
                        integrationPointsAmount=500)
