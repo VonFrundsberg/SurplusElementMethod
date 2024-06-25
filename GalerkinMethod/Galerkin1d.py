@@ -201,8 +201,10 @@ class GalerkinMethod1d:
         values, vectors = sp_linalg.eigh(A, B)
 
         self.solutionWithDirichletBC = np.zeros(ind.shape, dtype=float)
-        self.solutionWithDirichletBC[ind] = vectors[:, -1]
-
+        self.solutionWithDirichletBC[ind] = vectors[:, 0]
+        # import matplotlib.pyplot as plt
+        # plt.plot(vectors[:, :3])
+        # plt.show()
         return values, vectors
 
     def solveSLAE(self):
