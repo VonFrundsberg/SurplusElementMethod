@@ -39,7 +39,7 @@ def generalKohnShamRoutine(nucleusCharge: int , schrodingerBoundaryPoint: float,
                                     a=0, b=schrodingerBoundaryPoint, n=integrationPointsAmount)
         return lambda testElement: elem1dUtils.integrateFunctional(
         testElement=testElement,
-        function=lambda x: - 4 * np.pi * densityArg(x) /normalizationConstant , weight=lambda x: x * x,
+        function=lambda x: - 4 * np.pi * densityArg(x)/normalizationConstant, weight=lambda x: x * x,
         integrationPointsAmount=integrationPointsAmount)
 
     galerkinSchrodinger = galerkin.GalerkinMethod1d("EIG")
@@ -83,11 +83,14 @@ def generalKohnShamRoutine(nucleusCharge: int , schrodingerBoundaryPoint: float,
         V_HartreeTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
             trialElement, testElement, lambda x: x * x * galerkinPoisson.evaluateSolutionAtPoints(x),
             integrationPointsAmount)
-        """FROM ROMANOWSKI 2007"""
-        r_s = lambda x: (3.0/(4.0 * np.pi * x))**(1.0/3.0)
+
         V_xTerm = "-(3/pi)**(1/3) * integral x * x * density**(1/3) * u * v"
+        normalizationConstant = 4 * np.pi * integr.reg_32(lambda x: (3.0/np.pi)**(1.0/3.0) * x * x * (densityArg(x))**(1.0/3.0),
+                                                         a=0, b=schrodingerBoundaryPoint, n=integrationPointsAmount)
+
         V_xTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
-            trialElement, testElement, lambda x: - 0 * (3.0/np.pi)**(1.0/3.0) * x * x * densityArg(x)**(1.0/3.0),
+            trialElement, testElement,
+            lambda x: - 0 * (3.0/np.pi)**(1.0/3.0) * x * x * (densityArg(x))**(1.0/3.0)/normalizationConstant,
             integrationPointsAmount)
 
         return V_HartreeTerm, V_xTerm
@@ -101,18 +104,27 @@ def generalKohnShamRoutine(nucleusCharge: int , schrodingerBoundaryPoint: float,
         eigvals, eigvecs = galerkinSchrodinger.solveEIG_denseMatrix()
         # plt.plot(galerkinPoisson.evaluateSolutionAtPoints(np.linspace(0, 10, 100)))
         # plt.show()
-        hartree_energy = integr.reg_32(lambda x: x * x * density(x) * galerkinPoisson.evaluateSolutionAtPoints(x),
+        hartree_energy = integr.reg_32(lambda x: x * x * galerkinSchrodinger.evaluateSolutionAtPoints(x)**2
+                                                 * galerkinPoisson.evaluateSolutionAtPoints(x),
                                                a=0, b=schrodingerBoundaryPoint, n=integrationPointsAmount)
-        density = lambda x: galerkinSchrodinger.evaluateSolutionAtPoints(x)**2
+        exchange_energy = integr.reg_32(lambda x: - 0 * x * x * galerkinSchrodinger.evaluateSolutionAtPoints(x)**2
+                                                  * (3.0/np.pi)**(1.0/3.0) * density(x)**(1.0/3.0),
+                                               a=0, b=schrodingerBoundaryPoint, n=integrationPointsAmount)
+
+        normalizationConstant = 4 * np.pi * integr.reg_32(lambda x: x * x * galerkinSchrodinger.evaluateSolutionAtPoints(x)**2,
+                                                          a=0, b=schrodingerBoundaryPoint, n=integrationPointsAmount)
+        density = lambda x: galerkinSchrodinger.evaluateSolutionAtPoints(x)**2 / normalizationConstant * 2
+        # density = lambda x: galerkinSchrodinger.evaluateSolutionAtPoints(x)**2/normalizationConstant
         # plt.plot(eigvecs[:, 0])
         # plt.show()
         points = np.linspace(0, schrodingerBoundaryPoint, 100)
         # plt.plot(galerkinSchrodinger.solutionWithDirichletBC)
         # plt.show()
-        # plt.plot(points, density(points))
-        # plt.show()
-        print(eigvals[:3])
-        print(hartree_energy, 2*eigvals[0] - hartree_energy)
+        # plt.plot(points, d
+        # print(eigvals[0], normalizationConstant*hartree_energy, normalizationConstant * exchange_energy)
+        # print(2*eigvals[0] + normalizationConstant*(-hartree_energy + 0.5 * exchange_energy))
+        print(eigvals[0], hartree_energy, exchange_energy)
+        print(2 * eigvals[0] - hartree_energy + 0.5 * exchange_energy)
         # plt.plot(eigvecs[:, :3])
         # plt.show()
 
@@ -126,7 +138,7 @@ def generalKohnShamRoutine(nucleusCharge: int , schrodingerBoundaryPoint: float,
 
 
 alpha = 1.0
-generalKohnShamRoutine(nucleusCharge=2, schrodingerBoundaryPoint = 18.0,
+generalKohnShamRoutine(nucleusCharge=2, schrodingerBoundaryPoint = 10.0,
                        initialDensity=lambda x: (2.0*(2.0 * alpha/ np.pi)**(3.0/4.0)*(np.exp(-alpha * x**2)))**2,
-                       approximationOrder=50,
+                       approximationOrder=100,
                        integrationPointsAmount=1000)
