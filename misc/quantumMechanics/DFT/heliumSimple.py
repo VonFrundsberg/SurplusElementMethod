@@ -92,6 +92,24 @@ def generalKohnShamRoutine(nucleusCharge: int, electronsAmount: int, schrodinger
             trialElement, testElement,
             lambda x: - (3.0/np.pi)**(1.0/3.0) * x * x * (densityArg(x))**(1.0/3.0),
             integrationPointsAmount)
+        def correlationEnergyParameters(polarized=False):
+            if polarized:
+                A = 0.01555; B = -0.0269; C = 0.0014; D = -0.0108; gamma = -0.0843; beta1 = 1.3981; beta2 = 0.2611
+            else:
+                A = 0.0311; B = -0.048; C = 0.002; D = -0.0116; gamma = -0.1423; beta1 = 1.0529; beta2 = 0.3334
+            return A, B, C, D, gamma, beta1, beta2
+        A, B, C, D, gamma, beta1, beta2 = correlationEnergyParameters(polarized=False)
+
+        def epsilon_correlation(r):
+            r = np.atleast_1d(r)
+            result = np.zeros(r.shape)
+            lessThanOneArgs = np.where(r < 1)
+            moreThanOneArgs = np.where(r >= 1)
+            result[moreThanOneArgs] = gamma/(1 + beta1 * np.sqrt(r[moreThanOneArgs]) + beta2 * r[moreThanOneArgs])
+            result[lessThanOneArgs] = (A * np.log(r[lessThanOneArgs]) + B
+                                       + C * r[lessThanOneArgs] * np.log(r[lessThanOneArgs]) + D * r[lessThanOneArgs])
+        
+        V_cTerm = "A ln r + B - A/3 + 2/3 C r ln r + (2D - C)r/3"
 
         return V_HartreeTerm, V_xTerm
     density = initialDensity
