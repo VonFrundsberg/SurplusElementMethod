@@ -35,8 +35,8 @@ def epsilon_correlation(r, polarized=False):
     A, B, C, D, gamma, beta1, beta2 = correlationEnergyParameters(polarized=polarized)
     r = np.atleast_1d(r)
     result = np.zeros(r.shape)
-    lessThanOneArgs = np.where(r < 1)
-    moreThanOneArgs = np.where(r >= 1)
+    lessThanOneArgs = np.where(r < 1.0)
+    moreThanOneArgs = np.where(r >= 1.0)
     result[moreThanOneArgs] = gamma / (1.0 + beta1 * np.sqrt(r[moreThanOneArgs]) + beta2 * r[moreThanOneArgs])
     result[lessThanOneArgs] = (A * np.log(r[lessThanOneArgs]) + B
                                + C * r[lessThanOneArgs] * np.log(r[lessThanOneArgs]) + D * r[lessThanOneArgs])
@@ -47,8 +47,8 @@ def V_cPotential(r, polarized=False):
     A, B, C, D, gamma, beta1, beta2 = correlationEnergyParameters(polarized=polarized)
     r = np.atleast_1d(r)
     result = np.zeros(r.shape)
-    lessThanOneArgs = np.where(r < 1)
-    moreThanOneArgs = np.where(r >= 1)
+    lessThanOneArgs = np.where(r < 1.0)
+    moreThanOneArgs = np.where(r >= 1.0)
     result[moreThanOneArgs] = (epsilon_correlation(r[moreThanOneArgs], polarized) *
                                (1.0 + 7.0 / 6.0 * beta1 * np.sqrt(r[moreThanOneArgs]) + beta2 * r[moreThanOneArgs])
                                / (1.0 + beta1 * np.sqrt(r[moreThanOneArgs]) + beta2 * r[moreThanOneArgs]))
@@ -57,7 +57,7 @@ def V_cPotential(r, polarized=False):
                                + (2.0 * D - C) / 3.0 * r[lessThanOneArgs])
     return result
 
-def generalKohnShamRoutine(nucleusCharge: int, electronsAmount: int, schrodingerBoundaryPoint: float,
+def generalKohnShamRoutine(nucleusCharge: int, electronsAmount: int, polarized: bool, schrodingerBoundaryPoint: float,
                            initialDensity, approximationOrder, integrationPointsAmount = 500):
 
     galerkinPoisson = galerkin.GalerkinMethod1d("LE")
@@ -146,7 +146,7 @@ def generalKohnShamRoutine(nucleusCharge: int, electronsAmount: int, schrodinger
         V_cTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
             trialElement, testElement,
             lambda x: x * x *
-                      V_cPotential((3.0/(4.0 * np.pi))**(1.0/3.0) * densityArg(x)**(-1.0 / 3.0)),
+                      V_cPotential((3.0/(4.0 * np.pi))**(1.0/3.0) * densityArg(x)**(-1.0 / 3.0), polarized=polarized),
             integrationPointsAmount)
 
         return V_HartreeTerm, V_xTerm, V_cTerm
@@ -161,7 +161,7 @@ def generalKohnShamRoutine(nucleusCharge: int, electronsAmount: int, schrodinger
         # plt.plot(galerkinPoisson.evaluateSolutionAtPoints(np.linspace(0, 10, 100)))
         # plt.show()
         normalizationConstant = integr.reg_32(
-            lambda x: 4 * np.pi * x * x * galerkinSchrodinger.evaluateSolutionAtPoints(x) ** 2,
+            lambda x: 4.0 * np.pi * x * x * galerkinSchrodinger.evaluateSolutionAtPoints(x) ** 2,
             a=0, b=schrodingerBoundaryPoint, n=integrationPointsAmount)
         density = lambda x: (galerkinSchrodinger.evaluateSolutionAtPoints(x) ** 2
                              / normalizationConstant) * electronsAmount
@@ -172,11 +172,11 @@ def generalKohnShamRoutine(nucleusCharge: int, electronsAmount: int, schrodinger
         exchange_energy = (1.0/4.0 * 4.0 * np.pi) * (3.0/np.pi)**(1.0/3.0) *\
                            integr.reg_32(lambda x:  x * x * density(x)**(4.0/3.0),
                                                a=0, b=schrodingerBoundaryPoint, n=integrationPointsAmount)
-        correlation_energy = 4 * np.pi * integr.reg_32(lambda x:
-                            x * x * density(x) * epsilon_correlation((3.0/(4.0 * np.pi))**(1.0/3.0) * density(x)**(-1.0 / 3.0), polarized=False),
+        correlation_energy = 4.0 * np.pi * integr.reg_32(lambda x:
+                            x * x * density(x) * epsilon_correlation((3.0/(4.0 * np.pi))**(1.0/3.0) * density(x)**(-1.0 / 3.0), polarized=polarized),
                                                a=0, b=schrodingerBoundaryPoint, n=integrationPointsAmount)
-        correlation_potential_energy = 4 * np.pi * integr.reg_32(lambda x:
-                            x * x * density(x) * V_cPotential((3.0/(4.0 * np.pi))**(1.0/3.0) * density(x)**(-1.0 / 3.0)),
+        correlation_potential_energy = 4.0 * np.pi * integr.reg_32(lambda x:
+                            x * x * density(x) * V_cPotential((3.0/(4.0 * np.pi))**(1.0/3.0) * density(x)**(-1.0 / 3.0), polarized=polarized),
                                                a=0, b=schrodingerBoundaryPoint, n=integrationPointsAmount)
         # density = lambda x: galerkinSchrodinger.evaluateSolutionAtPoints(x)**2/normalizationConstant
         # plt.plot(eigvecs[:, 0])
@@ -201,8 +201,7 @@ def generalKohnShamRoutine(nucleusCharge: int, electronsAmount: int, schrodinger
 
 
 
-alpha = 1.0
-generalKohnShamRoutine(nucleusCharge=2, electronsAmount=2, schrodingerBoundaryPoint = 10.0,
-                       initialDensity=lambda x: (2.0*(2.0 * alpha/ np.pi)**(3.0/4.0)*(np.exp(-alpha * x**2)))**2,
-                       approximationOrder=100,
+generalKohnShamRoutine(nucleusCharge=2, electronsAmount=2, schrodingerBoundaryPoint = 12.0, polarized=False,
+                       initialDensity=lambda x: (2.0*(2.0 * 1.0/ np.pi)**(3.0/4.0)*(np.exp(-1.0 * x**2)))**2,
+                       approximationOrder=50,
                        integrationPointsAmount=1000)

@@ -341,3 +341,26 @@ class GalerkinMethod1d:
 
         return evaluatedSolution
 
+
+    def evaluateFunctionsAtPoints(self, functionsArray, x):
+
+        """
+
+        """
+        x = np.atleast_1d(x)
+        elementsAmount = self.mesh.getElementsAmount()
+        evaluatedSolution = np.zeros(x.shape, dtype=float)
+        offset = 0
+        for elementNumber in range(elementsAmount):
+            interval = self.elements[elementNumber].interval
+            elementPointIndices = np.squeeze(np.argwhere((x >= interval[0]) & (x <= interval[1])))
+
+            elementCoefficients = functionsArray[offset: offset + self.elements[elementNumber].approxOrder, :]
+            offset += self.elements[elementNumber].approxOrder
+            print(elementCoefficients)
+            evaluatedElementOnLocalGrid = self.elements[elementNumber].evaluateExpansion(
+                elementCoefficients, x[elementPointIndices])
+            evaluatedSolution[elementPointIndices] = evaluatedElementOnLocalGrid
+
+        return evaluatedSolution
+
