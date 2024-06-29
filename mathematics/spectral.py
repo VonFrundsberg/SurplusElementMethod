@@ -37,7 +37,11 @@ def barycentricChebInterpolate(f, x, a, b, extrapolation=0, axis=0):
     # print(extrapolatedPoints)
     result = sp_interp.barycentric_interpolate(chebyshevPoints, f, np.round(x, 32), axis=axis)
     match extrapolation:
-        case 0: result[extrapolatedPoints, :] = 0
+        case 0:
+            if len(result.shape) > 1:
+                result[extrapolatedPoints, :] = 0
+            elif len(result.shape) == 1:
+                result[extrapolatedPoints] = 0
     return result
 
 def barycentricChebInterpolateTensorAlongAxis(tensor, x, a, b, axis=0):

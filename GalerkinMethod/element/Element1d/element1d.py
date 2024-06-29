@@ -50,6 +50,10 @@ class Element1d:
 
         self.eval = self.__elementTypeInstance.eval
         self.evalDiff = self.__elementTypeInstance.evalDiff
+
+        if hasattr(self.__elementTypeInstance, 'getRefNodes'):
+            self.getRefNodes = self.__elementTypeInstance.getRefNodes
+
         if hasattr(self.__elementTypeInstance, 'evalDiffRefNodes'):
             self.evalDiffRefNodes = self.__elementTypeInstance.evalDiffRefNodes
 
