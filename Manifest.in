@@ -1,0 +1,2 @@
+include SurplusElement/mathematics/integrationData.txt
+recursive-include SurplusElement *.py
