@@ -223,8 +223,18 @@ class GalerkinMethod1d:
             print("all eigs are positive")
         else:
             print("some eigs aren't poisitive, amount of negative is: ", np.size(np.where(realParts < 0)))
+    def getMatrices(self, sumMatrices=True):
+        if sumMatrices:
+            A = np.sum(np.asarray(self.lhsMatrixElements), axis=0)
+            B = np.sum(np.asarray(self.rhsMatrixElements), axis=0)
+        else:
+            A = self.lhsMatrixElements
+            B = self.rhsMatrixElements
 
-    def solveEIG_denseMatrix(self, realize=True, amountOfEigs=1, sumMatrices=True):
+        A = A[~(A == 0).all(1), :][:, ~(A == 0).all(0)]
+        B = B[~(B == 0).all(1), :][:, ~(B == 0).all(0)]
+        return A, B
+    def solveEIG_denseMatrix(self, realize=True, amountOfEigs=1, sumMatrices=True, matricesOutput=False):
         """Only for single-domain case.
            Only for zero Dirichlet or Neumann boundary conditions
             Solves generalized eigenvalue problem:
@@ -238,10 +248,12 @@ class GalerkinMethod1d:
         else:
             A = self.lhsMatrixElements
             B = self.rhsMatrixElements
-        np.savetxt(X=A, fname="A.txt", fmt='%1.3f')
-        np.savetxt(X=B, fname="B.txt", fmt='%1.3f')
+        if matricesOutput:
+            np.savetxt(X=A, fname="A.txt", fmt='%1.3f')
+            np.savetxt(X=B, fname="B.txt", fmt='%1.3f')
         # print(B)
         ind = ~(A==0).all(1)
+
         A = A[~(A==0).all(1), :][:, ~(A==0).all(0)]
         B = B[~(B == 0).all(1), :][:, ~(B == 0).all(0)]
         # print(sp_linalg.det(A))
