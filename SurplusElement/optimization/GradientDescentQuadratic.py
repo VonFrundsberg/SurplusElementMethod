@@ -29,7 +29,22 @@ def minimizeOneQuadraticConstraint(A: np.array, B: np.array, x0: np.array, alpha
             print("lambdaGrad: ", lNext, (xPrev @ (B @ xPrev) - 1.0))
     return xNext
 
-
+def YunhoGradientDescent(A: np.array, B: np.array, x0: np.array, alpha: float, gamma:float,
+                                   eps: float=1e-6, output=True, maxIter: int = 100):
+    constMatrix = (A + gamma * B)
+    gammaGradFunc = lambda x: constMatrix @ x - (gamma * B @ x)/np.sqrt(x @ (B @ x))
+    dim = A.shape[0]
+    x0 = np.ones(dim, dtype=float)
+    xNext = x0.copy()
+    if output == False:
+        for i in range(maxIter):
+            xPrev = xNext
+    else:
+        for i in range(maxIter):
+            xPrev = xNext
+            xNext = xPrev - alpha * (gammaGradFunc(xPrev))
+            print("min: ", (xNext @ (A @ xNext))/(xNext @ (B @ xNext)))
+    return
 def minimizeOneQuadraticConstraintProjection(A: np.array, B: np.array, x0: np.array, alpha: float,
                                    eps: float=1e-6, output=True, maxIter: int = 100):
     lambdaGradFunc = (A.T + A)
