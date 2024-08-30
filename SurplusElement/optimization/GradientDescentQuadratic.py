@@ -34,17 +34,18 @@ def YunhoGradientDescent(A: np.array, B: np.array, x0: np.array, alpha: float, g
     constMatrix = (A + gamma * B)
     gammaGradFunc = lambda x: constMatrix @ x - (gamma * B @ x)/np.sqrt(x @ (B @ x))
     dim = A.shape[0]
-    x0 = np.ones(dim, dtype=float)
+    # x0 = np.ones(dim, dtype=float)
     xNext = x0.copy()
     if output == False:
         for i in range(maxIter):
             xPrev = xNext
+            xNext = xPrev - alpha * (gammaGradFunc(xPrev))
     else:
         for i in range(maxIter):
             xPrev = xNext
             xNext = xPrev - alpha * (gammaGradFunc(xPrev))
             print("min: ", (xNext @ (A @ xNext))/(xNext @ (B @ xNext)))
-    return
+    return xNext
 def minimizeOneQuadraticConstraintProjection(A: np.array, B: np.array, x0: np.array, alpha: float,
                                    eps: float=1e-6, output=True, maxIter: int = 100):
     lambdaGradFunc = (A.T + A)

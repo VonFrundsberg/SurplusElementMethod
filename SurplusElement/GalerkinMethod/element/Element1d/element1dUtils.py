@@ -409,7 +409,31 @@ def integrateFunctional(testElement: belem, function, weight,
     x = testElement.map(x)
     I = testElement.eval(x)
     W = np.nan_to_num(function(x)*w*weight(x))
-
     resultIntegrals = np.einsum('ij, i -> j', I, W)
 
     return resultIntegrals
+
+def integrateTensorFunctional(testElement: belem, function, tensorShape, weight,
+        integrationPointsAmount: int):
+    """(one-dimensional) Integrates functional form of the type l(v) = int_K function(x) v_j(x) dx,
+            where v_j(x) are basis functions of testElement,
+            K is a non-zero region of testElement,
+            function is R -> R^{tensorShape}
+
+            Arguments:
+                testElement:
+                function:
+                weight:
+                integrationPointsAmount:
+            Returns:
+                result: an integral of functional
+        """
+    w, x = integr.reg_22_wn(a=-1, b=1, n=integrationPointsAmount)
+    w = w*testElement.inverseDerivativeMap(x)
+
+    x = testElement.map(x)
+    I = testElement.eval(x)
+    W = np.nan_to_num(function(x)*w*weight(x))
+    W = np.reshape(W, [np.prod(tensorShape), W.shape[-1]])
+    resultIntegrals = np.einsum('ij, ki -> jk', I, W)
+    return np.reshape(resultIntegrals, [I.shape[1], *tensorShape])

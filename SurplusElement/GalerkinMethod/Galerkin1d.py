@@ -89,15 +89,21 @@ class GalerkinMethod1d:
         if self.methodType == "EIG":
             self.__calculateElements_EIG()
 
-    def recalculateRHS(self, functionals):
+    def recalculateRHS(self, functionals, flatten=True):
         self.functionals = functionals
         elementsAmount = self.mesh.getElementsAmount()
         self.functionalElements = [None] * elementsAmount
         rhsFunctionalsAmount = len(self.functionals)
-        for i in range(elementsAmount):
-            self.functionalElements[i] = (self.functionals[0](self.elements[i])).flatten()
-            for j in range(1, rhsFunctionalsAmount):
-                self.functionalElements[i] += (self.functionals[j](self.elements[i])).flatten()
+        if flatten == True:
+            for i in range(elementsAmount):
+                self.functionalElements[i] = (self.functionals[0](self.elements[i])).flatten()
+                for j in range(1, rhsFunctionalsAmount):
+                    self.functionalElements[i] += (self.functionals[j](self.elements[i])).flatten()
+        else:
+            for i in range(elementsAmount):
+                self.functionalElements[i] = (self.functionals[0](self.elements[i]))
+                for j in range(1, rhsFunctionalsAmount):
+                    self.functionalElements[i] += (self.functionals[j](self.elements[i]))
     def __calculateElements_LE(self):
         """
         For each element in self.elements, calculates its discretized version,
@@ -234,6 +240,10 @@ class GalerkinMethod1d:
         A = A[~(A == 0).all(1), :][:, ~(A == 0).all(0)]
         B = B[~(B == 0).all(1), :][:, ~(B == 0).all(0)]
         return A, B
+
+    def evaluateBasisAtPoints(self, points, elementNumber:int = 0):
+        return self.elements[elementNumber].evaluateExpansion(
+            np.eye(self.elements[elementNumber].approxOrder), points)
     def solveEIG_denseMatrix(self, realize=True, amountOfEigs=1, sumMatrices=True, matricesOutput=False):
         """Only for single-domain case.
            Only for zero Dirichlet or Neumann boundary conditions
@@ -276,12 +286,14 @@ class GalerkinMethod1d:
             self.solutionWithDirichletBC[ind, :] = vectors[:, :amountOfEigs]
         return values, vectors
 
+    def getRHS(self, elementIndex:int = 0):
+        # print(self.functionalElements[elementIndex].shape)
+        return self.functionalElements[elementIndex][self.zeroIndices]
     def invertSLAE(self):
         """
         Inverts SLAE; for small matrices
         """
         A = self.matrixElements[0][0]
-
         ind = ~(A == 0).all(1)
         self.zeroIndices = ind
         A = A[~(A == 0).all(1), :][:, ~(A == 0).all(0)]
