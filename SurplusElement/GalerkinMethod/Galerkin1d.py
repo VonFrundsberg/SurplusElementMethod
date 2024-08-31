@@ -242,8 +242,11 @@ class GalerkinMethod1d:
         return A, B
 
     def evaluateBasisAtPoints(self, points, elementNumber:int = 0):
+        I = np.eye(self.elements[elementNumber].approxOrder)
+        I[0, 0] = 0
+        I[-1, -1] = 0
         return self.elements[elementNumber].evaluateExpansion(
-            np.eye(self.elements[elementNumber].approxOrder), points)
+            I, points)
     def solveEIG_denseMatrix(self, realize=True, amountOfEigs=1, sumMatrices=True, matricesOutput=False):
         """Only for single-domain case.
            Only for zero Dirichlet or Neumann boundary conditions
@@ -285,7 +288,6 @@ class GalerkinMethod1d:
             self.solutionWithDirichletBC = np.zeros([*ind.shape, amountOfEigs], dtype=float)
             self.solutionWithDirichletBC[ind, :] = vectors[:, :amountOfEigs]
         return values, vectors
-
     def getRHS(self, elementIndex:int = 0):
         # print(self.functionalElements[elementIndex].shape)
         return self.functionalElements[elementIndex][self.zeroIndices]
@@ -298,7 +300,6 @@ class GalerkinMethod1d:
         self.zeroIndices = ind
         A = A[~(A == 0).all(1), :][:, ~(A == 0).all(0)]
         self.invertedA = sp_linalg.inv(A)
-
     def solveSLAE_dense_invertedMatrix(self):
         b = self.functionalElements[0][self.zeroIndices]
         solution = self.invertedA @ b
@@ -317,7 +318,6 @@ class GalerkinMethod1d:
         solution = sp_linalg.solve(A, b)
         self.solutionWithDirichletBC = np.zeros(ind.shape, dtype=float)
         self.solutionWithDirichletBC[ind] = solution
-
     def solveSLAE(self):
         """Solves system matrixElements @ u = functionalElements
             Works only for zero Dirichlet boundary conditions
@@ -343,8 +343,6 @@ class GalerkinMethod1d:
         solution = sparse_linalg.spsolve(A, self.functionalElements)
         self.solutionWithDirichletBC[ind] = solution
         return self.solutionWithDirichletBC
-
-
     def calculateMeshElementProperties(self):
         """For spherically symmetric Poisson problem on unbounded domain.
         Calculates C_sigma / d(x_i), where x_i represent each boundary,
@@ -450,7 +448,6 @@ class GalerkinMethod1d:
             evaluatedSolution[elementPointIndices] = evaluatedElementOnLocalGrid
 
         return evaluatedSolution
-
     def evaluateMultipleSolutionsAtPoints(self, x):
         x = np.atleast_1d(x)
         elementsAmount = self.mesh.getElementsAmount()

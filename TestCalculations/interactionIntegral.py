@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import SurplusElement.mathematics.spectral as spec
 from SurplusElement.GalerkinMethod.element.Element1d.element1d import ElementType
 import scipy.linalg as sp_lin
+from SurplusElement.GalerkinMethod.element.Element1d import element1dUtils as fem_utils
 def heliumHF(parameter: float, approximationOrder: int, angularL: int,
                   integrationPointsAmount:int, elementType: ElementType, nucleusCharge: int,
                   electronsAmount: int, initialDensity):
@@ -79,6 +80,7 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
 
     galerkinPoisson.setBilinearForm(innerForms=[poissonOperator()], boundaryForms=[])
     generatePoissonMesh()
+    galerkinPoisson.setApproximationSpaceParameters(parameters)
     galerkinPoisson.setDirichletBoundaryConditions(PoissonBoundaryConditions)
     galerkinPoisson.setRHSFunctional([poissonFunctional(densityArg=initialDensity)])
     galerkinPoisson.initializeMesh(galerkinPoissonMesh)
@@ -94,7 +96,7 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
     galerkinSchrodinger.initializeElements()
 
     w, n = integr.reg_32_wn(-1, 1, integrationPointsAmount)
-    mappedNodes = galerkinPoisson.elements[0].map(n)
+    mappedNodes = galerkinSchrodinger.elements[0].map(n)
     jacobian = galerkinSchrodinger.elements[0].inverseDerivativeMap(n)
 
     def evaluatedBasis(x):
@@ -118,7 +120,28 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
     rhs = galerkinPoisson.getRHS(0)
     print(invertedPoisson.shape, rhs.shape)
     Ykl = np.einsum("ij, ikl -> jkl", invertedPoisson, rhs)
-    print(Ykl[:, 0, 0])
+    shapeYkl = Ykl.shape
+    Ykl = np.reshape(Ykl, [shapeYkl[0], shapeYkl[1]*shapeYkl[2]])
+    paddedYkl = np.vstack([Ykl, np.zeros((1, shapeYkl[1]*shapeYkl[2]), dtype=float)])
+    # print(paddedYkl.shape)
+    paddedYklSchrodBasis = lambda x: galerkinPoisson.evaluateFunctionsAtPoints(paddedYkl, x)
+    # paddedYklSchrodBasis = galerkinPoisson.evaluateFunctionsAtPoints(paddedYkl, mappedNodes)
+    fx = evaluatedBasis(mappedNodes)
+    wx = (w * jacobian * paddedYklSchrodBasis(mappedNodes).T)
+
+    wx = np.reshape(wx, [shapeYkl[1], shapeYkl[2], wx.shape[1]])
+    print(fx.shape, wx.shape)
+    integral = np.einsum("ijn, kln -> ijkl", fx, wx)
+    print(integral.shape)
+    arrLen = int(integral.shape[0])
+    integral = np.reshape(integral, [arrLen * arrLen, arrLen * arrLen])
+
+    u, s, v = sp_lin.svd(integral, full_matrices=False)
+    print(s)
+
+
+    # print(Ykl[:, 0, 0])
+    # print(paddedYklSchrodBasis.shape)
 
     # functional = lambda testElement: elem1dUtils.integrateFunctional(
     #     testElement=testElement,
@@ -133,7 +156,7 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
     # print(Ykl)
 
     # print(Ykl.shape)
-    # Ykl = np.reshape(Ykl, [5, 9])
+    # Ykl = np.reshape(Ykl, [45, 5])
     # print(Ykl.shape)
     # u, s, v = sp_lin.svd(Ykl, full_matrices=False)
     # print(s)
@@ -144,6 +167,6 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
     return 0
 
 
-result = heliumHF(parameter=1.42776782052568, approximationOrder=3, angularL=0, integrationPointsAmount=2000, elementType=ElementType.LOGARITHMIC_INF_HALF_SPACE,
+result = heliumHF(parameter=1.42776782052568, approximationOrder=5, angularL=0, integrationPointsAmount=2000, elementType=ElementType.RATIONAL_INF_HALF_SPACE,
                                  nucleusCharge=2, electronsAmount=2, initialDensity=lambda x: 0)
 print(result + 2.861679995612)
