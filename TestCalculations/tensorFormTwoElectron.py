@@ -17,7 +17,7 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
     galerkinSchrodingerMesh = MeshClass.mesh(1)
     def generatePoissonMesh():
         file = open("elementsDataPoisson.txt", "w")
-        file.write("0.0 inf " + str(2 * approximationOrder) + " 1.0")
+        file.write("0.0 inf " + str(3 * approximationOrder) + " 1.0")
         file.close()
         galerkinPoissonMesh.fileRead("elementsDataPoisson.txt", "neighboursDataPoisson.txt")
 
@@ -118,15 +118,21 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
     curX = np.ones(A.shape[0])
     tensorA = (np.kron(B, A) + np.kron(A, B))
     tensorB = np.kron(B, B)
+    tensorCurX = np.random.rand(tensorA.shape[0])
     tensorCurX = np.ones(tensorA.shape[0])
+    w, n = integr.reg_32_wn(-1, 1, integrationPointsAmount)
+    mappedNodes = galerkinSchrodinger.elements[0].map(n)
+    # print("bp", mappedNodes[-1])
+    jacobian = galerkinSchrodinger.elements[0].inverseDerivativeMap(n)
     def evaluateALot():
-        w, n = integr.reg_32_wn(-1, 1, integrationPointsAmount)
-        mappedNodes = galerkinSchrodinger.elements[0].map(n)
-        jacobian = galerkinSchrodinger.elements[0].inverseDerivativeMap(n)
+
         def evaluatedBasis(x):
             evaluatedBasis = galerkinSchrodinger.evaluateBasisAtPoints(x).T
+            # print(evaluatedBasis.shape)
             basisProduct = np.einsum("ik, jk -> ijk", evaluatedBasis, evaluatedBasis)
+            # print(basisProduct.shape)
             return basisProduct
+
 
         functional = lambda testElement: elem1dUtils.integrateTensorFunctional(
             testElement=testElement,
@@ -151,19 +157,25 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
         # print(fx[3, 5, 150]-fx[5, 3, 150])
         # print(fx[0][0])
         wx = (w * jacobian * paddedYklSchrodBasis(mappedNodes).T)
-
+        # for i in range(2):
+        #     for j in range(2):
+        #         plt.plot(mappedNodes, fx[i, j, :])
+        # plt.show()
         wx = np.reshape(wx, [shapeYkl[1], shapeYkl[2], wx.shape[1]])
         # print(fx.shape, wx.shape)
-        integral = np.einsum("ijn, kln -> ijkl", fx, wx)
-        integral = np.transpose(integral, [0, 2, 1, 3])
+        # integral = np.einsum("ijn, kln -> ijkl", fx, wx)
+        # integral = np.transpose(integral, [0, 2, 1, 3])
+        integral = np.einsum("ikn, jln -> ijkl", fx, wx)
+        # integral = np.transpose(integral, [0, 2, 1, 3])
         arrLen = int(integral.shape[0])
         integral = np.reshape(integral, [arrLen * arrLen, arrLen * arrLen])
         # print(np.linalg.norm(integral.T - integral))
         zerofyiedIntegral = integral[~(integral == 0).all(1), :][:, ~(integral == 0).all(0)]
-        print("is Y symmetric", np.linalg.norm(zerofyiedIntegral.T - zerofyiedIntegral))
+        # print("is Y symmetric", np.linalg.norm(zerofyiedIntegral.T - zerofyiedIntegral))
         # time.sleep(500)
         # print(print(np.min(np.abs(zerofyiedIntegral))))
         return zerofyiedIntegral
+
     while np.abs(prevEnergy - energy) > 1e-12 and iterationNum < 1000:
         iterationNum += 1
         prevEnergy = energy
@@ -176,15 +188,23 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
         # print("HF eigval", eigval)
 
         tensorY = evaluateALot()
-        interactionTensor = tensorA + 0.5 * tensorY
-        tensorCurX = GD.YunhoGradientDescent(interactionTensor, tensorB, tensorCurX, alpha=1 * 1e-2, gamma=10, output=True, maxIter=5000)
+        interactionTensor = tensorA + tensorY / (4 * np.pi)
+        tensorCurX = GD.YunhoGradientDescent(interactionTensor, tensorB, tensorCurX, alpha=2 * 1e-3, gamma=15, output=False, maxIter=50000)
         eigval = (tensorCurX @ (interactionTensor) @ tensorCurX) / (tensorCurX @ tensorB @ tensorCurX)
-        # dimSize = int(np.sqrt(np.size(tensorCurX)))
-        # reshapedTensor = np.reshape(tensorCurX, [dimSize, dimSize])
+        dimSize = int(np.sqrt(np.size(tensorCurX)))
+        reshapedTensor = np.reshape(tensorCurX, [dimSize, dimSize])
+        # mesh = galerkinSchrodinger.getMeshPoints()
+        chebNodes = spec.chebNodes(approximationOrder, -1, 1)
+        mappedNodes = galerkinSchrodinger.elements[0].map(chebNodes)[1:-1]
+        # print(reshapedTensor.shape)
+        reshapedTensor = ((reshapedTensor.T * mappedNodes) * mappedNodes).T
+        # plt.plot(mappedNodes, reshapedTensor)
+        # plt.show()
         # u, s, v = sp_lin.svd(reshapedTensor, full_matrices=False)
         # print(s)
-        print("tensor eigval", eigval)
-        time.sleep(500)
+        # print("tensor eigval", eigval)
+        # time.sleep(500)
+        return eigval
         # galerkinSchrodinger.solutionWithDirichletBC = np.hstack([0, curX, 0])
 
         # print(curX.shape)
@@ -196,22 +216,22 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
         # except:
         #     return np.inf
         # print(eigvals[0], (curX @ A @ curX) / (curX @ B @ curX))
-        w, n = integr.reg_32_wn(-1, 1, integrationPointsAmount)
-        mappedNodes = galerkinSchrodinger.elements[0].map(n)
-        jacobian = galerkinSchrodinger.elements[0].inverseDerivativeMap(n)
-        w = w * jacobian
-        # plt.plot(mappedNodes, jacobian * galerkinSchrodinger.evaluateSolutionAtPoints(mappedNodes) ** 2)
-        # plt.show()
-        normalizationConstant = 4.0 * np.pi * (galerkinSchrodinger.evaluateSolutionAtPoints(mappedNodes) ** 2) @ w
-        density = lambda x: (galerkinSchrodinger.evaluateSolutionAtPoints(x) ** 2
-                             / normalizationConstant)
-        hartree_energy = 4.0 * np.pi * (density(mappedNodes) * galerkinPoisson.evaluateSolutionAtPoints(mappedNodes)) @ w
-        energy = 2 * eigval - hartree_energy
-        print(energy)
+        # w, n = integr.reg_32_wn(-1, 1, integrationPointsAmount)
+        # mappedNodes = galerkinSchrodinger.elements[0].map(n)
+        # jacobian = galerkinSchrodinger.elements[0].inverseDerivativeMap(n)
+        # w = w * jacobian
+        # # plt.plot(mappedNodes, jacobian * galerkinSchrodinger.evaluateSolutionAtPoints(mappedNodes) ** 2)
+        # # plt.show()
+        # normalizationConstant = 4.0 * np.pi * (galerkinSchrodinger.evaluateSolutionAtPoints(mappedNodes) ** 2) @ w
+        # density = lambda x: (galerkinSchrodinger.evaluateSolutionAtPoints(x) ** 2
+        #                      / normalizationConstant)
+        # hartree_energy = 4.0 * np.pi * (density(mappedNodes) * galerkinPoisson.evaluateSolutionAtPoints(mappedNodes)) @ w
+        # energy = 2 * eigval - hartree_energy
+        # print(energy)
         # energy = 2 * eigvals[0] - hartree_energy
-    return energy
+    # return energy
 
-
-result = heliumHF(parameter=1.42776782052568, approximationOrder=5, angularL=0, integrationPointsAmount=2000, elementType=ElementType.LOGARITHMIC_INF_HALF_SPACE,
-                                 nucleusCharge=2, electronsAmount=2, initialDensity=lambda x: 0)
-print(result + 2.861679995612)
+for i in range(3, 24):
+    result = heliumHF(parameter=5, approximationOrder=i, angularL=0, integrationPointsAmount=5000, elementType=ElementType.LINEAR,
+                                     nucleusCharge=2, electronsAmount=2, initialDensity=lambda x: 0)
+    print(i, result)
