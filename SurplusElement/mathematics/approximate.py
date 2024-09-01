@@ -12,7 +12,7 @@ import scikit_tt.tensor_train as tt
 def printTT(argTensor):
     for it in argTensor:
         print(it.shape)
-def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
+def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True, output=True):
     tensor = argTensor.copy()
     shape = tensor.shape
     dim = len(shape)
@@ -25,7 +25,7 @@ def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True):
         cumsum = np.cumsum(s)
         r_delta = np.argmax(cumsum[-1] - cumsum < tol) + 1
         r[i - 1] = min(R_MAX, r_delta)
-        if r[i-1] == R_MAX:
+        if r[i-1] == R_MAX and output == True:
             print(i, " rank exceeded R_MAX, TT approximation error may be high")
 
         cores.append((np.reshape(np.diag(np.sqrt(s[:r[i - 1]])) @ v[: r[i - 1]], [r[i-1], shape[i], r[i]])))
@@ -489,7 +489,64 @@ def eigAlterLeastSquares(A, B, ranks, sigma=1, V = None, prev = None, real=True,
         #               conv_eps=1e-10, number_ev=20)
     return res
 
+def matrixVectorProd(A, u, tol: float = 1e-6):
+    """
+    A is a matrix in TT format, v is a vector in TT format.
+    After multiplication, rounding is applied with "tol"
+    """
+    dimA = len(A)
+    v = []
+    for i in range(dimA):
+        productTensor = np.einsum("aijb, AjB -> aAibB", A[i], u[i])
+        shape = productTensor.shape
+        productTensor = np.reshape(productTensor, [shape[0] * shape[1], shape[2], shape[3] * shape[4]])
+        v.append(productTensor)
+    vecRound(v, tol=tol)
+    return v
 
+def sumTT2d(U, V, tol:float = 1e-6):
+    dimU = len(U)
+    sumTensor = []
+    # print(U[0].shape, V[0].shape)
+    # print("U")
+    # printTT(U)
+    # print("V")
+    # printTT(V)
+    FirstCore = np.concatenate((U[0], V[0]), axis=-1)
+    # FCShape = FirstCore.shape
+    # print(FCShape)
+    # FirstCore = np.reshape(FirstCore, [FCShape[0], FCShape[1], FCShape[2] * FCShape[3]])
+    LastCore = np.concatenate((U[-1], V[-1]), axis=0)
+    # LCShape = LastCore.shape
+    # LastCore = np.reshape(LastCore, [LCShape[0]*LCShape[1], LCShape[2], LCShape[3]])
+    result = [FirstCore, LastCore]
+    vecRound(result, tol=tol)
+    # print("RESULT")
+    #
+    # printTT(result)
+    # print(U[0].shape, V[0].shape)
+    # print(sumTensor[0].shape)
+    # time.sleep(500)
+    # sumTensor[-1] =
+    # for i in range(1, dimU - 1):
+    #     sumTensor.append(sp_linalg.block_diag([[U[i], 0],
+    #                                            [0, V[i]]]))
+    return result
+def dotProd2dTT(U, V):
+    """
+        u is a vector in TT format, v is a vector in TT format. Not sure if working for nd
+    """
+    dimU = len(U)
+    prevTensor = np.einsum("aib, AiB -> aAbB", U[0], V[0])
+    prevShape = prevTensor.shape
+    prevTensor = np.reshape(prevTensor, [prevShape[0]*prevShape[1], prevShape[2]*prevShape[3]])
+    for i in range(1, dimU):
+        curTensor = np.einsum("aib, AiB -> aAbB", U[i], V[i])
+        curShape = curTensor.shape
+        curTensor = np.reshape(curTensor, [curShape[0] * curShape[1], curShape[2] * curShape[3]])
+        prodTensor = np.einsum("ij, jk -> ik", prevTensor, curTensor)
+    return np.squeeze(prodTensor)
+    # printTT(v)
 def eigAlterLeastSquares2d(A, B, ranks, sigma=1, V = None, prev = None, real=True, shift=None):
     #ttA = A
     if len(A) == 2:

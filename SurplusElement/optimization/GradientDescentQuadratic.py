@@ -3,6 +3,9 @@ from typing import Callable
 import numpy
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
+import SurplusElement.mathematics.approximate as approx
+import time as time
+import scipy.linalg as sp_lin
 def minimizeOneQuadraticConstraint(A: np.array, B: np.array, x0: np.array, alpha: float,
                                    eps: float=1e-6, output=False, maxIter: int = 100):
     lambdaGradFunc = lambda l: (A.T + A) + l * (B.T + B)
@@ -46,6 +49,101 @@ def YunhoGradientDescent(A: np.array, B: np.array, x0: np.array, alpha: float, g
             xNext = xPrev - alpha * (gammaGradFunc(xPrev))
             print("min: ", (xNext @ (A @ xNext))/(xNext @ (B @ xNext)))
     return xNext
+
+def YunhoGradientDescentWithMomentum(A: np.array, B: np.array, x0: np.array, alpha: float, beta:float, gamma:float,
+                                   eps: float=1e-6, output=True, maxIter: int = 100):
+    constMatrix = (A + gamma * B)
+    gammaGradFunc = lambda x: constMatrix @ x - (gamma * B @ x)/np.sqrt(x @ (B @ x))
+    dim = A.shape[0]
+    # x0 = np.ones(dim, dtype=float)
+    xNext = x0.copy()
+    xPrev = x0.copy()
+    if output == False:
+        for i in range(maxIter):
+            xPrev2 = xPrev
+            xPrev = xNext
+            xNext = xPrev - alpha * (gammaGradFunc(xPrev)) + beta * (xPrev - xPrev2)
+    else:
+        for i in range(maxIter):
+            xPrev2 = xPrev
+            xPrev = xNext
+            xNext = xPrev - alpha * (gammaGradFunc(xPrev)) + beta * (xPrev - xPrev2)
+            # print((xNext @ (B @ xNext)))
+            print("min: ", (xNext @ (A @ xNext))/(xNext @ (B @ xNext)))
+    return xNext
+
+
+
+def YunhoScipy(A: np.array, B: np.array, x0: np.array, gamma:float, method:str = 'CG'):
+    constMatrix = (A/2.0 + gamma * B / 2.0)
+    func = lambda x: x @ constMatrix @ x - gamma * np.sqrt(x @ (B @ x))
+    gammaConstMatrix = (A + gamma * B)
+    gammaGradFunc = lambda x: gammaConstMatrix @ x - (gamma * B @ x) / np.sqrt(x @ (B @ x))
+    # func = lambda x: (x @ A @ x) / (x @ B @ x)
+    result = minimize(fun=func, x0=x0, jac=gammaGradFunc, method="CG", options={'gtol': 1e-16, 'maxiter':1000000})
+    # print(result)
+    return result.x
+
+def YunhoTensorTrain(A: np.array, B: np.array, x0: np.array,
+                     alpha:float, gamma:float, method:str = 'CG', maxIter:int = 100):
+    # constMatrix = (A/2.0 + gamma * B / 2.0)
+    sqrtDim = int(np.sqrt(A.shape[0]))
+    # ttMatrix = approx.matrixTTsvd(constMatrix, np.array([sqrtDim, sqrtDim]), tol=1e-6)
+    solution = np.reshape(x0, [sqrtDim, sqrtDim])
+    ttVector = approx.vectorTTsvd(solution, tol=1e-6)
+    ttA = approx.matrixTTsvd(A, np.array([sqrtDim, sqrtDim]), tol=1e-16)
+    ttB = approx.matrixTTsvd(B, np.array([sqrtDim, sqrtDim]), tol=1e-16)
+    # print("matrix")
+    # approx.printTT(ttMatrix)
+    # print("vector")
+    # approx.printTT(ttVector)
+    # product = approx.matrixVectorProd(ttMatrix, ttVector, tol=1e-6)
+    # print("product")
+    # approx.printTT(product)
+    # productFullForm = approx.toFullTensor(product).flatten()
+    # print(np.dot(productFullForm, productFullForm))
+    # print(approx.dotProd2d(product, product))
+    # print(np.linalg.norm(productFullForm - constMatrix @ x0))
+
+    # func = lambda x: x @ constMatrix @ x - gamma * np.sqrt(x @ (B @ x))
+    # gammaConstMatrix = (A + gamma * B)
+    # gammaGradFunc = lambda x: gammaConstMatrix @ x - (gamma * B @ x) / np.sqrt(x @ (B @ x))
+    # func = lambda x: x @ constMatrix @ x - gamma * np.sqrt(x @ (B @ x))
+    # gammaConstMatrix = (A + gamma * B)
+
+
+    def gammaGradFunc(x):
+        Ax = approx.matrixVectorProd(ttA, x)
+        Bx = approx.matrixVectorProd(ttB, x)
+        Bx[0] = Bx[0] * gamma
+        Ax = approx.sumTT2d(Ax, Bx)
+        xBx = np.sqrt(approx.dotProd2dTT(x, Bx))
+        Bx[0] = -1.0/xBx * Bx[0]
+        return approx.sumTT2d(Ax, Bx)
+
+    # func = lambda x: (x @ A @ x) / (x @ B @ x)
+    xNext = ttVector
+    for i in range(maxIter):
+        xPrev = xNext
+        prevGrad = gammaGradFunc(xPrev)
+        prevGrad[0] = prevGrad[0] * (-alpha)
+        # approx.vecRound(prevGrad, tol=1e-3)
+        xNext = approx.sumTT2d(xPrev, prevGrad)
+        fullXNext = approx.toFullTensor(xNext)
+        fullXNext = (fullXNext + fullXNext.T)/2.0
+        xNext = approx.simpleTTsvd(fullXNext, R_MAX=1, output=False)
+        # u, s, v = sp_lin.svd(fullXNext, full_matrices=False)
+        # print(s)
+        # approx.vecRound(xNext, tol=1)
+        # approx.printTT(xNext)
+        Ax = approx.matrixVectorProd(ttA, xNext)
+        Bx = approx.matrixVectorProd(ttB, xNext)
+        # time.sleep(1)
+        print("min: ", approx.dotProd2dTT(xNext, Ax) / approx.dotProd2dTT(xNext, Bx))
+    # result = minimize(fun=func, x0=x0, jac=gammaGradFunc, method="CG", options={'gtol': 1e-16, 'maxiter':1000000})
+    time.sleep(500)
+    # print(result)
+    # return result.x
 def minimizeOneQuadraticConstraintProjection(A: np.array, B: np.array, x0: np.array, alpha: float,
                                    eps: float=1e-6, output=True, maxIter: int = 100):
     lambdaGradFunc = (A.T + A)
