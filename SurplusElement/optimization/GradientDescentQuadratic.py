@@ -85,14 +85,16 @@ def YunhoScipy(A: np.array, B: np.array, x0: np.array, gamma:float, method:str =
     return result.x
 
 def YunhoTensorTrain(A: np.array, B: np.array, x0: np.array,
-                     alpha:float, gamma:float, method:str = 'CG', maxIter:int = 100):
+                     alpha:float, gamma:float,
+                     maxRank: int, solTol: float = 1e-6, operatorMaxRank:int = 100, operatorTol:float = 1e-6,
+                     eps: float = 1e-15, maxIter: int = 100, output: bool = False):
     # constMatrix = (A/2.0 + gamma * B / 2.0)
     sqrtDim = int(np.sqrt(A.shape[0]))
     # ttMatrix = approx.matrixTTsvd(constMatrix, np.array([sqrtDim, sqrtDim]), tol=1e-6)
     solution = np.reshape(x0, [sqrtDim, sqrtDim])
     ttVector = approx.vectorTTsvd(solution, tol=1e-6)
-    ttA = approx.matrixTTsvd(A, np.array([sqrtDim, sqrtDim]), tol=1e-16)
-    ttB = approx.matrixTTsvd(B, np.array([sqrtDim, sqrtDim]), tol=1e-16)
+    ttA = approx.matrixTTsvd(A, np.array([sqrtDim, sqrtDim]), tol=operatorTol, maxRank=operatorMaxRank, output=False)
+    ttB = approx.matrixTTsvd(B, np.array([sqrtDim, sqrtDim]), tol=operatorTol, maxRank=operatorMaxRank, output=False)
     # print("matrix")
     # approx.printTT(ttMatrix)
     # print("vector")
@@ -113,35 +115,45 @@ def YunhoTensorTrain(A: np.array, B: np.array, x0: np.array,
 
 
     def gammaGradFunc(x):
-        Ax = approx.matrixVectorProd(ttA, x)
-        Bx = approx.matrixVectorProd(ttB, x)
+        Ax = approx.matrixVectorProd(ttA, x, tol=solTol)
+        Bx = approx.matrixVectorProd(ttB, x, tol=solTol)
         Bx[0] = Bx[0] * gamma
-        Ax = approx.sumTT2d(Ax, Bx)
+        Ax = approx.sumTT2d(Ax, Bx, tol=solTol)
         xBx = np.sqrt(approx.dotProd2dTT(x, Bx))
         Bx[0] = -1.0/xBx * Bx[0]
-        return approx.sumTT2d(Ax, Bx)
+        return approx.sumTT2d(Ax, Bx, tol=solTol)
 
     # func = lambda x: (x @ A @ x) / (x @ B @ x)
     xNext = ttVector
+    Ax = approx.matrixVectorProd(ttA, xNext)
+    Bx = approx.matrixVectorProd(ttB, xNext)
+    nextValue = approx.dotProd2dTT(xNext, Ax) / approx.dotProd2dTT(xNext, Bx)
     for i in range(maxIter):
         xPrev = xNext
+        prevValue = nextValue
         prevGrad = gammaGradFunc(xPrev)
         prevGrad[0] = prevGrad[0] * (-alpha)
         # approx.vecRound(prevGrad, tol=1e-3)
-        xNext = approx.sumTT2d(xPrev, prevGrad)
+        xNext = approx.sumTT2d(xPrev, prevGrad, tol=solTol)
         fullXNext = approx.toFullTensor(xNext)
         fullXNext = (fullXNext + fullXNext.T)/2.0
-        xNext = approx.simpleTTsvd(fullXNext, R_MAX=1, output=False)
+        xNext = approx.simpleTTsvd(fullXNext, maxRank=maxRank, output=False, tol=solTol)
+        # approx.vecRound(xNext, R_MAX=1, output=False)
         # u, s, v = sp_lin.svd(fullXNext, full_matrices=False)
         # print(s)
         # approx.vecRound(xNext, tol=1)
         # approx.printTT(xNext)
-        Ax = approx.matrixVectorProd(ttA, xNext)
-        Bx = approx.matrixVectorProd(ttB, xNext)
-        # time.sleep(1)
-        print("min: ", approx.dotProd2dTT(xNext, Ax) / approx.dotProd2dTT(xNext, Bx))
+        Ax = approx.matrixVectorProd(ttA, xNext, tol=solTol)
+        Bx = approx.matrixVectorProd(ttB, xNext, tol=solTol)
+        nextValue = approx.dotProd2dTT(xNext, Ax) / approx.dotProd2dTT(xNext, Bx)
+        if np.abs(nextValue - prevValue) < eps:
+            return xNext, approx.dotProd2dTT(xNext, Ax) / approx.dotProd2dTT(xNext, Bx)
+        if output == True:
+            print("min: ", approx.dotProd2dTT(xNext, Ax) / approx.dotProd2dTT(xNext, Bx))
+    print("GD not converged")
+    return xNext, approx.dotProd2dTT(xNext, Ax) / approx.dotProd2dTT(xNext, Bx)
     # result = minimize(fun=func, x0=x0, jac=gammaGradFunc, method="CG", options={'gtol': 1e-16, 'maxiter':1000000})
-    time.sleep(500)
+    # time.sleep(500)
     # print(result)
     # return result.x
 def minimizeOneQuadraticConstraintProjection(A: np.array, B: np.array, x0: np.array, alpha: float,

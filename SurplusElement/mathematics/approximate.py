@@ -12,7 +12,7 @@ import scikit_tt.tensor_train as tt
 def printTT(argTensor):
     for it in argTensor:
         print(it.shape)
-def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True, output=True):
+def simpleTTsvd(argTensor, tol=1e-6, maxRank=100, makeCopy=True, output=True):
     tensor = argTensor.copy()
     shape = tensor.shape
     dim = len(shape)
@@ -24,8 +24,8 @@ def simpleTTsvd(argTensor, tol=1e-6, R_MAX=100, makeCopy=True, output=True):
         u, s, v = sp_linalg.svd(tensor, full_matrices=False)
         cumsum = np.cumsum(s)
         r_delta = np.argmax(cumsum[-1] - cumsum < tol) + 1
-        r[i - 1] = min(R_MAX, r_delta)
-        if r[i-1] == R_MAX and output == True:
+        r[i - 1] = min(maxRank, r_delta)
+        if r[i-1] == maxRank and output == True:
             print(i, " rank exceeded R_MAX, TT approximation error may be high")
 
         cores.append((np.reshape(np.diag(np.sqrt(s[:r[i - 1]])) @ v[: r[i - 1]], [r[i-1], shape[i], r[i]])))
@@ -147,7 +147,7 @@ def vectorTTsvd(f, tol=1e-6):
     return cores[::-1]
     # for i in range(len(cores)):
     #     print(cores[i].shape)
-def matrixTTsvd(A, shape, tol=1e-6, f=None):
+def matrixTTsvd(A, shape, tol=1e-6, maxRank:int = 100, f=None, output:bool=True):
     A = np.reshape(A, [*shape, *shape])
     first = np.arange(shape.size)
     last = np.arange(shape.size, 2*shape.size)
@@ -156,7 +156,7 @@ def matrixTTsvd(A, shape, tol=1e-6, f=None):
     newAxes = np.array(newAxes, dtype=int)
     A = np.transpose(A, newAxes)
     A = np.reshape(A, shape**2)
-    A = simpleTTsvd(A, tol)
+    A = simpleTTsvd(A, tol, maxRank=maxRank, output=output)
     for i in range(len(A)):
         a = A[i].shape[0]; b = A[i].shape[2]
         A[i] = np.reshape(A[i], [a, shape[i], shape[i], b])
@@ -424,7 +424,7 @@ def expandCoreMatrixForm(argTensor, expandIndex: int):
 
 
     pass
-def vecRound(u, tol=1e-6, matrixForm=False):
+def vecRound(u, tol: float = 1e-6, matrixForm=False, R_MAX:int = 100, output: bool = True):
     if matrixForm == True:
         for i in range(len(u)):
             shape = u[i].shape
@@ -447,8 +447,9 @@ def vecRound(u, tol=1e-6, matrixForm=False):
         # print(a, n, b)
         U, S, V = sp_linalg.svd(np.reshape(u[i], [a*n, b]), full_matrices=False)
         # print(i, S)
-        sigma = min(max(1, np.size(S[np.abs(S) > tol])) + 1, np.size(S))
-        #sigma = max(1, np.size(s[np.abs(s) > tol]))
+        sigma = min(max(1, np.size(S[np.abs(S) > tol])), R_MAX)
+        if sigma == R_MAX and output == True:
+            print(i, " rank exceeded R_MAX, TT approximation error may be high")
         u[i] = U[:, :sigma]; V = np.dot(np.diag(S[:sigma]), V[:sigma, :])
         # print(V.shape, u[i + 1].shape)
         u[i + 1] = np.tensordot(V, u[i + 1], axes=(1, 0))

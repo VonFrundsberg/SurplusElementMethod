@@ -10,7 +10,7 @@ from SurplusElement.GalerkinMethod.element.Element1d.element1d import ElementTyp
 import SurplusElement.optimization.GradientDescentQuadratic as GD
 import scipy.linalg as sp_lin
 import SurplusElement.mathematics.approximate as approx
-def heliumHF(parameter: float, approximationOrder: int, angularL: int,
+def heliumHF(parameter: float, operatorRank: int, approximationOrder: int, angularL: int,
                   integrationPointsAmount:int, elementType: ElementType, nucleusCharge: int,
                   electronsAmount: int, initialDensity):
     galerkinPoisson = galerkin.GalerkinMethod1d("LE")
@@ -192,14 +192,16 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
         # eigval = (tensorCurX @ (interactionTensor) @ tensorCurX) / (tensorCurX @ tensorB @ tensorCurX)
         # print(eigval)
         # time.sleep(1)
-        tensorCurX = GD.YunhoTensorTrain(interactionTensor, tensorB, tensorCurX, gamma=15, alpha=1e-3, maxIter=10**5)
-        eigval = (tensorCurX @ (interactionTensor) @ tensorCurX) / (tensorCurX @ tensorB @ tensorCurX)
+        result = GD.YunhoTensorTrain(interactionTensor, tensorB, tensorCurX, gamma=15,
+            maxRank=15, solTol=1e-16, operatorTol=1e-16, operatorMaxRank=operatorRank, alpha=1e-2, maxIter=5*10**6, eps=1e-13, output=False)
+        # eigval = (tensorCurX @ (interactionTensor) @ tensorCurX) / (tensorCurX @ tensorB @ tensorCurX)
+        print(operatorRank, result[1])
         # eighEigval = (eigvecs[:, 0] @ (interactionTensor) @ eigvecs[:, 0]) / (eigvecs[:, 0] @ tensorB @ eigvecs[:, 0])
         # print(np.min(eigvals), eighEigval, eigval)
-        reshapedTensor = np.reshape(tensorCurX, [dimSize, dimSize])
+        # reshapedTensor = np.reshape(tensorCurX, [dimSize, dimSize])
         # mesh = galerkinSchrodinger.getMeshPoints()
-        chebNodes = spec.chebNodes(approximationOrder, -1, 1)
-        mappedNodes = galerkinSchrodinger.elements[0].map(chebNodes)[1:-1]
+        # chebNodes = spec.chebNodes(approximationOrder, -1, 1)
+        # mappedNodes = galerkinSchrodinger.elements[0].map(chebNodes)[1:-1]
         # f = lambda x, y: np.exp(-1.849*(x + y)) * (1 + 0.364 * np.sqrt(x**2 + y**2))
         # xx, yy = np.meshgrid(mappedNodes, mappedNodes)
         # fx = f(xx, yy)
@@ -216,7 +218,7 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
         # print(s)
         # print("tensor eigval", eigval)
         # time.sleep(500)
-        return eigval
+        # return eigval
         # galerkinSchrodinger.solutionWithDirichletBC = np.hstack([0, curX, 0])
 
         # print(curX.shape)
@@ -245,7 +247,17 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
 import warnings
 warnings.filterwarnings("ignore")
 
-for i in range(20, 21):
-    result = heliumHF(parameter=3.5, approximationOrder=i, angularL=0, integrationPointsAmount=10000, elementType=ElementType.LOGARITHMIC_INF_HALF_SPACE,
+print("EXP")
+for i in [5, 10, 15]:
+    print("approx order = ", i)
+    for j in [2, 4, 8, 16, 32, 64]:
+        result = heliumHF(parameter=3, operatorRank = j, approximationOrder=i + 2, angularL=0, integrationPointsAmount=10000, elementType=ElementType.EXPONENTIAL_INF_HALF_SPACE,
                                      nucleusCharge=2, electronsAmount=2, initialDensity=lambda x: 0)
-    print(i, result + 2.879028764)
+print("LOG")
+for i in [5, 10, 15]:
+        print("approx order = ", i)
+        for j in [2, 4, 8, 16, 32, 64]:
+            result = heliumHF(parameter=3, operatorRank=j, approximationOrder=i + 2, angularL=0,
+                              integrationPointsAmount=10000, elementType=ElementType.LOGARITHMIC_INF_HALF_SPACE,
+                              nucleusCharge=2, electronsAmount=2, initialDensity=lambda x: 0)
+    # print(i, result + 2.879028764)
