@@ -84,7 +84,7 @@ def YunhoScipy(A: np.array, B: np.array, x0: np.array, gamma:float, method:str =
     # print(result)
     return result.x
 
-def YunhoTensorTrain(A: np.array, B: np.array, x0: np.array,
+def YunhoTensorTrain(Y:np.array, A: np.array, B: np.array, x0: np.array,
                      alpha:float, gamma:float,
                      maxRank: int, solTol: float = 1e-6, operatorMaxRank:int = 100, operatorTol:float = 1e-6,
                      eps: float = 1e-15, maxIter: int = 100, output: bool = False):
@@ -93,8 +93,15 @@ def YunhoTensorTrain(A: np.array, B: np.array, x0: np.array,
     # ttMatrix = approx.matrixTTsvd(constMatrix, np.array([sqrtDim, sqrtDim]), tol=1e-6)
     solution = np.reshape(x0, [sqrtDim, sqrtDim])
     ttVector = approx.vectorTTsvd(solution, tol=1e-6)
-    ttA = approx.matrixTTsvd(A, np.array([sqrtDim, sqrtDim]), tol=operatorTol, maxRank=operatorMaxRank, output=False)
+    ttY = approx.matrixTTsvd(Y, np.array([sqrtDim, sqrtDim]), tol=operatorTol, maxRank=operatorMaxRank, output=False)
+    fullY = approx.toFullTensor(ttY, matrixForm=True)
+    shapeFullY = fullY.shape
+    fullY = np.reshape(fullY, [shapeFullY[0] * shapeFullY[1], shapeFullY[2] * shapeFullY[3]])
+    ttA = approx.matrixTTsvd(A + fullY, np.array([sqrtDim, sqrtDim]), tol=operatorTol, maxRank=operatorMaxRank, output=False)
+    # print(approx.printTT(ttA))
+    # ttA = approx.sumTT2d(ttA, ttY)
     ttB = approx.matrixTTsvd(B, np.array([sqrtDim, sqrtDim]), tol=operatorTol, maxRank=operatorMaxRank, output=False)
+    # print(approx.printTT(ttY))
     # print("matrix")
     # approx.printTT(ttMatrix)
     # print("vector")

@@ -35,7 +35,9 @@ class RationalInfHalfSpaceElement:
 
         self.refPointDiffVal = spec.chebDiffMatrix(self.approxOrder, a=-1, b=1) @ self.refPointVal
 
-
+    def getRefNodes(self):
+        chebNodes = spec.chebNodes(self.approxOrder, a=-1.0, b=1.0)
+        return self.map(chebNodes)
     def evaluateExpansion(self, coefficients: list[float], x: list[float]):
         """ Evaluates expansion in basis functions with given coefficients at points x
                             Arguments:

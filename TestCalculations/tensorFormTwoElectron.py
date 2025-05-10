@@ -180,7 +180,7 @@ def heliumHF(parameter: float, operatorRank: int, approximationOrder: int, angul
         # eigval = (curX @ A @ curX) / (curX @ B @ curX)
         # print("HF eigval", eigval)
         tensorY = evaluateALot()
-        interactionTensor = tensorA + tensorY / (4 * np.pi)
+        interactionTensor = tensorY / (4 * np.pi)
         dimSize = int(np.sqrt(np.size(tensorCurX)))
 
         # eigvals, eigvecs = sp_lin.eigh(interactionTensor, tensorB)
@@ -192,10 +192,10 @@ def heliumHF(parameter: float, operatorRank: int, approximationOrder: int, angul
         # eigval = (tensorCurX @ (interactionTensor) @ tensorCurX) / (tensorCurX @ tensorB @ tensorCurX)
         # print(eigval)
         # time.sleep(1)
-        result = GD.YunhoTensorTrain(interactionTensor, tensorB, tensorCurX, gamma=15,
+        result = GD.YunhoTensorTrain(interactionTensor, tensorA, tensorB, tensorCurX, gamma=15,
             maxRank=15, solTol=1e-16, operatorTol=1e-16, operatorMaxRank=operatorRank, alpha=1e-2, maxIter=5*10**6, eps=1e-13, output=False)
         # eigval = (tensorCurX @ (interactionTensor) @ tensorCurX) / (tensorCurX @ tensorB @ tensorCurX)
-        print(operatorRank, result[1])
+        print(operatorRank, result[1] + 2.8790287)
         # eighEigval = (eigvecs[:, 0] @ (interactionTensor) @ eigvecs[:, 0]) / (eigvecs[:, 0] @ tensorB @ eigvecs[:, 0])
         # print(np.min(eigvals), eighEigval, eigval)
         # reshapedTensor = np.reshape(tensorCurX, [dimSize, dimSize])
@@ -247,12 +247,12 @@ def heliumHF(parameter: float, operatorRank: int, approximationOrder: int, angul
 import warnings
 warnings.filterwarnings("ignore")
 
-print("EXP")
-for i in [5, 10, 15]:
-    print("approx order = ", i)
-    for j in [2, 4, 8, 16, 32, 64]:
-        result = heliumHF(parameter=3, operatorRank = j, approximationOrder=i + 2, angularL=0, integrationPointsAmount=10000, elementType=ElementType.EXPONENTIAL_INF_HALF_SPACE,
-                                     nucleusCharge=2, electronsAmount=2, initialDensity=lambda x: 0)
+# print("EXP")
+# for i in [5, 10, 15]:
+#     print("approx order = ", i)
+#     for j in [2, 4, 8, 16, 32, 64]:
+#         result = heliumHF(parameter=3, operatorRank = j, approximationOrder=i + 2, angularL=0, integrationPointsAmount=10000, elementType=ElementType.EXPONENTIAL_INF_HALF_SPACE,
+#                                      nucleusCharge=2, electronsAmount=2, initialDensity=lambda x: 0)
 print("LOG")
 for i in [5, 10, 15]:
         print("approx order = ", i)
