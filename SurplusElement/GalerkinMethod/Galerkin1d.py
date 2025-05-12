@@ -303,7 +303,7 @@ class GalerkinMethod1d:
         self.lu = sp_linalg.lu_factor(A)
     def solveSLAE_dense_invertedMatrix(self):
         b = self.functionalElements[0][self.zeroIndices]
-        solution = sp_linalg.lu_solve(*self.lu, b)
+        solution = sp_linalg.lu_solve(self.lu, b)
         self.solutionWithDirichletBC = np.zeros(self.zeroIndices.shape, dtype=float)
         self.solutionWithDirichletBC[self.zeroIndices] = solution
     def solveSLAE_denseMatrix(self):
