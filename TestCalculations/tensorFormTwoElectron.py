@@ -104,7 +104,7 @@ def heliumHF(parameter: float, operatorRank: int, approximationOrder: int, angul
     galerkinSchrodinger.setBilinearForm([*constantSchrodingerOperator[:-1]
                                          ], [],
                                         rhsForms=[constantSchrodingerOperator[-1]])
-    galerkinSchrodinger.calculateElementsDenseEig()
+    galerkinSchrodinger.calculateElementsSpectralEig()
     A, B = galerkinSchrodinger.getMatrices()
     curX = np.ones(A.shape[0])
     tensorA = (np.kron(B, A) + np.kron(A, B))

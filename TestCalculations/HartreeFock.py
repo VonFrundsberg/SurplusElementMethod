@@ -112,7 +112,7 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
     galerkinSchrodinger.setBilinearForm([*constantSchrodingerOperator[:-1],
                                          *variableSchrodingerPart(density)], [],
                                         rhsForms=[constantSchrodingerOperator[-1]])
-    galerkinSchrodinger.calculateElementsDenseEig()
+    galerkinSchrodinger.calculateElementsSpectralEig()
     A, B = galerkinSchrodinger.getMatrices()
     curX = np.ones(A.shape[0])
     while np.abs(prevEnergy - energy) > 1e-12 and iterationNum < 1000:

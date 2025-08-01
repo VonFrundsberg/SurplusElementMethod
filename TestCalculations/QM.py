@@ -51,7 +51,7 @@ def logarithmicRoutine(parameterS: float, approximationOrder: int,
 
     galerkinSchrodinger.setBilinearForm(schrodingerOperator[:-1], [],
                                             rhsForms=[schrodingerOperator[-1]])
-    galerkinSchrodinger.calculateElementsDenseEig()
+    galerkinSchrodinger.calculateElementsSpectralEig()
     A, B = galerkinSchrodinger.getMatrices()
     print("A, B norms: ", np.linalg.norm(A - A.T), np.linalg.norm(B - B.T))
     GD.YunhoGradientDescent(A, B, 1, alpha=5*1e-3, gamma=1, output=True, maxIter=10**5)

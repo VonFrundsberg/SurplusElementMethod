@@ -154,14 +154,14 @@ class mesh():
         """
         return self.elementsAmount
 
-    def fileWrite(self, elementsFileName: str, neighboursFileName: str):
+    def fileWrite(self, elementsFileName: str, neighboursFileName: str = ""):
         """Creates two files: one with the elements info in the form a_1, b_1, p_1, ..., a_n, b_n, p_n,
          where a_i, b_i, p_i are left and right ends of an interval, p_i is approximation order for i's component.
          Second file contains rows of neighbouring elements numbers
 
         Arguments:
         elementsFileName:
-        neighboursFileName:
+        neighboursFileName (optional):
 
         Returns:
         Nothing
@@ -172,17 +172,18 @@ class mesh():
                 toElementsFile.writelines(list(map(lambda x: str(x) + ' ', axisInfo)))
             toElementsFile.write('\n')
         toElementsFile.close()
-        f = open(neighboursFileName, "w+")
-        for it in self.neighbours:
-            f.writelines(list(map(lambda x: str(x) + ' ', it)))
-            f.write('\n')
-        f.close()
+        if neighboursFileName != "":
+            f = open(neighboursFileName, "w+")
+            for it in self.neighbours:
+                f.writelines(list(map(lambda x: str(x) + ' ', it)))
+                f.write('\n')
+            f.close()
 
-    def fileRead(self, elementsFileName: str, neighboursFileName: str):
+    def fileRead(self, elementsFileName: str, neighboursFileName: str = ""):
         """
         Arguments:
         elementsFileName:
-        neighboursFileName:
+        neighboursFileName (optional):
 
         Returns:
         None
@@ -192,14 +193,18 @@ class mesh():
         elements = np.atleast_2d(elements)
         amountOfElements, elementRowLength = elements.shape
         self.elements = np.reshape(elements, [amountOfElements, int(elementRowLength/4), 4])
-        fromNeighboursFile = open(neighboursFileName, "r+")
-        neigbours = fromNeighboursFile.readlines()
-        for i in range(len(neigbours)):
-            neigbours[i] = list(filter(None, re.split(r'\[|\]| |,', neigbours[i])))[:-1]
-            neigbours[i] = np.array(neigbours[i], dtype=int)
-        self.neighbours = neigbours
         self.setElementsAmount()
-        fromNeighboursFile.close()
+        if neighboursFileName != "":
+            fromNeighboursFile = open(neighboursFileName, "r+")
+            neigbours = fromNeighboursFile.readlines()
+            for i in range(len(neigbours)):
+                neigbours[i] = list(filter(None, re.split(r'\[|\]| |,', neigbours[i])))[:-1]
+                neigbours[i] = np.array(neigbours[i], dtype=int)
+            self.neighbours = neigbours
+
+            fromNeighboursFile.close()
+        else:
+            self.neighbours = []
         return
 
 

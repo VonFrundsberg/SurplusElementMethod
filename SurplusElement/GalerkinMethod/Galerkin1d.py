@@ -6,15 +6,21 @@ from SurplusElement.GalerkinMethod.element.Element1d import element1d as element
 from SurplusElement.GalerkinMethod.element.Element1d.AuxClasses import DirichletBoundaryCondition
 from SurplusElement.GalerkinMethod.element.Element1d.AuxClasses import ApproximationSpaceParameter
 import json
-
+from enum import Enum
 
 
 class GalerkinMethod1d:
+    class MethodType(Enum):
+        LinearSystem = "LS"
+        SpectralLinearSystem = "SLS"
+        EigenSystem = "EIG"
     # A: sparse.csr_matrix
-    methodType: str
+    methodType: MethodType
     approximationSpaceParameter: ApproximationSpaceParameter
     dirichletBoundaryConditions: list[DirichletBoundaryCondition]
-    def __init__(self, methodType: str):
+    def __init__(self, methodType: MethodType):
+        """LE is for Linear system of equations problems
+            EIG is for Eigenvalue problems"""
         self.methodType = methodType
         self.approximationSpaceParameter = ApproximationSpaceParameter()
         self.dirichletBoundaryConditions = []
@@ -83,10 +89,12 @@ class GalerkinMethod1d:
             self.elements[i] = (element.Element1d(tmpElementInfo[:2], approxOrder=tmpElementInfo[-2], elementType=tmpElementInfo[-1],
                     parameters=self.approximationSpaceParameter, dirichletBoundaryConditions=self.dirichletBoundaryConditions))
 
-    def calculateElements(self):
-        if self.methodType == "LE":
+    def calculateElements(self, ):
+        if self.methodType == GalerkinMethod1d.MethodType.SpectralLinearSystem:
+            self.__calculateElementsSpectralLE()
+        if self.methodType == GalerkinMethod1d.MethodType.LinearSystem:
             self.__calculateElements_LE()
-        if self.methodType == "EIG":
+        if self.methodType == GalerkinMethod1d.MethodType.EigenSystem:
             self.__calculateElements_EIG()
 
     def recalculateRHS(self, functionals, flatten=True):
@@ -104,13 +112,30 @@ class GalerkinMethod1d:
                 self.functionalElements[i] = (self.functionals[0](self.elements[i]))
                 for j in range(1, rhsFunctionalsAmount):
                     self.functionalElements[i] += (self.functionals[j](self.elements[i]))
+
+    def __calculateElementsSpectralLE(self):
+        """
+        self.elements must contain only one element.
+        Calculates its discretized version using previously initialized bilinearForms,
+        assuming the problem is:
+        [bilinearForms] u = functional
+        All matrices resulting from bilinear forms are saved separately"""
+
+        innerFormsAmount = len(self.innerForms)
+        rhsFormsAmount = len(self.functionals)
+        self.matrixElements = [None] * innerFormsAmount
+        self.functionalElements = [None] * rhsFormsAmount
+
+        for j in range(innerFormsAmount):
+            self.matrixElements[j] = self.innerForms[j](self.elements[0], self.elements[0])
+        for j in range(rhsFormsAmount):
+            self.functionalElements[j] = self.functionals[j](self.elements[0])
     def __calculateElements_LE(self):
         """
         For each element in self.elements, calculates its discretized version,
-         using previously initialized bilinearForms, and RHS functional
+         using previously initialized bilinearForms and RHS functional. Supposed to be used with DG schemes
                 """
         elementsAmount = self.mesh.getElementsAmount()
-
         self.matrixElements = [None] * elementsAmount
         for i in range(elementsAmount):
             self.matrixElements[i] = [None] * elementsAmount
@@ -152,7 +177,7 @@ class GalerkinMethod1d:
             self.lhsMatrixElements[j] = innerForms[iter](self.elements[0], self.elements[0])
             iter += 1
 
-    def calculateElementsDenseEig(self):
+    def calculateElementsSpectralEig(self):
         """
         For each element in self.elements, calculates its discretized version,
         using previously initialized bilinearForms, assuming the problem is:
@@ -168,8 +193,6 @@ class GalerkinMethod1d:
             self.lhsMatrixElements[j] = self.innerForms[j](self.elements[0], self.elements[0])
         for j in range(rhsFormsAmount):
             self.rhsMatrixElements[j] = self.rhsForms[j](self.elements[0], self.elements[0])
-
-
     def __calculateElements_EIG(self):
         """
         For each element in self.elements, calculates its discretized version,
@@ -217,10 +240,8 @@ class GalerkinMethod1d:
                         #             self.boundaryForms[boundaryFormNumber](self.elements[neighborNumber], self.elements[i])
                     else:
                         self.lhsMatrixElements[i][neighborNumber] = (self.lhsMatrixElements[neighborNumber][i]).T
-
     def getAmountOfNonZeroSLAE_elements(self):
         return self.A.count_nonzero()
-
     def checkPositiveEigenvalues(self):
         A = self.A.toarray()
         eigvals = sp_linalg.eigvals(A)
@@ -230,16 +251,21 @@ class GalerkinMethod1d:
         else:
             print("some eigs aren't poisitive, amount of negative is: ", np.size(np.where(realParts < 0)))
     def getMatrices(self, sumMatrices=True):
-        if sumMatrices:
-            A = np.sum(np.asarray(self.lhsMatrixElements), axis=0)
-            B = np.sum(np.asarray(self.rhsMatrixElements), axis=0)
-        else:
-            A = self.lhsMatrixElements
-            B = self.rhsMatrixElements
+        if self.methodType == GalerkinMethod1d.MethodType.SpectralLinearSystem:
+            return [self.matrixElements, self.functionalElements]
+        if self.methodType == GalerkinMethod1d.MethodType.LinearSystem:
+            return self.matrixElements
+        elif self.methodType == GalerkinMethod1d.MethodType.EigenSystem:
+            if sumMatrices:
+                A = np.sum(np.asarray(self.lhsMatrixElements), axis=0)
+                B = np.sum(np.asarray(self.rhsMatrixElements), axis=0)
+            else:
+                A = self.lhsMatrixElements
+                B = self.rhsMatrixElements
 
-        A = A[~(A == 0).all(1), :][:, ~(A == 0).all(0)]
-        B = B[~(B == 0).all(1), :][:, ~(B == 0).all(0)]
-        return A, B
+            A = A[~(A == 0).all(1), :][:, ~(A == 0).all(0)]
+            B = B[~(B == 0).all(1), :][:, ~(B == 0).all(0)]
+            return A, B
 
     def evaluateBasisAtPoints(self, points, elementNumber:int = 0):
         I = np.eye(self.elements[elementNumber].approxOrder)
