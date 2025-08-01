@@ -15,8 +15,8 @@ approximationOrder = 100
 galerkinMethodObject = galerkin.GalerkinMethod1d(methodType=galerkin.GalerkinMethod1d.MethodType.SpectralLinearSystem)
 
 k = lambda x: 1.0
-psi = lambda x: x
-eta = lambda t: np.exp(-t)
+psi = lambda x: np.sin(2*np.pi*x)
+eta = lambda t: np.exp(-5*t)
 
 gradForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
         trialElement, testElement, lambda x: k(x), integrationPointsAmount)
@@ -59,15 +59,23 @@ BB = h * B
 
 x0 = np.zeros(approximationOrder - 2)
 xPrev = x0
-solutions = []
+solutions = [xPrev]
 for i in range(int(1.0/h)):
-    xNext = sp_linalg.solve(AA, BB * eta((i + 1) * h))
+    xNext = sp_linalg.solve(AA, xPrev + BB * eta((i + 1) * h))
     solutions.append(xNext)
     # xNext = AA @ xPrev + BB * eta(i * h)
     xPrev = xNext
 solutions = np.array(solutions)
 points = galerkinMethodObject.getMeshPoints()
-plt.plot(points[1:-1], xNext)
+# plt.plot(points[1:-1], solutions[int(int(0.1/h)/100), :])
+# plt.plot(points[1:-1], solutions[int(int(0.1/h)/3), :])
+# plt.plot(points[1:-1], solutions[int(int(0.1/h)/2), :])
+plt.plot(points[1:-1], solutions[0, :])
+plt.plot(points[1:-1], solutions[int(1.0/h / 2), :])
+plt.plot(points[1: -1], solutions[-1, :])
+plt.show()
+plt.plot(solutions.T[-1, :])
+plt.plot(solutions.T[0, :])
 plt.show()
 plt.imshow(solutions)
 plt.show()
