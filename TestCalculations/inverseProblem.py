@@ -10,16 +10,18 @@ import SurplusElement.mathematics.spectral as spec
 from scipy import integrate as integrate
 import scipy.linalg as sp_linalg
 from scipy.interpolate import CubicSpline
+from scipy.optimize import shgo
+import cma
 integrationPointsAmount = 2000
-approximationOrder = 120
+approximationOrder = 25
 galerkinMethodObject = galerkin.GalerkinMethod1d(methodType=galerkin.GalerkinMethod1d.MethodType.SpectralLinearSystem)
 
 k = lambda x: 1.0
-psi = lambda x: np.sin(10*np.pi*x)
+psi = lambda x: np.sin(4 * np.pi * x)
 # psi = lambda x: x
 # eta = lambda t: np.exp(-5*t)
 # eta = lambda t: np.exp(-t)
-eta = lambda t: 10*np.exp(5*t)
+eta = lambda t: np.exp(5*t)
 
 gradForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
         trialElement, testElement, lambda x: k(x), integrationPointsAmount)
@@ -54,7 +56,7 @@ invM = sp_linalg.inv(M)
 
 A = invM @ L
 B = invM @ b
-h = 0.0001
+h = 0.01
 
 AA = h * A + np.eye(approximationOrder - 2)
 BB = h * B
@@ -83,55 +85,115 @@ def plotDirectSolution():
     plt.show()
     plt.imshow(solutions)
     plt.show()
-x8 = int(approximationOrder/100.0)
-x8 = 100
-c = galerkinMethodObject.evaluateBasisAtPoints(points=points)
-c = (c[:, 1: -1])[x8, :]
-# print(c.shape)
-phi = solutions[:, x8]
-cs = CubicSpline((np.arange(int(1.0/h) + 1)) * h, phi)
-dphi = cs.derivative(1)((np.arange(int(1.0/h) + 1)) * h)
-# print((np.arange(int(1.0/h) + 1)) * h)
-# plt.plot(phi)
-# plt.show()
-# plt.plot(dphi)
-# plt.plot(np.diff(phi)/h)
-# plt.show()
-# dphi = np.diff(phi)/h
 
-np.set_printoptions(precision=3, suppress=True)
-cb = c @ B
-x0 = np.zeros(approximationOrder - 2)
-xPrev = x0
-solutionsNew = [xPrev]
-AA = h * A + np.eye(approximationOrder - 2) - np.outer(BB, (c @ A) / cb)
-for i in range(int(1.0/h)):
-    # xNext = sp_linalg.solve(AA, xPrev + BB * (c @ (A @ xPrev))/cb + BB / cb * dphi[i])
-    xNext = sp_linalg.solve(AA, xPrev + BB / cb * dphi[i])
-    # print(BB * (c @ (A @ xPrev))/cb, BB / cb * dphi[i])
-    solutionsNew.append(xNext)
-    # xNext = AA @ xPrev + BB * eta(i * h)
-    xPrev = xNext
-solutionsNew = np.array(solutionsNew)
-def plotInverseSolution():
-    plt.plot(points[1:-1], solutionsNew[int(int(0.1/h)/100), :])
-    plt.plot(points[1:-1], solutionsNew[int(int(0.1/h)/3), :])
-    plt.plot(points[1:-1], solutionsNew[int(int(0.1/h)/2), :])
-    plt.plot(points[1:-1], solutionsNew[0, :])
-    plt.plot(points[1:-1], solutionsNew[int(1.0/h / 2), :])
-    plt.plot(points[1: -1], solutionsNew[-1, :])
-    plt.show()
-    plt.plot(solutionsNew.T[-1, :])
-    plt.plot(solutionsNew.T[0, :])
-    plt.show()
-    plt.imshow(solutionsNew)
-    plt.show()
-# plotDirectSolution()
-# plotInverseSolution()
+def substitution():
+    x8 = int(approximationOrder/100.0)
+    x8 = 12
+    c = galerkinMethodObject.evaluateBasisAtPoints(points=points)
+    c = (c[:, 1: -1])[x8, :]
+    # print(c.shape)
+    phi = solutions[:, x8]
+    cs = CubicSpline((np.arange(int(1.0/h) + 1)) * h, phi)
+    dphi = cs.derivative(1)((np.arange(int(1.0/h) + 1)) * h)
+    # print((np.arange(int(1.0/h) + 1)) * h)
+    # plt.plot(phi)
+    # plt.show()
+    # plt.plot(dphi)
+    # plt.plot(np.diff(phi)/h)
+    # plt.show()
+    # dphi = np.diff(phi)/h
 
-plt.plot(solutionsNew[-1, :])
-plt.plot(solutions[-1, :])
-plt.show()
+    np.set_printoptions(precision=3, suppress=True)
+    cb = c @ B
+    x0 = np.zeros(approximationOrder - 2)
+    xPrev = x0
+    solutionsNew = [xPrev]
+    AA = h * A + np.eye(approximationOrder - 2) - np.outer(BB, (c @ A) / cb)
+    for i in range(int(1.0/h)):
+        # xNext = sp_linalg.solve(AA, xPrev + BB * (c @ (A @ xPrev))/cb + BB / cb * dphi[i])
+        xNext = sp_linalg.solve(AA, xPrev + BB / cb * dphi[i])
+        # print(BB * (c @ (A @ xPrev))/cb, BB / cb * dphi[i])
+        solutionsNew.append(xNext)
+        # xNext = AA @ xPrev + BB * eta(i * h)
+        xPrev = xNext
+    solutionsNew = np.array(solutionsNew)
+    def plotInverseSolution():
+        plt.plot(points[1:-1], solutionsNew[int(int(0.1/h)/100), :])
+        plt.plot(points[1:-1], solutionsNew[int(int(0.1/h)/3), :])
+        plt.plot(points[1:-1], solutionsNew[int(int(0.1/h)/2), :])
+        plt.plot(points[1:-1], solutionsNew[0, :])
+        plt.plot(points[1:-1], solutionsNew[int(1.0/h / 2), :])
+        plt.plot(points[1: -1], solutionsNew[-1, :])
+        plt.show()
+        plt.plot(solutionsNew.T[-1, :])
+        plt.plot(solutionsNew.T[0, :])
+        plt.show()
+        plt.imshow(solutionsNew)
+        plt.show()
+    # plotDirectSolution()
+    # plotInverseSolution()
+
+    plt.plot(solutionsNew[-1, :])
+    plt.plot(solutions[-1, :])
+    plt.show()
 #
 # plt.plot(solutionsNew[-1, :] - solutions[-1, :])
 # plt.show()
+def control():
+
+    # x8 = int(approximationOrder / 100.0)
+
+    # print((A - np.outer(B,K)).shape)
+    # print(np.atleast_2d(B * Ki).shape)
+    # print(c.shape)
+    # print(np.atleast_2d(0.0).shape)
+    K = np.ones(approximationOrder - 2)
+    Ki = 1.0
+    x8 = 12
+    c = galerkinMethodObject.evaluateBasisAtPoints(points=points)
+    c = np.atleast_2d((c[:, 1: -1])[x8, :])
+    phi = solutions[:, x8]
+    AA = np.block([[-A - np.outer(B,K), -np.atleast_2d(B * Ki).T], [c, np.atleast_2d(0.0)]])
+    # def eigvalsAA(x):
+    #     K = x[:-1]
+    #     Ki = x[-1]
+    #     AA = np.block([[A - np.outer(B, K), -np.atleast_2d(B * Ki).T], [c, np.atleast_2d(0.0)]])
+    #     eigvals = np.real(sp_linalg.eigvals(AA))
+    #     # print(x, np.max(eigvals))
+    #     return np.max(eigvals)
+    #
+    # sol, es = cma.fmin2(eigvalsAA, x0=np.ones(approximationOrder - 1), sigma0=5.0)
+    sol = np.ones(approximationOrder - 1)
+    sol[-1] *= -1
+    # print(sol.result)
+    # print([[-10**3, 10**3]] * (approximationOrder - 1))
+    # result = shgo(eigvalsAA, [[-10**4, 10**4]] * (approximationOrder - 1))
+    # print(result)
+    # time.sleep(500)
+    # sol = np.array([-12764.69696277,  17447.36401732, -26541.75310894 ,   731.79917159])
+    K = sol[:-1]
+    Ki = sol[-1]
+    # print(K, Ki)
+    AA = np.block([[A - np.outer(B, K), -np.atleast_2d(B * Ki).T], [c, np.atleast_2d(0.0)]])
+    # print()
+    BB = np.zeros(approximationOrder - 1)
+    BB[-1] = -1
+    BB = BB.T
+    AA = h * AA
+    BB = h * BB
+    x0 = np.zeros(approximationOrder - 1)
+    x0[-1] = -phi[0]
+    xPrev = x0
+    solutionsNew = [xPrev]
+    for i in range(int(1.0/h)):
+        xNext = sp_linalg.solve(AA + np.eye(approximationOrder - 1), xPrev + BB * phi[i])
+        solutionsNew.append(xNext)
+        xPrev = xNext
+    solutionsNew = np.array(solutionsNew)
+    # plt.imshow(solutionsNew)
+    # plt.show()
+    plt.plot(solutionsNew[-1, :-1]*1000)
+    plt.plot(solutions[-1, :])
+    plt.show()
+
+control()
