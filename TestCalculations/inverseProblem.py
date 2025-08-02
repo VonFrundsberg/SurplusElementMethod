@@ -9,6 +9,7 @@ import scipy.optimize as sp_opt
 import SurplusElement.mathematics.spectral as spec
 from scipy import integrate as integrate
 import scipy.linalg as sp_linalg
+import numpy.linalg as np_linalg
 from scipy.interpolate import CubicSpline
 from scipy.optimize import shgo
 import cma
@@ -17,8 +18,8 @@ approximationOrder = 25
 galerkinMethodObject = galerkin.GalerkinMethod1d(methodType=galerkin.GalerkinMethod1d.MethodType.SpectralLinearSystem)
 
 k = lambda x: 1.0
-psi = lambda x: np.sin(4 * np.pi * x)
-# psi = lambda x: x
+# psi = lambda x: np.sin(2 * np.pi * x)
+psi = lambda x: x
 # eta = lambda t: np.exp(-5*t)
 # eta = lambda t: np.exp(-t)
 eta = lambda t: np.exp(5*t)
@@ -149,33 +150,40 @@ def control():
     # print(np.atleast_2d(0.0).shape)
     K = np.ones(approximationOrder - 2)
     Ki = 1.0
-    x8 = 12
+    x8 = 5
     c = galerkinMethodObject.evaluateBasisAtPoints(points=points)
     c = np.atleast_2d((c[:, 1: -1])[x8, :])
     phi = solutions[:, x8]
-    AA = np.block([[-A - np.outer(B,K), -np.atleast_2d(B * Ki).T], [c, np.atleast_2d(0.0)]])
-    # def eigvalsAA(x):
-    #     K = x[:-1]
-    #     Ki = x[-1]
-    #     AA = np.block([[A - np.outer(B, K), -np.atleast_2d(B * Ki).T], [c, np.atleast_2d(0.0)]])
-    #     eigvals = np.real(sp_linalg.eigvals(AA))
-    #     # print(x, np.max(eigvals))
-    #     return np.max(eigvals)
+
+    # time.sleep(500)
+    # AA = np.block([[-A - np.outer(B,K), -np.atleast_2d(B * Ki).T], [c, np.atleast_2d(0.0)]])
+    def eigvalsAA(x):
+        K = x[:-1]
+        Ki = x[-1]
+        AA = np.block([[-A - np.outer(B, K), -np.atleast_2d(B * Ki).T], [c, np.atleast_2d(0.0)]])
+        eigvals = np.real(sp_linalg.eigvals(sp_linalg.inv(AA)))
+        # print(x, np.max(eigvals))
+        return np.max(eigvals)
     #
-    # sol, es = cma.fmin2(eigvalsAA, x0=np.ones(approximationOrder - 1), sigma0=5.0)
+    sol, es = cma.fmin2(eigvalsAA, x0=np.ones(approximationOrder - 1), sigma0=5.0)
     sol = np.ones(approximationOrder - 1)
-    sol[-1] *= -1
+    # sol[-1] *= -1
     # print(sol.result)
     # print([[-10**3, 10**3]] * (approximationOrder - 1))
     # result = shgo(eigvalsAA, [[-10**4, 10**4]] * (approximationOrder - 1))
     # print(result)
     # time.sleep(500)
-    # sol = np.array([-12764.69696277,  17447.36401732, -26541.75310894 ,   731.79917159])
+    # sol = np.array([-2455.95129913, 868.14136069, -216.87755962, 241.9620955, -27.99774484])
     K = sol[:-1]
     Ki = sol[-1]
     # print(K, Ki)
-    AA = np.block([[A - np.outer(B, K), -np.atleast_2d(B * Ki).T], [c, np.atleast_2d(0.0)]])
-    # print()
+    np.set_printoptions(precision=3, suppress=True)
+    # print(np_linalg.matrix_rank(np.vstack([B, A @ B, A @ A @ B, np_linalg.matrix_power(A, 3) @ B])))
+    # print(A.shape)
+    # print(np.vstack([B, A @ B, np_linalg.matrix_power(A, 2) @ B, np_linalg.matrix_power(A, 3) @ B]))
+    # time.sleep(500)
+    AA = np.block([[-A - np.outer(B, K), -np.atleast_2d(B * Ki).T], [c, np.atleast_2d(0.0)]])
+    # print(sp_linalg.eigvals(AA))
     BB = np.zeros(approximationOrder - 1)
     BB[-1] = -1
     BB = BB.T
@@ -186,13 +194,15 @@ def control():
     xPrev = x0
     solutionsNew = [xPrev]
     for i in range(int(1.0/h)):
-        xNext = sp_linalg.solve(AA + np.eye(approximationOrder - 1), xPrev + BB * phi[i])
+        xNext = sp_linalg.solve(-AA + np.eye(approximationOrder - 1), xPrev + BB * phi[i])
         solutionsNew.append(xNext)
         xPrev = xNext
     solutionsNew = np.array(solutionsNew)
     # plt.imshow(solutionsNew)
     # plt.show()
-    plt.plot(solutionsNew[-1, :-1]*1000)
+    plt.plot(solutionsNew[:, -1])
+    plt.show()
+    plt.plot(solutionsNew[-1, :-1])
     plt.plot(solutions[-1, :])
     plt.show()
 
