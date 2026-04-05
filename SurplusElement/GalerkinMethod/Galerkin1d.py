@@ -2,6 +2,8 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sparse_linalg
 import scipy.linalg as sp_linalg
+
+from SurplusElement.GalerkinMethod.element import Element1d, element
 from SurplusElement.GalerkinMethod.element.Element1d import element1d as element
 from SurplusElement.GalerkinMethod.element.Element1d.AuxClasses import DirichletBoundaryCondition
 from SurplusElement.GalerkinMethod.element.Element1d.AuxClasses import ApproximationSpaceParameter
@@ -19,13 +21,15 @@ class GalerkinMethod1d:
     approximationSpaceParameter: ApproximationSpaceParameter
     dirichletBoundaryConditions: list[DirichletBoundaryCondition]
     def __init__(self, methodType: MethodType):
-        """LE is for Linear system of equations problems
+        """LS is for Linear system of equations problems
             EIG is for Eigenvalue problems"""
         self.methodType = methodType
         self.approximationSpaceParameter = ApproximationSpaceParameter()
         self.dirichletBoundaryConditions = []
-    def setBilinearForm(self, innerForms, boundaryForms, rhsForms = []):
+    def setBilinearForm(self, innerForms, discontinuityForms,
+                        boundaryForms = [], rhsForms = []):
         self.innerForms = innerForms
+        self.discontinuityForms = discontinuityForms
         self.boundaryForms = boundaryForms
         self.rhsForms = rhsForms
 
@@ -47,7 +51,6 @@ class GalerkinMethod1d:
 
         self.approximationSpaceParameter = approximationSpaceParameter
     def setDirichletBoundaryConditions(self, boundaryConditions):
-
         self.dirichletBoundaryConditions = []
         for boundaryCondition in boundaryConditions:
             parsedJsonBCinfo = json.loads(boundaryCondition)
@@ -90,11 +93,11 @@ class GalerkinMethod1d:
                     parameters=self.approximationSpaceParameter, dirichletBoundaryConditions=self.dirichletBoundaryConditions))
 
     def calculateElements(self, ):
-        if self.methodType == GalerkinMethod1d.MethodType.SpectralLinearSystem:
+        if self.methodType == GalerkinMethod1d.MethodType.SpectralLinearSystem.value:
             self.__calculateElementsSpectralLE()
-        if self.methodType == GalerkinMethod1d.MethodType.LinearSystem:
+        if self.methodType == GalerkinMethod1d.MethodType.LinearSystem.value:
             self.__calculateElements_LE()
-        if self.methodType == GalerkinMethod1d.MethodType.EigenSystem:
+        if self.methodType == GalerkinMethod1d.MethodType.EigenSystem.value:
             self.__calculateElements_EIG()
 
     def recalculateRHS(self, functionals, flatten=True):
@@ -130,6 +133,15 @@ class GalerkinMethod1d:
             self.matrixElements[j] = self.innerForms[j](self.elements[0], self.elements[0])
         for j in range(rhsFormsAmount):
             self.functionalElements[j] = self.functionals[j](self.elements[0])
+
+    def __isBoundaryElement1d(self, element: Element1d):
+        a, b = list(element.getInterval())
+        for BC in self.dirichletBoundaryConditions:
+            if BC.boundaryPoint == a:
+                return True
+            if BC.boundaryPoint == b:
+                return True
+        return False
     def __calculateElements_LE(self):
         """
         For each element in self.elements, calculates its discretized version,
@@ -142,15 +154,19 @@ class GalerkinMethod1d:
         self.functionalElements = [None] * elementsAmount
 
         innerFormsAmount = len(self.innerForms)
-        boundaryFormsAmount = len(self.boundaryForms)
+        discontiniousFormsAmount = len(self.discontinuityForms)
         rhsFunctionalsAmount = len(self.functionals)
         for i in range(elementsAmount):
             self.matrixElements[i][i] = self.innerForms[0](self.elements[i], self.elements[i])
             for j in range(1, innerFormsAmount):
                 self.matrixElements[i][i] += self.innerForms[j](self.elements[i], self.elements[i])
+            if self.__isBoundaryElement1d(self.elements[i]):
+                for j in range(len(self.boundaryForms)):
+                    self.matrixElements[i][i] += self.boundaryForms[j](self.elements[i], self.elements[i])
 
-            for boundaryFormNumber in range(boundaryFormsAmount):
-                self.matrixElements[i][i] += self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[i])
+            for discontinuityFormNumber in range(discontiniousFormsAmount):
+                    self.matrixElements[i][i] += self.discontinuityForms[discontinuityFormNumber](
+                        self.elements[i], self.elements[i])
 
             self.functionalElements[i] = (self.functionals[0](self.elements[i])).flatten()
             for j in range(1, rhsFunctionalsAmount):
@@ -158,11 +174,13 @@ class GalerkinMethod1d:
             if len(self.mesh.neighbours) > 0:
                 for neighborNumber in self.mesh.neighbours[i]:
                     if i < neighborNumber:
-                        self.matrixElements[i][neighborNumber] = self.boundaryForms[0](self.elements[i], self.elements[neighborNumber])
-                        for boundaryFormNumber in range(1, boundaryFormsAmount):
+                        self.matrixElements[i][neighborNumber] = self.discontinuityForms[0](self.elements[i], self.elements[neighborNumber])
+                        # print(self.boundaryForms[0](self.elements[i], self.elements[neighborNumber]))
+                        for discontinuityFormNumber in range(1, discontiniousFormsAmount):
                                 self.matrixElements[i][neighborNumber] +=\
-                                    self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[neighborNumber])
-
+                                    (self.discontinuityForms[discontinuityFormNumber]
+                                     (self.elements[i], self.elements[neighborNumber]))
+                                # print(self.boundaryForms[boundaryFormNumber](self.elements[i], self.elements[neighborNumber]))
                         """in case of non-symmetric operator"""
                         # self.matrixElements[neighborNumber][i] = self.boundaryForms[0](self.elements[neighborNumber],
                         #                                                                    self.elements[i])
@@ -332,7 +350,7 @@ class GalerkinMethod1d:
         solution = sp_linalg.lu_solve(self.lu, b)
         self.solutionWithDirichletBC = np.zeros(self.zeroIndices.shape, dtype=float)
         self.solutionWithDirichletBC[self.zeroIndices] = solution
-    def solveSLAE_denseMatrix(self):
+    def solveSLAE_denseMatrix_old(self):
         """Only for single-domain case.
                   Only for zero Dirichlet or Neumann boundary conditions
 
@@ -345,11 +363,13 @@ class GalerkinMethod1d:
         solution = sp_linalg.solve(A, b)
         self.solutionWithDirichletBC = np.zeros(ind.shape, dtype=float)
         self.solutionWithDirichletBC[ind] = solution
+        return solution
     def solveSLAE(self):
         """Solves system matrixElements @ u = functionalElements
             Works only for zero Dirichlet boundary conditions
             Returns:
                 solution in the form of one-dimensional array"""
+
         for i in range(len(self.elements)):
             for j in range(len(self.elements)):
                 if self.matrixElements[i][j] is not None:
@@ -358,7 +378,41 @@ class GalerkinMethod1d:
         A = sparse.bmat(self.matrixElements)
         A = sparse.csr_matrix(A)
 
+        # print(A.todense())
+        # print(np.hstack(self.functionalElements))
+        ind = (A.getnnz(1) > 0).copy()
+        A = A[A.getnnz(1) > 0, :][:, A.getnnz(0) > 0]
+        self.A = A
+        self.functionalElements = np.hstack(self.functionalElements)
+        # self.A[0, :] = 0
+        # self.A[-1, :] = 0
+        # self.A[0, 0] = 1
+        # self.A[-1, -1] = 1
+        # self.functionalElements[0] = -1.0
+        # self.functionalElements[-1] = -1.0
 
+        self.functionalElements = self.functionalElements[ind]
+        self.solutionWithDirichletBC = np.zeros(ind.shape, dtype=float)
+        solution = sparse_linalg.spsolve(A, self.functionalElements)
+        self.solutionWithDirichletBC[ind] = solution
+        return self.solutionWithDirichletBC
+
+
+    def solveSLAE_Dense(self):
+        """Solves system matrixElements @ u = functionalElements
+            Works only for zero Dirichlet boundary conditions
+            Returns:
+                solution in the form of one-dimensional array"""
+        np.set_printoptions(precision=2, suppress=True)
+        # for i in range(len(self.elements)):
+        #     for j in range(len(self.elements)):
+        #         if self.matrixElements[i][j] == None:
+        #
+
+        A = np.bmat(self.matrixElements)
+        # A = sparse.csr_matrix(A)
+
+        # print(A)
 
         ind = (A.getnnz(1) > 0).copy()
         A = A[A.getnnz(1) > 0, :][:, A.getnnz(0) > 0]
@@ -370,6 +424,7 @@ class GalerkinMethod1d:
         solution = sparse_linalg.spsolve(A, self.functionalElements)
         self.solutionWithDirichletBC[ind] = solution
         return self.solutionWithDirichletBC
+
     def calculateMeshElementProperties(self):
         """For spherically symmetric Poisson problem on unbounded domain.
         Calculates C_sigma / d(x_i), where x_i represent each boundary,
@@ -472,7 +527,7 @@ class GalerkinMethod1d:
 
             evaluatedElementOnLocalGrid = self.elements[elementNumber].evaluateExpansion(
                 elementCoefficients, x[elementPointIndices])
-            evaluatedSolution[elementPointIndices] = evaluatedElementOnLocalGrid
+            evaluatedSolution[np.atleast_1d(elementPointIndices)] = evaluatedElementOnLocalGrid
 
         return evaluatedSolution
     def evaluateMultipleSolutionsAtPoints(self, x):

@@ -1,6 +1,6 @@
 import itertools as itertools
 from functools import reduce
-# from SurplusElement.GalerkinMethod.element.Element1d.element1d import ElementType
+from SurplusElement.GalerkinMethod.element.Element1d.element1d import ElementType
 import numpy as np
 import re
 
@@ -201,26 +201,25 @@ class mesh():
                 neigbours[i] = list(filter(None, re.split(r'\[|\]| |,', neigbours[i])))[:-1]
                 neigbours[i] = np.array(neigbours[i], dtype=int)
             self.neighbours = neigbours
-
             fromNeighboursFile.close()
         else:
             self.neighbours = []
         return
 
 
-    # def extendRectangleToInf_AlongAxis_OneDirection(self, direction: str, infElementBoundary: float, axis: int, approximationOrder: int):
-    #     elementsAmount = self.getElementsAmount()
-    #     offset = 0
-    #     if direction == "right":
-    #         for elementNumber in range(elementsAmount):
-    #             interval = self.elements[elementNumber + offset, axis, :2]
-    #             if interval[1] == infElementBoundary:
-    #                 infElement = self.elements[elementNumber + offset].copy()
-    #                 infElement[axis, 0] = infElementBoundary
-    #                 infElement[axis, 1] = np.inf
-    #                 infElement[axis, 2] = approximationOrder
-    #                 infElement[axis, -1] = ElementType.RATIONAL_INF_HALF_SPACE.value
-    #                 self.elements = np.insert(self.elements, elementNumber + 1 + offset, infElement, axis=0)
-    #                 offset += 1
+    def extendRectangleToInf_AlongAxis_OneDirection(self, direction: str, infElementBoundary: float, axis: int, approximationOrder: int):
+        elementsAmount = self.getElementsAmount()
+        offset = 0
+        if direction == "right":
+            for elementNumber in range(elementsAmount):
+                interval = self.elements[elementNumber + offset, axis, :2]
+                if interval[1] == infElementBoundary:
+                    infElement = self.elements[elementNumber + offset].copy()
+                    infElement[axis, 0] = infElementBoundary
+                    infElement[axis, 1] = np.inf
+                    infElement[axis, 2] = approximationOrder
+                    infElement[axis, -1] = ElementType.RATIONAL_INF_HALF_SPACE.value
+                    self.elements = np.insert(self.elements, elementNumber + 1 + offset, infElement, axis=0)
+                    offset += 1
 
 

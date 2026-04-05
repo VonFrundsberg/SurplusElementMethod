@@ -111,7 +111,7 @@ def integrateBilinearForm2(trialElement: belem, testElement: belem,
 
 
 def evaluateDG_JumpComponentMain(trialElement: belem, testElement: belem,
-                                 weight):
+                                 weight, physicalBoundary: np.ndarray, eps: float = 1e-16):
     """Evaluates bilinear form of the type
         a(u, v) = weight(R) 0.5 * [du(R-) + du(R+)] [v(R-) - v(R+)) +
                     weight(L) 0.5 * [du(L-) + du(L+)] [v(L-) - v(L+)),
@@ -127,17 +127,26 @@ def evaluateDG_JumpComponentMain(trialElement: belem, testElement: belem,
             result: evaluated values at boundaries
     """
     leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
+    leftRef_LeftLim = trialElement.interval[0] - eps
     leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
+    leftRef_RightLim = trialElement.interval[0] + eps
     rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
+    rightRef_LeftLim = trialElement.interval[1] - eps
     rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
-
+    rightRef_RightLim = trialElement.interval[1] + eps
+    # print(rightRef_LeftLim)
     leftWeight = 0.5 * weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
     rightWeight = 0.5 * weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
-
+    if trialElement.interval[0] in physicalBoundary:
+        leftWeight *= 0
+    if trialElement.interval[1] in physicalBoundary:
+        rightWeight *= 0
     output = False
     if output:
         print("Main DG component")
-        if trialElement.interval[1] == np.inf:
+        # if trialElement.interval[1] == np.inf:
+        if True:
+            print("the p")
             print("Intervals for trial and test elements are: ")
             print(trialElement.interval, testElement.interval)
 
@@ -182,7 +191,7 @@ def evaluateDG_JumpComponentMain(trialElement: belem, testElement: belem,
     result = rightEvaluation + leftEvaluation
     return result
 def evaluateDG_JumpComponentSymmetry(trialElement: belem, testElement: belem,
-                                 weight):
+                                 weight, physicalBoundary: np.ndarray, eps: float = 1e-16):
     """Evaluates bilinear form of the type
         a(u, v) = weight(R) 0.5 * [u(R-) - u(R+)] [dv(R-) + dv(R+)) +
                     weight(L) 0.5 * [u(L-) - u(L+)] [dv(L-) + dv(L+)),
@@ -198,13 +207,21 @@ def evaluateDG_JumpComponentSymmetry(trialElement: belem, testElement: belem,
             result: evaluated differences at boundaries
     """
     leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
+    leftRef_LeftLim = trialElement.interval[0] - eps
     leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
+    leftRef_RightLim = trialElement.interval[0] + eps
     rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
+    rightRef_LeftLim = trialElement.interval[1] - eps
     rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
+    rightRef_RightLim = trialElement.interval[1] + eps
+
 
     leftWeight = 0.5 * weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
     rightWeight = 0.5 * weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
-
+    if trialElement.interval[0] in physicalBoundary:
+        leftWeight *= 0
+    if trialElement.interval[1] in physicalBoundary:
+        rightWeight *= 0
     leftTrialI = trialElement.eval(leftRef_LeftLim) - trialElement.eval(leftRef_RightLim)
     leftTestD = testElement.evalDiff(leftRef_LeftLim) + testElement.evalDiff(leftRef_RightLim)
 
@@ -225,7 +242,7 @@ def evaluateDG_JumpComponentSymmetry(trialElement: belem, testElement: belem,
 
 
 def evaluateDG_ErrorComponent(trialElement: belem, testElement: belem,
-                                 weight):
+                                 weight, eps: float = 1e-16):
     """Evaluates bilinear form of the type
         a(u, v) = weight(R) [u(R-) - u(R+)] * [v(R-) - v(R+)] +
          weight(L) [u(L-) - u(L+)] [v(L-) - v(L+)),
@@ -241,9 +258,13 @@ def evaluateDG_ErrorComponent(trialElement: belem, testElement: belem,
             result: evaluated values at boundaries
     """
     leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
+    leftRef_LeftLim = trialElement.interval[0] - eps
     leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
+    leftRef_RightLim = trialElement.interval[0] + eps
     rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
+    rightRef_LeftLim = trialElement.interval[1] - eps
     rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
+    rightRef_RightLim = trialElement.interval[1] + eps
 
     leftWeight = weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
     rightWeight = weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
@@ -293,6 +314,48 @@ def evaluateDG_ErrorComponent(trialElement: belem, testElement: belem,
     rightEvaluation[nansRight] = 0.0
     result = rightEvaluation + leftEvaluation
     return result
+
+def evaluateBilinearFormAtBoundary0(trialElement: belem, testElement: belem, weight, B: float):
+    """Evaluates bilinear form of the type
+            a(u, v) = weight(B) du/dx(B) v(B),
+            where u(x) and v(x) are basis functions of elementU element
+            B is a point where boundary condition is enforced.
+
+            Arguments:
+                trialElement: belem
+                testElement: belem
+                weight: function
+                B: float
+            Returns:
+                result: matrix with evaluated flux at the specified boundary
+        """
+
+    duX = trialElement.evalDiff(B)
+    vX = testElement.eval(B)
+    weightX = np.nan_to_num(weight(B), nan=0)
+    return weightX * np.einsum("ij, ik -> jk", duX, vX)
+
+
+def evaluateBilinearFormAtBoundary1(trialElement: belem, testElement: belem, weight, B: float):
+    """Evaluates bilinear form of the type
+            a(u, v) = weight(B) u(B) v(B),
+            where u(x) and v(x) are basis functions of elementU element
+            B is a point where boundary condition is enforced.
+
+            Arguments:
+                trialElement: belem
+                testElement: belem
+                weight: function
+                B: float
+            Returns:
+                result: matrix with evaluated flux at the specified boundary
+        """
+
+    uX = trialElement.eval(B)
+    vX = testElement.eval(B)
+    weightX = np.nan_to_num(weight(B), nan=0)
+    return weightX * np.einsum("ij, ik -> jk", uX, vX)
+
 def evaluateBilinearFormAtBoundary_20(trialElement: belem, testElement: belem, weight):
     """Evaluates bilinear form of the type
         a(u, v) = weight(R) grad u(R) v(R) + weight(L) grad u(L) v(L),
@@ -309,8 +372,8 @@ def evaluateBilinearFormAtBoundary_20(trialElement: belem, testElement: belem, w
 
     if (np.max(np.abs(trialElement.interval - testElement.interval)) <= np.finfo(float).eps*10):
         epsilon = np.finfo(float).eps
-        leftBoundaryPoint = -1
-        rightBoundaryPoint = 1
+        leftBoundaryPoint = trialElement.interval[0]
+        rightBoundaryPoint = trialElement.interval[1]
         # leftRealSpacePoint = trialElement.inverseMap(leftBoundaryPoint)
         # rightRealSpacePoint = trialElement.inverseMap(rightBoundaryPoint)
 
@@ -439,6 +502,31 @@ def integrateFunctional(testElement: belem, function, weight,
     resultIntegrals = np.einsum('ij, i -> j', I, W)
 
     return resultIntegrals
+
+def evaluateFunctionalAtBoundaries1(testElement: belem,
+                       leftBoundary, rightBoundary,  weight):
+    """(one-dimensional) Evaluates functional of the type
+    l(v) = weight(R) * v(R) + weight(L) * v(L),
+            g_R = rightValue, g_L = leftValue
+            L = leftBoundary, R = rightBoundary
+        """
+
+    vL = testElement.eval(leftBoundary) * weight(leftBoundary)
+    vR = testElement.eval(rightBoundary) * weight(rightBoundary)
+    return vR + vL
+
+def evaluateFunctionalAtBoundaries0(testElement: belem,
+                       leftBoundary, leftValue,
+                       rightBoundary, rightValue, weight):
+    """(one-dimensional) Evaluates functional of the type
+    l(v) = weight(R) * g_R * v'(R) + weight(L) * g_L * v'(L),
+            g_R = rightValue, g_L = leftValue
+            L = leftBoundary, R = rightBoundary
+        """
+
+    vL = testElement.evalDiff(leftBoundary) * leftValue * weight(leftBoundary)
+    vR = testElement.evalDiff(rightBoundary) * rightValue * weight(rightBoundary)
+    return vR + vL
 
 def integrateTensorFunctional(testElement: belem, function, tensorShape, weight,
         integrationPointsAmount: int):

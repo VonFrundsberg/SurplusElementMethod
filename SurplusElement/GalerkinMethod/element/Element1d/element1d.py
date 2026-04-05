@@ -37,7 +37,8 @@ class Element1d:
                 return LogarithmicInfHalsSpace(interval=self.interval, parameters=self.parameters, approxOrder=self.approxOrder, dirichletBoundaryConditions=self.dirichletBoundaryConditions)
             case ElementType.SHIFTED_HERMITE.value:
                 return SchiftedHermiteFunction(interval=self.interval, parameters=self.parameters, approxOrder=self.approxOrder)
-
+    def getInterval(self):
+        return self.interval
     def __init__(self, interval, approxOrder: int , elementType: int, dirichletBoundaryConditions: list[DBC], parameters: ASP):
         """Constructor of one-dimensional galerkin element
         Arguments:

@@ -1,11 +1,14 @@
 import numpy as np
-from SurplusElement import GalerkinMethod as MeshClass, GalerkinMethod as galerkin, GalerkinMethod as elem1dUtils
+from SurplusElement.GalerkinMethod import Galerkin1d as galerkin
+import SurplusElement.GalerkinMethod.element.Element1d.element1dUtils as elem1dUtils
+import SurplusElement.GalerkinMethod.Mesh.mesh as MeshClass
+
 from SurplusElement.mathematics import integrate as integr
 import matplotlib.pyplot as plt
 
 
 def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid, integrationPointsAmount = 500):
-    galerkinMethodObject = galerkin.GalerkinMethod1d()
+    galerkinMethodObject = galerkin.GalerkinMethod1d("LS")
 
     gradForm = "integral w(x) grad(u) @ grad(v)"
     boundaryForm1 = "boundaryIntegral w(x) [u] <grad(v) @ n>"

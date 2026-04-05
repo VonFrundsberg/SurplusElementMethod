@@ -91,7 +91,7 @@ def chebDiffMatrix(matrixSize, a=-1, b=1):
         C = np.append([2], np.ones(n - 2))
         C = np.append(C, [2])
         C *= (-1)**np.arange(0, n)
-        C = np.reshape(np.kron(C, 1/C), newshape=[n, n])
+        C = np.reshape(np.kron(C, 1/C), shape=[n, n])
         D = C/(dX + np.eye(n))
         D = D - np.diag(np.sum(D, axis=1))
         return D
