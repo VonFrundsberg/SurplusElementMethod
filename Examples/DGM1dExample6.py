@@ -26,18 +26,26 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
 
     fluxForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm2(
         trialElement, testElement, lambda x: x * 0.0 + 1.0, integrationPointsAmount)
-    eps = 1e-15
+    eps = 1e-14
+
+    sigma = approximationOrder ** 2 / (10.0 / amountOfElements)
     def DGForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentMain(
             trialElement=trialElement, testElement=elementTest, weight=lambda x: x * 0.0 - 1.0,
             physicalBoundary=np.array([0, domainSize]), eps = eps)
-
     def DGForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentSymmetry(
             trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 - 1.0,
             physicalBoundary=np.array([0, domainSize]), eps = eps)
+    def DGForm3(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+        return elem1dUtils.evaluateDG_ErrorComponent(
+            trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 + sigma,
+            physicalBoundary=np.array([0, domainSize]), eps = eps)
+    def fluxDGForm(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+        return elem1dUtils.evaluateDG_upwind(
+            trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 - 1.0,
+            physicalBoundary=np.array([0, domainSize]), eps = eps)
 
-    sigma = approximationOrder ** 4 / (10.0 / amountOfElements)
 
     def minusSignFunction(x):
         if x == 0:
@@ -62,7 +70,6 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
         return elem1dUtils.evaluateBilinearFormAtBoundary1(
             trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 + sigma, B=domainSize)
 
-
     def boundaryForm5(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateBilinearFormAtBoundary1(
             trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 - 1.0, B=domainSize)
@@ -85,7 +92,7 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
         leftBoundary=0.0, rightBoundary=domainSize)
 
     galerkinMethodObject.setBilinearForm(innerForms=[gradForm, fluxForm],
-                                         discontinuityForms=[DGForm1, DGForm2],
+                                         discontinuityForms=[DGForm1, DGForm2, fluxDGForm, DGForm3],
                                          boundaryForms=[boundaryForm1, boundaryForm2,
                                                         boundaryForm3, boundaryForm4, boundaryForm5]
                                          )
@@ -121,15 +128,19 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
     galerkinMethodObject.calculateElements()
     galerkinMethodObject.solveSLAE()
 
+    galerkinMethodObject.checkPositiveEigenvalues()
+
 
     w, grid = integr.reg_22_wn(0.0, domainSize, integrationPointsAmount)
 
     gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
-
+    # print(gridSolution[0], gridSolution[-1])
+    print(galerkinMethodObject.solutionWithDirichletBC[0] - 10.0,
+          galerkinMethodObject.solutionWithDirichletBC[-1] - 1.0)
     plt.plot(grid, gridSolution, label="approximation")
     # plt.plot(grid, np.cos(np.pi * grid), label="exact solution")
     plt.legend()
     plt.show()
 
 
-fun(50, 1, integrationPointsAmount=10000)
+fun(3, 1, integrationPointsAmount=10000)

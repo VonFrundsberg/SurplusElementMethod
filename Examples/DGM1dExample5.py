@@ -43,7 +43,7 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
             trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 - 1.0,
             physicalBoundary=np.array([0, domainSize]), eps = eps)
 
-    sigma = approximationOrder ** 2 / (10.0 / amountOfElements)
+    sigma = 100*approximationOrder ** 2 / (10.0 / amountOfElements)
 
     def minusSignFunction(x):
         if x == 0:
@@ -90,8 +90,8 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
                                          boundaryForms=[boundaryForm1, boundaryForm2,
                                                         boundaryForm3, boundaryForm4]
                                          )
-    # galerkinMethodObject.setRHSFunctional([functional, boundaryFunctional0, boundaryFunctional1])
-    galerkinMethodObject.setRHSFunctional([functional])
+    galerkinMethodObject.setRHSFunctional([functional, boundaryFunctional0, boundaryFunctional1])
+    # galerkinMethodObject.setRHSFunctional([functional])
     boundaryConditions = ['{"boundaryPoint": "0.0", "boundaryValue": 1.0}',
                           '{"boundaryPoint": "10.0", "boundaryValue": 1.0}']
     # boundaryConditions = []

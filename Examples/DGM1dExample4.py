@@ -32,13 +32,15 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
     eps = 1e-15
     def DGForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentMain(
-            trialElement=trialElement, testElement=elementTest, weight=lambda x: x * 0.0 - 1.0, eps=eps)
+            trialElement=trialElement, testElement=elementTest, weight=lambda x: x * 0.0 - 1.0,
+            physicalBoundary=np.array([0, domainSize]), eps = eps)
 
     def DGForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentSymmetry(
-            trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 - 1.0, eps=eps)
+            trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 - 1.0,
+            physicalBoundary=np.array([0, domainSize]), eps = eps)
 
-    sigma = 1e+0 * approximationOrder ** 2 / (10.0 / amountOfElements)
+    sigma = 1e+10 * approximationOrder ** 2 / (10.0 / amountOfElements)
 
     def minusSignFunction(x):
         if x == 0:

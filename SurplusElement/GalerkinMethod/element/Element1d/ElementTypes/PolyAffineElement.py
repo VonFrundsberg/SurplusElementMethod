@@ -86,6 +86,9 @@ class PolyAffineElement:
         #     if x[0] == self.interval[-1]:
         #             return self.derivativeMap(1)*np.array([derivativeBasisMatrix[-1, :]])
         # print(self.derivativeMap(x))
+        # x = np.nan_to_num(x=x,
+        #                   posinf=np.finfo(np.float64).max,
+        #                   neginf=-np.finfo(np.float64).max)
         return spec.barycentricChebInterpolate(f=derivativeBasisMatrix,
                     x=x, a=self.interval[0], b=self.interval[1], axis=0) \
                      * np.reshape(self.derivativeMap(x), (*x.shape, 1))
