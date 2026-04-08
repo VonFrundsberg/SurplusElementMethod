@@ -553,8 +553,8 @@ def evaluateFunctionalAtBoundaries0(testElement: belem,
 
     vL = testElement.evalDiff(leftBoundary) * leftValue * weight(leftBoundary)
     vR = testElement.evalDiff(rightBoundary) * rightValue * weight(rightBoundary)
-    print(testElement.interval)
-    print(leftBoundary, testElement.evalDiff(leftBoundary), weight(leftBoundary))
+    # print(testElement.interval)
+    # print(leftBoundary, testElement.evalDiff(leftBoundary), weight(leftBoundary))
     return vR + vL
 
 def integrateTensorFunctional(testElement: belem, function, tensorShape, weight,

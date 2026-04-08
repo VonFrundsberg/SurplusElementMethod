@@ -112,183 +112,203 @@ def read_data():
 defectsC_I = galerkin.GalerkinMethod1d("LS")
 defectsC_V = galerkin.GalerkinMethod1d("LS")
 defectsMesh = MeshClass.mesh(1)
-defectsApproximationOrder: int = 10
-integrationPointsAmount: int = 100000
-domainSize = np.inf
+for i in range(3, 50):
+    defectsApproximationOrder: int = i
+    integrationPointsAmount: int = 10000
+    domainSize = np.inf
 
-def setDefectsMesh():
-    fileElements = open("elementsDataDefects.txt", "w")
-    fileNeighbours = open("neighboursDataDefects.txt", "w")
-    # fileElements.write("0.0 0.07 " + str(defectsApproximationOrder) + " 0.0" + "\n")
-    # fileElements.write("0.07 0.15 " + str(defectsApproximationOrder) + " 0.0" + "\n")
-    # fileElements.write("0.15 " + str(domainSize) + " " + str(defectsApproximationOrder) + " 1.0" + "\n")
-    fileElements.write("0.0 0.05 " + str(defectsApproximationOrder) + " 0.0" + "\n")
-    fileElements.write("0.05 1.0 " + str(defectsApproximationOrder) + " 0.0" + "\n")
-    # fileElements.write("1.0 " + str(domainSize) + " " + str(defectsApproximationOrder) + " 1.0" + "\n")
-    fileElements.write("1.0 inf " + str(defectsApproximationOrder) + " 1.0" + "\n")
-    fileElements.close()
-    fileNeighbours.write("1 \n"
-                         "0 2 \n"
-                         "1 \n")
-    # fileNeighbours.write("1 \n"
-    #                      "0 \n")
-    fileNeighbours.close()
-    defectsMesh.fileRead("elementsDataDefects.txt", "neighboursDataDefects.txt")
+    def setDefectsMesh():
+        fileElements = open("elementsDataDefects.txt", "w")
+        fileNeighbours = open("neighboursDataDefects.txt", "w")
+        fileElements.write("0.0 0.03 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+        fileElements.write("0.03 0.07 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+        fileElements.write("0.07 0.15 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+        fileElements.write("0.15 " + str(domainSize) + " " + str(defectsApproximationOrder) + " 1.0" + "\n")
+        # fileElements.write("0.0 0.05 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+        # fileElements.write("0.05 2.0 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+        # fileElements.write("0.0 1.0 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+        # fileElements.write("1.0 " + str(domainSize) + " " + str(defectsApproximationOrder) + " 1.0" + "\n")
+        # fileElements.write("2.0 inf " + str(defectsApproximationOrder) + " 1.0" + "\n")
+        fileElements.close()
+        # fileNeighbours.write("1 \n"
+        #                      "0 2 \n"
+        #                      "1 \n")
+        fileNeighbours.write("1 \n"
+                             "0 2 \n"
+                             "1 3 \n"
+                             "2 \n")
+        # fileNeighbours.write("1 \n"
+        #                      "0 \n")
+        fileNeighbours.close()
+        defectsMesh.fileRead("elementsDataDefects.txt", "neighboursDataDefects.txt")
 
-setDefectsMesh()
-def defectForms(v, g, l):
-    innerForm1 = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
-        trialElement, testElement, lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0, integrationPointsAmount)
-    eps = 1e-15
-    sigma = 1e+5 * defectsApproximationOrder ** 2 / 1e-2
-    def DGForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
-        return elem1dUtils.evaluateDG_JumpComponentMain(
-            trialElement=trialElement, testElement=elementTest,
-            weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0,
-            physicalBoundary=np.array([0, domainSize]), eps=eps)
-    def DGForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
-        return elem1dUtils.evaluateDG_JumpComponentSymmetry(
-            trialElement=trialElement, testElement=testElement,
-            weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0,
-            physicalBoundary=np.array([0, domainSize]), eps=eps)
-    def DGForm3(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
-        return elem1dUtils.evaluateDG_ErrorComponent(
-            trialElement=trialElement, testElement=testElement,
-            weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + sigma,
-            physicalBoundary=np.array([0, domainSize]), eps=eps)
-    def fluxDGForm(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
-        return elem1dUtils.evaluateDG_upwind(
-            trialElement=trialElement, testElement=testElement,
-            weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0,
-            physicalBoundary=np.array([0, domainSize]), eps=eps)
-    def minusSignFunction(x):
-        if x == 0:
-            return np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0
-        if x == domainSize:
-            return np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0
-        return np.nan_to_num(x=x * 0.0, nan=0.0)
-    def boundaryForm1(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
-        return elem1dUtils.evaluateBilinearFormAtBoundary_21(
-            trialElement=trialElement, testElement=testElement, weight=lambda x: -minusSignFunction(x))
-    def boundaryForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
-        return elem1dUtils.evaluateBilinearFormAtBoundary_20(
-            trialElement=trialElement, testElement=testElement, weight=lambda x: -minusSignFunction(x))
-    def boundaryForm3(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
-        return elem1dUtils.evaluateBilinearFormAtBoundary1(
-            trialElement=trialElement, testElement=testElement,
-            weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + sigma, B=0.0)
-    def boundaryForm4(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
-        return elem1dUtils.evaluateBilinearFormAtBoundary1(
-            trialElement=trialElement, testElement=testElement,
-            weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + sigma, B=domainSize)
-    def boundaryForm5(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
-        return elem1dUtils.evaluateBilinearFormAtBoundary1(
-            trialElement=trialElement, testElement=testElement,
-            weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0, B=domainSize)
-    fluxForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm2(
-        trialElement, testElement, weight=lambda x: v(x), integrationPointsAmount=integrationPointsAmount)
+    setDefectsMesh()
+    def defectForms(v, g, l):
+        innerForm1 = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
+            trialElement, testElement, lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0, integrationPointsAmount)
+        eps = 1e-14
+        sigma = 1.0 * defectsApproximationOrder ** 10 / 1e-2
+        def DGForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
+            return elem1dUtils.evaluateDG_JumpComponentMain(
+                trialElement=trialElement, testElement=elementTest,
+                weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0,
+                physicalBoundary=np.array([0, domainSize]), eps=eps)
+        def DGForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+            return elem1dUtils.evaluateDG_JumpComponentSymmetry(
+                trialElement=trialElement, testElement=testElement,
+                weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0,
+                physicalBoundary=np.array([0, domainSize]), eps=eps)
+        def DGForm3(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+            return elem1dUtils.evaluateDG_ErrorComponent(
+                trialElement=trialElement, testElement=testElement,
+                weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + sigma,
+                physicalBoundary=np.array([0, domainSize]), eps=eps)
+        def fluxDGForm(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+            return elem1dUtils.evaluateDG_upwind(
+                trialElement=trialElement, testElement=testElement,
+                weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0,
+                physicalBoundary=np.array([0, domainSize]), eps=eps)
+        def minusSignFunction(x):
+            if x == 0:
+                return np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0
+            if x == domainSize:
+                return np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0
+            return np.nan_to_num(x=x * 0.0, nan=0.0)
+        def boundaryForm1(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+            return elem1dUtils.evaluateBilinearFormAtBoundary_21(
+                trialElement=trialElement, testElement=testElement, weight=lambda x: -minusSignFunction(x))
+        def boundaryForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+            return elem1dUtils.evaluateBilinearFormAtBoundary_20(
+                trialElement=trialElement, testElement=testElement, weight=lambda x: -minusSignFunction(x))
+        def boundaryForm3(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+            return elem1dUtils.evaluateBilinearFormAtBoundary1(
+                trialElement=trialElement, testElement=testElement,
+                weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + sigma, B=0.0)
+        def boundaryForm4(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+            return elem1dUtils.evaluateBilinearFormAtBoundary1(
+                trialElement=trialElement, testElement=testElement,
+                weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + sigma, B=domainSize)
+        def fluxBoundaryForm(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+            return elem1dUtils.evaluateBilinearFormAtBoundary1(
+                trialElement=trialElement, testElement=testElement,
+                weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0, B=domainSize)
+        fluxForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm2(
+            trialElement, testElement, weight=lambda x: v(x), integrationPointsAmount=integrationPointsAmount)
 
-    innerForm3 = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
-        trialElement, testElement, lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0/l**2, integrationPointsAmount)
-    # innerForm3 = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
-    #     trialElement, testElement, lambda x: x * 0.0 + 1.0, integrationPointsAmount)
-    functional = lambda testElement: elem1dUtils.integrateFunctional(
-        testElement=testElement, function=lambda x: g(x)/l**2,
-        weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0,
-        integrationPointsAmount=integrationPointsAmount)
+        innerForm3 = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
+            trialElement, testElement, lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0/l**2, integrationPointsAmount)
+        # innerForm3 = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
+        #     trialElement, testElement, lambda x: x * 0.0 + 1.0, integrationPointsAmount)
+        functional = lambda testElement: elem1dUtils.integrateFunctional(
+            testElement=testElement, function=lambda x: g(x)/l**2,
+            weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0,
+            integrationPointsAmount=integrationPointsAmount)
 
-    def boundaryFunctional0(testElement):
-        # print(elem1dUtils.evaluateFunctionalAtBoundaries0(
-        # testElement=testElement, weight=lambda x: minusSignFunction(x),
-        # leftValue=-10.0, rightValue=-1.0, leftBoundary=0.0, rightBoundary=domainSize))
-        return elem1dUtils.evaluateFunctionalAtBoundaries0(
-        testElement=testElement, weight=lambda x: minusSignFunction(x),
-        leftValue=-10.0, rightValue=-1.0, leftBoundary=0.0, rightBoundary=domainSize)
-    def BCfunction(x):
-        if x == 0:
-            return np.nan_to_num(x=x * 0.0, nan=0.0) + 10.0
-        if x == domainSize:
-            return np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0
-        return np.nan_to_num(x=x * 0.0, nan=0.0)
-    boundaryFunctional1 = lambda testElement: elem1dUtils.evaluateFunctionalAtBoundaries1(
-        testElement=testElement, weight=lambda x: BCfunction(x)*sigma,
-        leftBoundary=0.0, rightBoundary=domainSize)
-    def ZeroLeftFunction(x):
-        if x == 0:
-            return np.nan_to_num(x=x * 0.0, nan=0.0) + 0.0
-        if x == domainSize:
-            return np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0
-        return np.nan_to_num(x=x * 0.0, nan=0.0)
-    boundaryFunctional2 = lambda testElement: elem1dUtils.evaluateFunctionalAtBoundaries1(
-        testElement=testElement, weight=lambda x: 10.0*ZeroLeftFunction(x),
-        leftBoundary=0.0, rightBoundary=domainSize)
+        def boundaryFunctional0(testElement):
+            # print(elem1dUtils.evaluateFunctionalAtBoundaries0(
+            # testElement=testElement, weight=lambda x: minusSignFunction(x),
+            # leftValue=-10.0, rightValue=-1.0, leftBoundary=0.0, rightBoundary=domainSize))
+            return elem1dUtils.evaluateFunctionalAtBoundaries0(
+            testElement=testElement, weight=lambda x: minusSignFunction(x),
+            leftValue=-10.0, rightValue=-1.0, leftBoundary=0.0, rightBoundary=domainSize)
+        def BCfunction(x):
+            if x == 0:
+                return np.nan_to_num(x=x * 0.0, nan=0.0) + 10.0
+            if x == domainSize:
+                return np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0
+            return np.nan_to_num(x=x * 0.0, nan=0.0)
+        boundaryFunctional1 = lambda testElement: elem1dUtils.evaluateFunctionalAtBoundaries1(
+            testElement=testElement, weight=lambda x: BCfunction(x)*sigma,
+            leftBoundary=0.0, rightBoundary=domainSize)
+        def ZeroLeftFunction(x):
+            if x == 0:
+                return np.nan_to_num(x=x * 0.0, nan=0.0) + 0.0
+            if x == domainSize:
+                return np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0
+            return np.nan_to_num(x=x * 0.0, nan=0.0)
+        boundaryFunctional2 = lambda testElement: elem1dUtils.evaluateFunctionalAtBoundaries1(
+            testElement=testElement, weight=lambda x: 10.0*ZeroLeftFunction(x),
+            leftBoundary=0.0, rightBoundary=domainSize)
 
-    return (innerForm1, fluxForm, innerForm3,
-            DGForm1, DGForm2, DGForm3,
-            fluxDGForm,
-        boundaryForm1, boundaryForm2, boundaryForm3, boundaryForm4, boundaryForm5,
-            functional, boundaryFunctional0, boundaryFunctional1, boundaryFunctional2)
+        return (innerForm1, fluxForm, innerForm3,
+                DGForm1, DGForm2, DGForm3, fluxDGForm,
+            boundaryForm1, boundaryForm2, boundaryForm3, boundaryForm4, fluxBoundaryForm,
+                functional, boundaryFunctional0, boundaryFunctional1, boundaryFunctional2)
 
-# boundaryConditionsC_I = ['{"boundaryPoint": "0.0", "boundaryValue": 1e-3}',
-#                       '{"boundaryPoint": "np.inf", "boundaryValue": 1}']
-# boundaryConditionsC_V = ['{"boundaryPoint": "0.0", "boundaryValue": 1.0}',
-#                       '{"boundaryPoint": "' + str(float(domainSize)) + '", "boundaryValue": 1.0}']
-boundaryConditionsC_V = ['{"boundaryPoint": "0.0", "boundaryValue": 1.0}',
-                      '{"boundaryPoint": "np.inf", "boundaryValue": 1.0}']
+    # boundaryConditionsC_I = ['{"boundaryPoint": "0.0", "boundaryValue": 1e-3}',
+    #                       '{"boundaryPoint": "np.inf", "boundaryValue": 1}']
+    # boundaryConditionsC_V = ['{"boundaryPoint": "0.0", "boundaryValue": 1.0}',
+    #                       '{"boundaryPoint": "' + str(float(domainSize)) + '", "boundaryValue": 1.0}']
+    boundaryConditionsC_V = ['{"boundaryPoint": "0.0", "boundaryValue": 1.0}',
+                          '{"boundaryPoint": "np.inf", "boundaryValue": 1.0}']
 
-def defectsCalculation():
-    """Vacancy concentration calculations"""
-    # v_V = V0_V * np.exp(-(defectNodes - RP) ** 2 / (2 * DRP ** 2))
+    def defectsCalculation():
+        """Vacancy concentration calculations"""
+        # v_V = V0_V * np.exp(-(defectNodes - RP) ** 2 / (2 * DRP ** 2))
 
-    # g_V = 1.0 + GIM * np.exp(-(defectNodes - RP) ** 2 / (2 * DRP ** 2))
-    def v_V(x):
-        x = np.atleast_1d(x)
-        result = np.zeros(x.shape)
-        lessThanXSTAR = np.where(x <= X_STAR)
-        moreThanXSTAR = np.where(x >= X_STAR)
-        result[lessThanXSTAR] = V0_V
-        result[moreThanXSTAR] = V0_V * np.exp(-(x[moreThanXSTAR] - X_STAR) ** 2 / (2.0 * RPDRP ** 2))
-        return result
-    def g_V(x):
-        x = np.atleast_1d(x)
-        result = np.zeros(x.shape)
-        lessThanXSTAR = np.where(x <= X_STAR)
-        moreThanXSTAR = np.where(x >= X_STAR)
-        result[lessThanXSTAR] = 1.0 + GIM
-        result[moreThanXSTAR] = 1.0 + GIM * np.exp(-(x[moreThanXSTAR] - X_STAR) ** 2 / (2.0 * RPDRP ** 2))
-        return result
-    C_V_Forms = defectForms(v_V, g_V, l_V)
-    np.set_printoptions(precision=2, suppress=True)
-    defectsC_V.setBilinearForm(innerForms=[C_V_Forms[0], C_V_Forms[1], C_V_Forms[2]],
-                               discontinuityForms=[C_V_Forms[3], C_V_Forms[4], C_V_Forms[5], C_V_Forms[6]],
-                               boundaryForms=[C_V_Forms[8], C_V_Forms[9], C_V_Forms[10], C_V_Forms[11], C_V_Forms[7]])
-    # defectsC_V.setBilinearForm(innerForms=[C_V_Forms[0], C_V_Forms[5]],
-    #                            discontinuityForms=[C_V_Forms[1], C_V_Forms[2]],
-    #                                 boundaryForms=[C_V_Forms[6], C_V_Forms[7], C_V_Forms[8], C_V_Forms[9]])
-    defectsC_V.setRHSFunctional(functionals=[C_V_Forms[-4], C_V_Forms[-3], C_V_Forms[-2], C_V_Forms[-1]])
+        # g_V = 1.0 + GIM * np.exp(-(defectNodes - RP) ** 2 / (2 * DRP ** 2))
+        def v_V(x):
+            x = np.atleast_1d(x)
+            result = np.zeros(x.shape)
+            lessThanXSTAR = np.where(x <= X_STAR)
+            moreThanXSTAR = np.where(x >= X_STAR)
+            result[lessThanXSTAR] = V0_V
+            result[moreThanXSTAR] = V0_V * np.exp(-(x[moreThanXSTAR] - X_STAR) ** 2 / (2.0 * RPDRP ** 2))
+            return result
+        def g_V(x):
+            x = np.atleast_1d(x)
+            result = np.zeros(x.shape)
+            lessThanXSTAR = np.where(x <= X_STAR)
+            moreThanXSTAR = np.where(x >= X_STAR)
+            result[lessThanXSTAR] = 1.0 + GIM
+            result[moreThanXSTAR] = 1.0 + GIM * np.exp(-(x[moreThanXSTAR] - X_STAR) ** 2 / (2.0 * RPDRP ** 2))
+            return result
+        C_V_Forms = defectForms(v_V, g_V, l_V)
+        np.set_printoptions(precision=2, suppress=True)
+        defectsC_V.setBilinearForm(innerForms=[C_V_Forms[0], C_V_Forms[2]],
+                                   discontinuityForms=[C_V_Forms[3], C_V_Forms[4], C_V_Forms[5]],
+                                   boundaryForms=[C_V_Forms[8], C_V_Forms[9], C_V_Forms[10], C_V_Forms[7]])
+        # defectsC_V.setBilinearForm(innerForms=[C_V_Forms[0], C_V_Forms[5]],
+        #                            discontinuityForms=[C_V_Forms[1], C_V_Forms[2]],
+        #                                 boundaryForms=[C_V_Forms[6], C_V_Forms[7], C_V_Forms[8], C_V_Forms[9]])
+        defectsC_V.setRHSFunctional(functionals=[C_V_Forms[-4], C_V_Forms[-3], C_V_Forms[-2]])
 
-    # defectsC_V.setBilinearForm(innerForms=[C_V_Forms[0], C_V_Forms[5]],
-    #                            discontinuityForms=[C_V_Forms[1], C_V_Forms[2]],
-    #                            boundaryForms=[C_V_Forms[6], C_V_Forms[7], C_V_Forms[8], C_V_Forms[9]])
-    # defectsC_V.setRHSFunctional(functionals=[C_V_Forms[-3]])
-    defectsC_V.initializeMesh(defectsMesh)
-    defectsC_V.setDirichletBoundaryConditions(boundaryConditionsC_V)
-    # parameter = 1.0
-    # defectsC_V.setApproximationSpaceParameters(
-    #     parameters = '{"s": "' + str(parameter) + '"}')
-    defectsC_V.initializeElements()
-    # plt.plot(defectsC_V.getMeshPoints(), g_V(defectsC_V.getMeshPoints()))
-    # plt.show()
-    # defectsC_V.recalculateRHS(functionals=[C_V_Forms[6]])
-    defectsC_V.calculateElements()
-    sol = defectsC_V.solveSLAE()
-    # sol = defectsC_V.solveSLAE_Dense()
-    # defectsC_V.
-    w, grid = integr.reg_22_wn(0.0, 100, integrationPointsAmount)
-    gridSol = defectsC_V.evaluateSolution(grid)
-    plt.plot(grid, gridSol)
-    plt.show()
+        # defectsC_V.setBilinearForm(innerForms=[C_V_Forms[0], C_V_Forms[5]],
+        #                            discontinuityForms=[C_V_Forms[1], C_V_Forms[2]],
+        #                            boundaryForms=[C_V_Forms[6], C_V_Forms[7], C_V_Forms[8], C_V_Forms[9]])
+        # defectsC_V.setRHSFunctional(functionals=[C_V_Forms[-3]])
+        defectsC_V.initializeMesh(defectsMesh)
+        defectsC_V.setDirichletBoundaryConditions(boundaryConditionsC_V)
+        # parameter = 1.0
+        # defectsC_V.setApproximationSpaceParameters(
+        #     parameters = '{"s": "' + str(parameter) + '"}')
+        defectsC_V.initializeElements()
+        # plt.plot(defectsC_V.getMeshPoints(), g_V(defectsC_V.getMeshPoints()))
+        # plt.show()
+        # defectsC_V.recalculateRHS(functionals=[C_V_Forms[6]])
+        defectsC_V.calculateElements()
+        sol = defectsC_V.solveSLAE()
+        # sol = defectsC_V.solveSLAE_Dense()
+        # defectsC_V.
+        w, grid = integr.reg_22_wn(0.0, 0.15, integrationPointsAmount)
+        gridSol = defectsC_V.evaluateSolution(grid)
+        d1gridSol = defectsC_V.evaluateSolutionDerivative(grid)
+        d2gridSol = defectsC_V.evaluateSolutionDerivative(grid, 2)
+        # plt.plot(grid, gridSol)
+        # plt.plot(grid, d1gridSol)
+        # plt.plot(grid, d2gridSol)
+        # plt.show()
+        dV = defectsC_V.evaluateExternalFunctionDerivative(func=lambda x: v_V(x), x=grid, derivativeOrder=1)
+        solution_C_V = d2gridSol - gridSol * dV - d1gridSol * v_V(grid) - 1/l_V**2 * gridSol
 
-    # return C_I, C_V
+        solution_C_V = d2gridSol - 1/l_V**2 * gridSol
+        rhs_C_V = -g_V(grid)/l_V**2
+        if i % 5 == 0:
+            plt.plot(grid, solution_C_V )
+            plt.plot(grid, rhs_C_V)
+            plt.show()
+        print(i, np.max(np.abs(solution_C_V - rhs_C_V))/np.max(np.abs(rhs_C_V)))
 
-defectsCalculation()
+        # return C_I, C_V
+
+    defectsCalculation()

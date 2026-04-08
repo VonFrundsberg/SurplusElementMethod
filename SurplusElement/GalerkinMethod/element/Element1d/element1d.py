@@ -71,6 +71,8 @@ class Element1d:
             self.inverseMap = self.__elementTypeInstance.inverseMap
         if hasattr(self.__elementTypeInstance, 'derivativeMap'):
             self.derivativeMap = self.__elementTypeInstance.derivativeMap
+        if hasattr(self.__elementTypeInstance, 'derivativeMap2'):
+                self.derivativeMap2 = self.__elementTypeInstance.derivativeMap2
         if hasattr(self.__elementTypeInstance, 'inverseDerivativeMap'):
             self.inverseDerivativeMap = self.__elementTypeInstance.inverseDerivativeMap
 
@@ -79,7 +81,8 @@ class Element1d:
 
         if hasattr(self.__elementTypeInstance, 'getRefNodes'):
             self.getRefNodes = self.__elementTypeInstance.getRefNodes
-
+        if hasattr(self.__elementTypeInstance, 'evaluateExpansionDerivatives'):
+            self.evaluateExpansionDerivatives = self.__elementTypeInstance.evaluateExpansionDerivatives
         if hasattr(self.__elementTypeInstance, 'evalDiffRefNodes'):
             self.evalDiffRefNodes = self.__elementTypeInstance.evalDiffRefNodes
 

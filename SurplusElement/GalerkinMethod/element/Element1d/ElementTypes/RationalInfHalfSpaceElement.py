@@ -11,8 +11,8 @@ class RationalInfHalfSpaceElement:
         if self.interval[0] == -np.inf:
             self.map = lambda x: -((1.0 - x) / (1.0 + x) - self.interval[1])
             self.inverseMap = lambda x: (x + 1.0 - self.interval[1]) / (-x + self.interval[1] + 1.0)
-
             self.derivativeMap = lambda x: (x + 1) ** 2 / 2
+            self.derivativeMap2 = lambda x: x + 1
             self.inverseDerivativeMap = lambda x: 2 / (x + 1) ** 2
             return
         self.s = parameters.s
@@ -21,8 +21,8 @@ class RationalInfHalfSpaceElement:
             # L = self.interval[0]
             self.map = lambda x: (s*(1.0 + x) / (1.0 - x) + self.interval[0])
             self.inverseMap = lambda x: (-x + self.interval[0] + s) / (-x + self.interval[0] - s)
-
             self.derivativeMap = lambda x: (x - 1) ** 2 / (2 * s)
+            self.derivativeMap2 = lambda x: (x - 1) / (s)
             self.inverseDerivativeMap = lambda x: 2 * s / (x - 1) ** 2
 
         self.refPointVal = np.eye(self.approxOrder)
@@ -52,8 +52,37 @@ class RationalInfHalfSpaceElement:
         x[infValues] = 1.0
         basisMatrix = np.eye(self.approxOrder)
         evaluatedBasis = spec.barycentricChebInterpolate(basisMatrix, x, a=-1.0, b=1.0, axis=0)
-
         return evaluatedBasis @ coefficients
+
+    def evaluateExpansionDerivatives(self,
+                                     coefficients: list[float],
+                                     x: list[float],
+                                     derivative: int = 1):
+        """  """
+        x = np.atleast_1d(x)
+        chebNodes = spec.chebNodes(self.approxOrder, a=-1.0, b=1.0)
+        if derivative == 1:
+            basisMatrix = spec.barycentricChebInterpolate(f=self.refPointDiffVal,
+                                x=chebNodes, a=-1.0, b=1.0, axis=0) \
+                          * np.reshape(self.derivativeMap(chebNodes), (*chebNodes.shape, 1))
+            evaluatedBasis = spec.barycentricChebInterpolate(basisMatrix, x, a=self.interval[0], b=self.interval[1],
+                                                             axis=0)
+            result = evaluatedBasis @ coefficients
+            return result
+        if derivative == 2:
+            basisMatrixL = spec.barycentricChebInterpolate(f=(self.refPointDiffVal @ self.refPointDiffVal),
+                                x=chebNodes, a=-1.0, b=1.0, axis=0) \
+                           * np.reshape(self.derivativeMap(chebNodes)**2, (*chebNodes.shape, 1))
+            basisMatrixR = spec.barycentricChebInterpolate(f=self.refPointDiffVal,
+                                    x=chebNodes, a=-1.0, b=1.0, axis=0) \
+                          * np.reshape(self.derivativeMap2(chebNodes), (*chebNodes.shape, 1))
+            evaluatedBasisL = spec.barycentricChebInterpolate(basisMatrixL, x, a=self.interval[0], b=self.interval[1],
+                                                             axis=0)
+            evaluatedBasisR = spec.barycentricChebInterpolate(basisMatrixR, x, a=self.interval[0], b=self.interval[1],
+                                                             axis=0)
+            return evaluatedBasisL @ coefficients + evaluatedBasisR @ coefficients
+        if derivative >= 3:
+            raise Exception("evaluateExpansionDerivatives: only derivatives up to second order are allowed")
 
     def eval(self, x):
         """ Evaluates basis functions at points x

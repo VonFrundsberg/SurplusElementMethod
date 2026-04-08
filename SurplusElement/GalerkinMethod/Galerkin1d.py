@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as sparse_linalg
 import scipy.linalg as sp_linalg
-
+import SurplusElement.mathematics.spectral as spec
 from SurplusElement.GalerkinMethod.element import Element1d, element
 from SurplusElement.GalerkinMethod.element.Element1d import element1d as element
 from SurplusElement.GalerkinMethod.element.Element1d.AuxClasses import DirichletBoundaryCondition
@@ -547,12 +547,10 @@ class GalerkinMethod1d:
         for elementNumber in range(elementsAmount):
             interval = self.elements[elementNumber].interval
             elementPointIndices = np.squeeze(np.argwhere((x >= interval[0]) & (x <= interval[1])))
-
             elementCoefficients = self.solution[offset: offset + self.elements[elementNumber].approxOrder]
             offset += self.elements[elementNumber].approxOrder
-
-            evaluatedElementOnLocalGrid = self.elements[elementNumber].evaluateExpansion(
-                elementCoefficients, x[elementPointIndices])
+            evaluatedElementOnLocalGrid = self.elements[elementNumber].evaluateExpansionDerivatives(
+                elementCoefficients, x[elementPointIndices], derivativeOrder)
             evaluatedSolution[np.atleast_1d(elementPointIndices)] = evaluatedElementOnLocalGrid
 
         return evaluatedSolution
@@ -609,3 +607,76 @@ class GalerkinMethod1d:
 
         return evaluatedSolution
 
+    def evaluateExternalFunctionDerivative(self, func, x, derivativeOrder: int = 1):
+        """
+        Evaluate derivative of an external function func(x) using local spectral differentiation.
+
+        Parameters:
+            func: callable, function v(x)
+            x: evaluation points (assumed inside domain)
+            derivativeOrder: 1 or 2
+
+        Returns:
+            array of same shape as x
+        """
+
+        x = np.atleast_1d(x)
+        elementsAmount = self.mesh.getElementsAmount()
+        evaluatedDerivative = np.zeros(x.shape, dtype=float)
+
+        for elementNumber in range(elementsAmount):
+            element = self.elements[elementNumber]
+            interval = element.interval
+
+            # find points belonging to this element
+            elementPointIndices = np.squeeze(
+                np.argwhere((x >= interval[0]) & (x <= interval[1]))
+            )
+
+            if elementPointIndices.size == 0:
+                continue
+
+            x_local = x[elementPointIndices]
+
+            # --- Step 1: Chebyshev nodes in physical space ---
+            x_ref = spec.chebNodes(element.approxOrder, a=-1.0, b=1.0)
+            x_phys = element.map(x_ref)
+
+            # --- Step 2: sample function ---
+            v_vals = func(x_phys)
+            # --- Step 3: differentiation matrices ---
+            D = spec.chebDiffMatrix(element.approxOrder, a=-1.0, b=1.0)
+
+            # --- Step 4: compute derivatives in reference space ---
+            v_xi = D @ v_vals
+
+            if derivativeOrder == 1:
+                J = element.derivativeMap(x_ref)
+                v_deriv_nodes = J * v_xi
+
+            elif derivativeOrder == 2:
+                v_xixi = D @ v_xi
+
+                J = element.derivativeMap(x_ref)
+
+                # approximate J' numerically (since mapping is known, you can improve later)
+                Jp = np.gradient(J, x_ref, edge_order=2)
+
+                v_deriv_nodes = (J ** 2) * v_xixi + Jp * v_xi
+
+            else:
+                raise NotImplementedError("Only 1st and 2nd derivatives supported")
+
+            # --- Step 5: interpolate to requested points ---
+            x_eval_ref = element.inverseMap(x_local)
+
+            evaluated_vals = spec.barycentricChebInterpolate(
+                v_deriv_nodes,
+                x_eval_ref,
+                a=-1.0,
+                b=1.0
+            )
+
+            evaluatedDerivative[np.atleast_1d(elementPointIndices)] = evaluated_vals
+
+        return evaluatedDerivative

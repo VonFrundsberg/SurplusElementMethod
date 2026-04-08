@@ -21,7 +21,8 @@ class PolyAffineElement:
         self.inverseMap = lambda x: (x - p) / q
 
         self.derivativeMap = lambda x: 1.0 / (q + x * 0)
-        self.inverseDerivativeMap = lambda x: q + 0
+        self.derivativeMap2 = lambda x: np.zeros_like(x)
+        self.inverseDerivativeMap = lambda x: q + np.zeros_like(x)
         self.refPointVal = np.eye(self.approxOrder)
         if dirichletBoundaryConditions is not None:
             for bc in dirichletBoundaryConditions:
@@ -51,20 +52,32 @@ class PolyAffineElement:
         return evaluatedBasis @ coefficients
 
 
-    def evaluateExpansionDerivatives(self, coefficients: list[float], x: list[float], ):
-        """ Evaluates expansion in basis functions with given coefficients at points x
-                            Arguments:
-                                coefficients: list of basis coefficients
-                                x: list of evaluation points
-
-                            Returns:
-                                result: array with the shape: (*x.shape)
-                """
+    def evaluateExpansionDerivatives(self,
+                                     coefficients: list[float],
+                                     x: list[float],
+                                     derivative: int = 1):
+        """  """
         x = np.atleast_1d(x)
-        basisMatrix = np.eye(self.approxOrder)
-        evaluatedBasis = spec.barycentricChebInterpolate(basisMatrix, x, a=self.interval[0], b=self.interval[1], axis=0)
+        chebNodes = spec.chebNodes(self.approxOrder, a=-1.0, b=1.0)
+        if derivative == 1:
+            basisMatrix = spec.barycentricChebInterpolate(f=self.refPointDiffVal,
+                                                         x=chebNodes, a=-1.0, b=1.0, axis=0) \
+                         * np.reshape(self.inverseDerivativeMap(chebNodes), (*chebNodes.shape, 1))
+            evaluatedBasis = spec.barycentricChebInterpolate(basisMatrix, x, a=self.interval[0], b=self.interval[1],
+                                                            axis=0)
 
-        return evaluatedBasis @ coefficients
+            result = evaluatedBasis @ coefficients
+            return result
+        if derivative == 2:
+            basisMatrixL = spec.barycentricChebInterpolate(f=(self.refPointDiffVal @ self.refPointDiffVal),
+                                                          x=chebNodes, a=-1.0, b=1.0, axis=0) \
+                          * np.reshape(self.derivativeMap(chebNodes)**2, (*chebNodes.shape, 1))
+            evaluatedBasis = spec.barycentricChebInterpolate(basisMatrixL, x, a=self.interval[0], b=self.interval[1],
+                                                             axis=0)
+            result = evaluatedBasis @ coefficients
+            return result
+        if derivative >= 3:
+                raise Exception("evaluateExpansionDerivatives: only derivatives up to second order are allowed")
 
     def eval(self, x):
         """ Evaluates basis functions at points x
