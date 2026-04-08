@@ -84,7 +84,7 @@ def integrateBilinearForm1(trialElement: belem, testElement: belem,
 
 def integrateBilinearForm2(trialElement: belem, testElement: belem,
                            weight, integrationPointsAmount: int):
-    """Integrates bilinear form of the type a(u, v) = int_K weight(x) du(x) v(x) dx,
+    """Integrates bilinear form of the type a(u, v) = int_K weight(x) u(x) dv(x) dx,
         where u(x) and v(x) are basis functions of trial and test elements respectively
         integration is performed over K := {non-zero interval of trial element}
 
@@ -100,10 +100,10 @@ def integrateBilinearForm2(trialElement: belem, testElement: belem,
     w, x = integr.reg_32_wn(a=-1, b=1, n=integrationPointsAmount)
     mappedX = trialElement.map(x)
     w = w * trialElement.inverseDerivativeMap(x)
-    trialD = trialElement.evalDiff(mappedX)
-    testD = testElement.eval(mappedX)
+    trialI = trialElement.eval(mappedX)
+    testD = testElement.evalDiff(mappedX)
     W = w * weight(mappedX)
-    D2 = np.einsum('ij,ik->ijk', trialD, testD)
+    D2 = np.einsum('ij,ik->ijk', trialI, testD)
 
     resultIntegrals = np.einsum('ijk, i -> jk', D2, W)
     return resultIntegrals

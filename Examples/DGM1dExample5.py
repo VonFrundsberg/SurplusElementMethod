@@ -122,4 +122,4 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
     plt.show()
 
 
-fun(3, 3, integrationPointsAmount=10000)
+fun(3, 15, integrationPointsAmount=10000)
