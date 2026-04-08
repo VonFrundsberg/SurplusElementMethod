@@ -90,7 +90,7 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
 
     w, grid = integr.reg_22_wn(-1.0, 1.0, integrationPointsAmount)
 
-    gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
+    gridSolution = galerkinMethodObject.evaluateSolution(grid)
 
     plt.plot(grid, gridSolution, label="approximation")
     plt.plot(grid, np.cos(np.pi * grid), label="exact solution")

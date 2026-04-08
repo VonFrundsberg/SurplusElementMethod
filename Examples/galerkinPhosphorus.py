@@ -285,7 +285,7 @@ def defectsCalculation():
     # sol = defectsC_V.solveSLAE_Dense()
     # defectsC_V.
     w, grid = integr.reg_22_wn(0.0, 100, integrationPointsAmount)
-    gridSol = defectsC_V.evaluateSolutionAtPoints(grid)
+    gridSol = defectsC_V.evaluateSolution(grid)
     plt.plot(grid, gridSol)
     plt.show()
 

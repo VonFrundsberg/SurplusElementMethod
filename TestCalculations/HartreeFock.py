@@ -101,7 +101,7 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
 
         V_HartreeTerm = "integral poissonSolution * u * v"
         V_HartreeTerm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
-            trialElement, testElement, lambda x: galerkinPoisson.evaluateSolutionAtPoints(x),
+            trialElement, testElement, lambda x: galerkinPoisson.evaluateSolution(x),
             integrationPointsAmount)
 
         return [V_HartreeTerm]
@@ -124,7 +124,7 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
         curX = GD.YunhoGradientDescent(A, B, curX, alpha=1 * 1e-3, gamma=10, output=False, maxIter=2000)
         # print(A.shape)
         eigval = (curX @ A @ curX) / (curX @ B @ curX)
-        galerkinSchrodinger.solutionWithDirichletBC = np.hstack([0, curX, 0])
+        galerkinSchrodinger.solution = np.hstack([0, curX, 0])
         # print(curX.shape)
         # eigvals, eigvecs = galerkinSchrodinger.solveEIG_denseMatrix()
 
@@ -140,10 +140,10 @@ def heliumHF(parameter: float, approximationOrder: int, angularL: int,
         w = w * jacobian
         # plt.plot(mappedNodes, jacobian * galerkinSchrodinger.evaluateSolutionAtPoints(mappedNodes) ** 2)
         # plt.show()
-        normalizationConstant = 4.0 * np.pi * (galerkinSchrodinger.evaluateSolutionAtPoints(mappedNodes) ** 2) @ w
-        density = lambda x: (galerkinSchrodinger.evaluateSolutionAtPoints(x) ** 2
+        normalizationConstant = 4.0 * np.pi * (galerkinSchrodinger.evaluateSolution(mappedNodes) ** 2) @ w
+        density = lambda x: (galerkinSchrodinger.evaluateSolution(x) ** 2
                              / normalizationConstant)
-        hartree_energy = 4.0 * np.pi * (density(mappedNodes) * galerkinPoisson.evaluateSolutionAtPoints(mappedNodes)) @ w
+        hartree_energy = 4.0 * np.pi * (density(mappedNodes) * galerkinPoisson.evaluateSolution(mappedNodes)) @ w
         energy = 2 * eigval - hartree_energy
         print(energy)
         # energy = 2 * eigvals[0] - hartree_energy

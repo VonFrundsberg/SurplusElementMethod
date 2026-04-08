@@ -83,7 +83,7 @@ def fun(approximationOrder, infElementBoundary, amountOfElementsOnFiniteGrid, in
 
     w, grid = integr.log_16_wn(0.0, 1.0, integrationPointsAmount)
 
-    gridSolution = galerkinMethodObject.evaluateSolutionAtPoints(grid)
+    gridSolution = galerkinMethodObject.evaluateSolution(grid)
 
     errorFrom0to1 = np.sum(w*(2*np.log(grid)*(gridSolution - 2.0) + (gridSolution - 2.0)**2)) + 2.0
 

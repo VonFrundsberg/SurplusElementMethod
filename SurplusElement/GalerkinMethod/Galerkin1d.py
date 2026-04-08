@@ -326,11 +326,11 @@ class GalerkinMethod1d:
             values = np.real(values[eigvalIndices])
             vectors = np.real(vectors[:, eigvalIndices])
         if amountOfEigs == 1:
-            self.solutionWithDirichletBC = np.zeros(ind.shape, dtype=float)
-            self.solutionWithDirichletBC[ind] = vectors[:, 0]
+            self.solution = np.zeros(ind.shape, dtype=float)
+            self.solution[ind] = vectors[:, 0]
         else:
-            self.solutionWithDirichletBC = np.zeros([*ind.shape, amountOfEigs], dtype=float)
-            self.solutionWithDirichletBC[ind, :] = vectors[:, :amountOfEigs]
+            self.solution = np.zeros([*ind.shape, amountOfEigs], dtype=float)
+            self.solution[ind, :] = vectors[:, :amountOfEigs]
         return values, vectors
     def getRHS(self, elementIndex:int = 0):
         # print(self.functionalElements[elementIndex].shape)
@@ -348,8 +348,8 @@ class GalerkinMethod1d:
     def solveSLAE_dense_invertedMatrix(self):
         b = self.functionalElements[0][self.zeroIndices]
         solution = sp_linalg.lu_solve(self.lu, b)
-        self.solutionWithDirichletBC = np.zeros(self.zeroIndices.shape, dtype=float)
-        self.solutionWithDirichletBC[self.zeroIndices] = solution
+        self.solution = np.zeros(self.zeroIndices.shape, dtype=float)
+        self.solution[self.zeroIndices] = solution
     def solveSLAE_denseMatrix_old(self):
         """Only for single-domain case.
                   Only for zero Dirichlet or Neumann boundary conditions
@@ -361,8 +361,8 @@ class GalerkinMethod1d:
         A = A[~(A == 0).all(1), :][:, ~(A == 0).all(0)]
         b = self.functionalElements[0][ind]
         solution = sp_linalg.solve(A, b)
-        self.solutionWithDirichletBC = np.zeros(ind.shape, dtype=float)
-        self.solutionWithDirichletBC[ind] = solution
+        self.solution = np.zeros(ind.shape, dtype=float)
+        self.solution[ind] = solution
         return solution
     def solveSLAE(self):
         """Solves system matrixElements @ u = functionalElements
@@ -392,14 +392,14 @@ class GalerkinMethod1d:
         # self.functionalElements[-1] = -1.0
 
         self.functionalElements = self.functionalElements[ind]
-        self.solutionWithDirichletBC = np.zeros(ind.shape, dtype=float)
+        self.solution = np.zeros(ind.shape, dtype=float)
         solution = sparse_linalg.spsolve(A, self.functionalElements)
-        self.solutionWithDirichletBC[ind] = solution
+        self.solution[ind] = solution
 
         # print(self.A.toarray())
         # print(self.functionalElements)
         # print(solution)
-        return self.solutionWithDirichletBC
+        return self.solution
 
 
     def solveSLAE_Dense(self):
@@ -424,10 +424,10 @@ class GalerkinMethod1d:
         self.functionalElements = np.hstack(self.functionalElements)
 
         self.functionalElements = self.functionalElements[ind]
-        self.solutionWithDirichletBC = np.zeros(ind.shape, dtype=float)
+        self.solution = np.zeros(ind.shape, dtype=float)
         solution = sparse_linalg.spsolve(A, self.functionalElements)
-        self.solutionWithDirichletBC[ind] = solution
-        return self.solutionWithDirichletBC
+        self.solution[ind] = solution
+        return self.solution
 
     def calculateMeshElementProperties(self):
         """For spherically symmetric Poisson problem on unbounded domain.
@@ -513,7 +513,7 @@ class GalerkinMethod1d:
                     return self.elemBoundaryProperties[i + 1]
         self.sigmaDGM_ErrorTerm = sigmaDGM_ErrorTerm
         # print(self.elemBoundaryProperties)
-    def evaluateSolutionAtPoints(self, x):
+    def evaluateSolution(self, x):
 
         """
 
@@ -526,7 +526,29 @@ class GalerkinMethod1d:
             interval = self.elements[elementNumber].interval
             elementPointIndices = np.squeeze(np.argwhere((x >= interval[0]) & (x <= interval[1])))
 
-            elementCoefficients = self.solutionWithDirichletBC[offset: offset + self.elements[elementNumber].approxOrder]
+            elementCoefficients = self.solution[offset: offset + self.elements[elementNumber].approxOrder]
+            offset += self.elements[elementNumber].approxOrder
+
+            evaluatedElementOnLocalGrid = self.elements[elementNumber].evaluateExpansion(
+                elementCoefficients, x[elementPointIndices])
+            evaluatedSolution[np.atleast_1d(elementPointIndices)] = evaluatedElementOnLocalGrid
+
+        return evaluatedSolution
+
+    def evaluateSolutionDerivative(self, x, derivativeOrder: int = 1):
+
+        """
+
+        """
+        x = np.atleast_1d(x)
+        elementsAmount = self.mesh.getElementsAmount()
+        evaluatedSolution = np.zeros(x.shape, dtype=float)
+        offset = 0
+        for elementNumber in range(elementsAmount):
+            interval = self.elements[elementNumber].interval
+            elementPointIndices = np.squeeze(np.argwhere((x >= interval[0]) & (x <= interval[1])))
+
+            elementCoefficients = self.solution[offset: offset + self.elements[elementNumber].approxOrder]
             offset += self.elements[elementNumber].approxOrder
 
             evaluatedElementOnLocalGrid = self.elements[elementNumber].evaluateExpansion(
@@ -538,13 +560,13 @@ class GalerkinMethod1d:
         x = np.atleast_1d(x)
         elementsAmount = self.mesh.getElementsAmount()
         # print([*x.shape, functionsArray.shape[1]])
-        evaluatedSolution = np.zeros([*x.shape, self.solutionWithDirichletBC.shape[1]], dtype=float)
+        evaluatedSolution = np.zeros([*x.shape, self.solution.shape[1]], dtype=float)
         offset = 0
         for elementNumber in range(elementsAmount):
             interval = self.elements[elementNumber].interval
             elementPointIndices = np.squeeze(np.argwhere((x >= interval[0]) & (x <= interval[1])))
 
-            elementCoefficients = self.solutionWithDirichletBC[offset: offset + self.elements[elementNumber].approxOrder, :]
+            elementCoefficients = self.solution[offset: offset + self.elements[elementNumber].approxOrder, :]
             offset += self.elements[elementNumber].approxOrder
             # print(elementCoefficients.shape)
             evaluatedElementOnLocalGrid = self.elements[elementNumber].evaluateExpansion(
