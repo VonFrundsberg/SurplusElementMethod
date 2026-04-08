@@ -29,7 +29,7 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
 
     innerForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm0(
         trialElement, testElement, lambda x: x * 0.0 + 1.0, integrationPointsAmount)
-    eps = 1e-15
+    eps = 1e-14
     def DGForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentMain(
             trialElement=trialElement, testElement=elementTest, weight=lambda x: x * 0.0 - 1.0,
@@ -40,13 +40,13 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
             trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 - 1.0,
             physicalBoundary=np.array([0, domainSize]), eps = eps)
 
-    sigma = 1e+10 * approximationOrder ** 2 / (10.0 / amountOfElements)
+    sigma = approximationOrder ** 2 / (10.0 / amountOfElements)
 
     def minusSignFunction(x):
         if x == 0:
-            return x * 0 - 1.0
+            return x * 0.0 - 1.0
         if x == domainSize:
-            return x * 0 + 1.0
+            return x * 0.0 + 1.0
         return x * 0.0
 
     def boundaryForm1(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
@@ -69,6 +69,11 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
         testElement=testElement, function=lambda x: np.sin(x),
             weight=lambda x: x * 0.0 + 1.0, integrationPointsAmount=integrationPointsAmount)
 
+    # galerkinMethodObject.setBilinearForm(innerForms=[gradForm, innerForm],
+    #                                      discontinuityForms=[DGForm1, DGForm2],
+    #                                      boundaryForms=[boundaryForm1, boundaryForm2,
+    #                                                     boundaryForm3, boundaryForm4]
+    #                                      )
     galerkinMethodObject.setBilinearForm(innerForms=[gradForm, innerForm],
                                          discontinuityForms=[DGForm1, DGForm2],
                                          boundaryForms=[boundaryForm1, boundaryForm2,
@@ -112,4 +117,4 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
     plt.show()
 
 
-fun(50, 2, integrationPointsAmount=10000)
+fun(100, 1, integrationPointsAmount=10000)

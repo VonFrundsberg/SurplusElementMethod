@@ -112,9 +112,9 @@ def read_data():
 defectsC_I = galerkin.GalerkinMethod1d("LS")
 defectsC_V = galerkin.GalerkinMethod1d("LS")
 defectsMesh = MeshClass.mesh(1)
-defectsApproximationOrder: int = 3
+defectsApproximationOrder: int = 10
 integrationPointsAmount: int = 100000
-domainSize = 100
+domainSize = np.inf
 
 def setDefectsMesh():
     fileElements = open("elementsDataDefects.txt", "w")
@@ -122,14 +122,16 @@ def setDefectsMesh():
     # fileElements.write("0.0 0.07 " + str(defectsApproximationOrder) + " 0.0" + "\n")
     # fileElements.write("0.07 0.15 " + str(defectsApproximationOrder) + " 0.0" + "\n")
     # fileElements.write("0.15 " + str(domainSize) + " " + str(defectsApproximationOrder) + " 1.0" + "\n")
-    fileElements.write("0.0 0.1 " + str(defectsApproximationOrder) + " 0.0" + "\n")
-    fileElements.write("0.1 " + str(domainSize) + " " + str(defectsApproximationOrder) + " 0.0" + "\n")
+    fileElements.write("0.0 0.05 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+    fileElements.write("0.05 1.0 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+    # fileElements.write("1.0 " + str(domainSize) + " " + str(defectsApproximationOrder) + " 1.0" + "\n")
+    fileElements.write("1.0 inf " + str(defectsApproximationOrder) + " 1.0" + "\n")
     fileElements.close()
-    # fileNeighbours.write("1 \n"
-    #                      "0 2 \n"
-    #                      "1 \n")
     fileNeighbours.write("1 \n"
-                         "0 \n")
+                         "0 2 \n"
+                         "1 \n")
+    # fileNeighbours.write("1 \n"
+    #                      "0 \n")
     fileNeighbours.close()
     defectsMesh.fileRead("elementsDataDefects.txt", "neighboursDataDefects.txt")
 
@@ -138,13 +140,12 @@ def defectForms(v, g, l):
     innerForm1 = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
         trialElement, testElement, lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0, integrationPointsAmount)
     eps = 1e-15
-    sigma = 1e+5 * defectsApproximationOrder ** 4 / 1e-2
+    sigma = 1e+5 * defectsApproximationOrder ** 2 / 1e-2
     def DGForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentMain(
             trialElement=trialElement, testElement=elementTest,
             weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) - 1.0,
             physicalBoundary=np.array([0, domainSize]), eps=eps)
-
     def DGForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentSymmetry(
             trialElement=trialElement, testElement=testElement,
@@ -169,16 +170,13 @@ def defectForms(v, g, l):
     def boundaryForm1(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateBilinearFormAtBoundary_21(
             trialElement=trialElement, testElement=testElement, weight=lambda x: -minusSignFunction(x))
-
     def boundaryForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateBilinearFormAtBoundary_20(
             trialElement=trialElement, testElement=testElement, weight=lambda x: -minusSignFunction(x))
-
     def boundaryForm3(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateBilinearFormAtBoundary1(
             trialElement=trialElement, testElement=testElement,
             weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + sigma, B=0.0)
-
     def boundaryForm4(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateBilinearFormAtBoundary1(
             trialElement=trialElement, testElement=testElement,
@@ -199,7 +197,11 @@ def defectForms(v, g, l):
         weight=lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0,
         integrationPointsAmount=integrationPointsAmount)
 
-    boundaryFunctional0 = lambda testElement: elem1dUtils.evaluateFunctionalAtBoundaries0(
+    def boundaryFunctional0(testElement):
+        # print(elem1dUtils.evaluateFunctionalAtBoundaries0(
+        # testElement=testElement, weight=lambda x: minusSignFunction(x),
+        # leftValue=-10.0, rightValue=-1.0, leftBoundary=0.0, rightBoundary=domainSize))
+        return elem1dUtils.evaluateFunctionalAtBoundaries0(
         testElement=testElement, weight=lambda x: minusSignFunction(x),
         leftValue=-10.0, rightValue=-1.0, leftBoundary=0.0, rightBoundary=domainSize)
     def BCfunction(x):
@@ -229,10 +231,10 @@ def defectForms(v, g, l):
 
 # boundaryConditionsC_I = ['{"boundaryPoint": "0.0", "boundaryValue": 1e-3}',
 #                       '{"boundaryPoint": "np.inf", "boundaryValue": 1}']
-boundaryConditionsC_V = ['{"boundaryPoint": "0.0", "boundaryValue": 1.0}',
-                      '{"boundaryPoint": "' + str(float(domainSize)) + '", "boundaryValue": 1.0}']
 # boundaryConditionsC_V = ['{"boundaryPoint": "0.0", "boundaryValue": 1.0}',
-#                       '{"boundaryPoint": "np.inf", "boundaryValue": 1.0}']
+#                       '{"boundaryPoint": "' + str(float(domainSize)) + '", "boundaryValue": 1.0}']
+boundaryConditionsC_V = ['{"boundaryPoint": "0.0", "boundaryValue": 1.0}',
+                      '{"boundaryPoint": "np.inf", "boundaryValue": 1.0}']
 
 def defectsCalculation():
     """Vacancy concentration calculations"""

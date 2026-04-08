@@ -353,6 +353,7 @@ def evaluateBilinearFormAtBoundary0(trialElement: belem, testElement: belem, wei
 
     duX = trialElement.evalDiff(B)
     vX = testElement.eval(B)
+    # weightX = weight(B)
     weightX = np.nan_to_num(weight(B), nan=0)
     return weightX * np.einsum("ij, ik -> jk", duX, vX)
 
@@ -374,6 +375,7 @@ def evaluateBilinearFormAtBoundary1(trialElement: belem, testElement: belem, wei
 
     uX = trialElement.eval(B)
     vX = testElement.eval(B)
+    # weightX = weight(B)
     weightX = np.nan_to_num(weight(B), nan=0)
     return weightX * np.einsum("ij, ik -> jk", uX, vX)
 
@@ -391,10 +393,9 @@ def evaluateBilinearFormAtBoundary_20(trialElement: belem, testElement: belem, w
             result: evaluated differences at boundaries
     """
     # print('in')
-    # if trialElement.interval.all() == testElement.interval.all():
-    if (np.max(np.abs(trialElement.interval - testElement.interval)) <= np.finfo(float).eps * 10):
+    if trialElement.interval.all() == testElement.interval.all():
+    # if (np.max(np.abs(trialElement.interval - testElement.interval)) <= np.finfo(float).eps * 10):
         # print('out')
-        epsilon = np.finfo(float).eps
         leftBoundaryPoint = trialElement.interval[0]
         rightBoundaryPoint = trialElement.interval[1]
         # leftRealSpacePoint = trialElement.inverseMap(leftBoundaryPoint)
@@ -454,9 +455,9 @@ def evaluateBilinearFormAtBoundary_21(trialElement: belem, testElement: belem, w
             result: evaluated differences at boundaries
     """
     # print('in')
-    # if trialElement.interval.all() == testElement.interval.all():
-    if (np.max(np.abs(trialElement.interval - testElement.interval)) <= np.finfo(float).eps * 10):
-        # print('out')
+    if trialElement.interval.all() == testElement.interval.all():
+    # if (np.max(np.abs(trialElement.interval - testElement.interval)) <= np.finfo(float).eps * 10):
+    #     print('out')
         leftBoundaryPoint = trialElement.interval[0]
         rightBoundaryPoint = trialElement.interval[1]
 
@@ -552,6 +553,8 @@ def evaluateFunctionalAtBoundaries0(testElement: belem,
 
     vL = testElement.evalDiff(leftBoundary) * leftValue * weight(leftBoundary)
     vR = testElement.evalDiff(rightBoundary) * rightValue * weight(rightBoundary)
+    print(testElement.interval)
+    print(leftBoundary, testElement.evalDiff(leftBoundary), weight(leftBoundary))
     return vR + vL
 
 def integrateTensorFunctional(testElement: belem, function, tensorShape, weight,

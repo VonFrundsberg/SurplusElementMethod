@@ -1,7 +1,7 @@
 import numpy as np
 from SurplusElement.mathematics import spectral as spec
 from SurplusElement.GalerkinMethod.element.Element1d.AuxClasses import ApproximationSpaceParameter as approxParam
-
+import time as time
 class RationalInfHalfSpaceElement:
     def __init__(self, interval, parameters:approxParam, approxOrder, dirichletBoundaryConditions=None):
         self.interval = np.array(interval, dtype=float)
@@ -65,7 +65,13 @@ class RationalInfHalfSpaceElement:
                         result: array with the shape: (*x.shape, degree of element)
                 """
         infValues = np.isinf(x)
+        outOfRangeLeft = np.argwhere(x < self.interval[0])
+        outOfRangeRight = np.argwhere(x > self.interval[1])
         x = self.inverseMap(np.atleast_1d(x))
+        x[infValues] = 1.0
+        """-1.1 and 1.1 are here just to make the output of barycentric interpolate to be zero on these values"""
+        x[outOfRangeLeft] = -1.1 * np.ones(x[outOfRangeLeft].shape)
+        x[outOfRangeRight] = 1.1 * np.ones(x[outOfRangeLeft].shape)
         x[infValues] = 1.0
         basisMatrix = self.refPointVal
         # if x.size == 1:
@@ -85,10 +91,15 @@ class RationalInfHalfSpaceElement:
             Returns:
                 result: array with the shape:  (approximation order of element, len(x))
         """
-
+        x = np.atleast_1d(x)
         infValues = np.isinf(x)
+        outOfRangeLeft = np.argwhere(x < self.interval[0])
+        outOfRangeRight = np.argwhere(x > self.interval[1])
         x = self.inverseMap(np.atleast_1d(x))
         x[infValues] = 1.0
+        """-1.1 and 1.1 are here just to make the output of barycentric interpolate to be zero on these values"""
+        x[outOfRangeLeft] = -1.1 * np.ones(x[outOfRangeLeft].shape)
+        x[outOfRangeRight] = 1.1 * np.ones(x[outOfRangeLeft].shape)
         derivativeBasisMatrix = self.refPointDiffVal
         jacobian = self.derivativeMap(x)
         # print("jacobian", jacobian)

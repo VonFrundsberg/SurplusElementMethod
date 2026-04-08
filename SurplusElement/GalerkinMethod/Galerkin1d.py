@@ -162,8 +162,7 @@ class GalerkinMethod1d:
                 self.matrixElements[i][i] += self.innerForms[j](self.elements[i], self.elements[i])
             if self.__isBoundaryElement1d(self.elements[i]):
                 for j in range(len(self.boundaryForms)):
-                    if i == 1:
-                        self.matrixElements[i][i] += self.boundaryForms[j](self.elements[i], self.elements[i])
+                    self.matrixElements[i][i] += self.boundaryForms[j](self.elements[i], self.elements[i])
 
             for discontinuityFormNumber in range(discontiniousFormsAmount):
                     self.matrixElements[i][i] += self.discontinuityForms[discontinuityFormNumber](
@@ -397,9 +396,9 @@ class GalerkinMethod1d:
         solution = sparse_linalg.spsolve(A, self.functionalElements)
         self.solutionWithDirichletBC[ind] = solution
 
-        print(self.A.toarray())
-        print(self.functionalElements)
-        print(solution)
+        # print(self.A.toarray())
+        # print(self.functionalElements)
+        # print(solution)
         return self.solutionWithDirichletBC
 
 
