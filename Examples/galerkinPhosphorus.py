@@ -2,6 +2,7 @@ import SurplusElement.mathematics.spectral as spec
 import SurplusElement.GalerkinMethod.Galerkin1d as galerkin
 import SurplusElement.GalerkinMethod.Mesh.mesh as MeshClass
 import SurplusElement.GalerkinMethod.element.Element1d.element1dUtils as elem1dUtils
+import SurplusElement.GalerkinMethod.Mesh.mesh as MeshClass
 from SurplusElement.mathematics import integrate as integr
 
 import numpy as np
@@ -42,7 +43,6 @@ l_I = l_V
 GIM = 2.7*1e+4
 RPDRP = 0.015
 X_STAR = 0.02
-
 alpha_1 = 1.0
 ga_1 = 0.0
 alpha_2 = 1.0
@@ -112,42 +112,59 @@ def read_data():
 defectsC_I = galerkin.GalerkinMethod1d("LS")
 defectsC_V = galerkin.GalerkinMethod1d("LS")
 defectsMesh = MeshClass.mesh(1)
-for i in range(3, 50):
+for i in range(4, 101):
     defectsApproximationOrder: int = i
-    integrationPointsAmount: int = 10000
+    integrationPointsAmount: int = 20000
     domainSize = np.inf
 
+    infElementBoundary = 1.0
     def setDefectsMesh():
-        fileElements = open("elementsDataDefects.txt", "w")
-        fileNeighbours = open("neighboursDataDefects.txt", "w")
-        fileElements.write("0.0 0.03 " + str(defectsApproximationOrder) + " 0.0" + "\n")
-        fileElements.write("0.03 0.07 " + str(defectsApproximationOrder) + " 0.0" + "\n")
-        fileElements.write("0.07 0.15 " + str(defectsApproximationOrder) + " 0.0" + "\n")
-        fileElements.write("0.15 " + str(domainSize) + " " + str(defectsApproximationOrder) + " 1.0" + "\n")
-        # fileElements.write("0.0 0.05 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+        # fileElements = open("elementsDataDefects.txt", "w")
+        # fileNeighbours = open("neighboursDataDefects.txt", "w")
+        # fileElements.write("0.0 0.02 " + str(int(defectsApproximationOrder)) + " 0.0" + "\n")
+        # fileElements.write("0.02 0.05 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+        # fileElements.write("0.05 0.15 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+        # fileElements.write("0.15 " + str(domainSize) + " " + str(defectsApproximationOrder) + " 1.0" + "\n")
+        # fileNeighbours.write("1 \n"
+        #                      "0 2 \n"
+        #                      "1 3 \n"
+        #                      "2 \n")
+
+
+
         # fileElements.write("0.05 2.0 " + str(defectsApproximationOrder) + " 0.0" + "\n")
         # fileElements.write("0.0 1.0 " + str(defectsApproximationOrder) + " 0.0" + "\n")
         # fileElements.write("1.0 " + str(domainSize) + " " + str(defectsApproximationOrder) + " 1.0" + "\n")
         # fileElements.write("2.0 inf " + str(defectsApproximationOrder) + " 1.0" + "\n")
-        fileElements.close()
+        # fileElements.close()
         # fileNeighbours.write("1 \n"
         #                      "0 2 \n"
         #                      "1 \n")
-        fileNeighbours.write("1 \n"
-                             "0 2 \n"
-                             "1 3 \n"
-                             "2 \n")
+
+
+
+        # fileElements.write("0.0 0.15 " + str(defectsApproximationOrder) + " 0.0" + "\n")
+        # fileElements.write("0.15 inf " + str(defectsApproximationOrder) + " 1.0" + "\n")
         # fileNeighbours.write("1 \n"
         #                      "0 \n")
-        fileNeighbours.close()
+        # fileNeighbours.close()
+
+        amountOfElementsOnFiniteGrid: int = 20
+        approximationOrder: int = defectsApproximationOrder
+        defectsMesh.generateSkewedMeshOnRectange(rectangle=[0, infElementBoundary],
+                                       divisions=[amountOfElementsOnFiniteGrid],
+                                       polynomialOrder=[approximationOrder])
+        defectsMesh.extendRectangleToInf_AlongAxis_OneDirection("right", infElementBoundary, 0, approximationOrder)
+        defectsMesh.establishNeighbours()
+        defectsMesh.fileWrite("elementsDataDefects.txt", "neighboursDataDefects.txt")
         defectsMesh.fileRead("elementsDataDefects.txt", "neighboursDataDefects.txt")
 
     setDefectsMesh()
     def defectForms(v, g, l):
         innerForm1 = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm1(
             trialElement, testElement, lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0, integrationPointsAmount)
-        eps = 1e-14
-        sigma = 1.0 * defectsApproximationOrder ** 10 / 1e-2
+        eps = 1e-15
+        sigma = 1e+8 * defectsApproximationOrder ** 2
         def DGForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
             return elem1dUtils.evaluateDG_JumpComponentMain(
                 trialElement=trialElement, testElement=elementTest,
@@ -242,6 +259,7 @@ for i in range(3, 50):
     boundaryConditionsC_V = ['{"boundaryPoint": "0.0", "boundaryValue": 1.0}',
                           '{"boundaryPoint": "np.inf", "boundaryValue": 1.0}']
 
+
     def defectsCalculation():
         """Vacancy concentration calculations"""
         # v_V = V0_V * np.exp(-(defectNodes - RP) ** 2 / (2 * DRP ** 2))
@@ -280,8 +298,8 @@ for i in range(3, 50):
         defectsC_V.initializeMesh(defectsMesh)
         defectsC_V.setDirichletBoundaryConditions(boundaryConditionsC_V)
         # parameter = 1.0
-        # defectsC_V.setApproximationSpaceParameters(
-        #     parameters = '{"s": "' + str(parameter) + '"}')
+        defectsC_V.setApproximationSpaceParameters(
+            parameters = '{"s": "' + str(infElementBoundary) + '"}')
         defectsC_V.initializeElements()
         # plt.plot(defectsC_V.getMeshPoints(), g_V(defectsC_V.getMeshPoints()))
         # plt.show()
@@ -290,7 +308,11 @@ for i in range(3, 50):
         sol = defectsC_V.solveSLAE()
         # sol = defectsC_V.solveSLAE_Dense()
         # defectsC_V.
-        w, grid = integr.reg_22_wn(0.0, 0.15, integrationPointsAmount)
+        # if domainSize == np.inf:
+        w, grid = integr.reg_22_wn(0.0, infElementBoundary, integrationPointsAmount)
+        # else:
+            # w, grid = integr.reg_22_wn(0.0, 0.021, integrationPointsAmount)
+
         gridSol = defectsC_V.evaluateSolution(grid)
         d1gridSol = defectsC_V.evaluateSolutionDerivative(grid)
         d2gridSol = defectsC_V.evaluateSolutionDerivative(grid, 2)
@@ -303,12 +325,12 @@ for i in range(3, 50):
 
         solution_C_V = d2gridSol - 1/l_V**2 * gridSol
         rhs_C_V = -g_V(grid)/l_V**2
-        if i % 5 == 0:
-            plt.plot(grid, solution_C_V )
-            plt.plot(grid, rhs_C_V)
-            plt.show()
+        # if i % 5 == 0:
+        #     plt.plot(grid, solution_C_V)
+        #     plt.plot(grid, rhs_C_V)
+        #     plt.show()
         print(i, np.max(np.abs(solution_C_V - rhs_C_V))/np.max(np.abs(rhs_C_V)))
-
+        # print(i, defectsC_V.solution[1] - 10.0, defectsC_V.solution[-1] - 1.0)
         # return C_I, C_V
 
     defectsCalculation()

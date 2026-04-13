@@ -137,6 +137,7 @@ class GalerkinMethod1d:
     def __isBoundaryElement1d(self, element: Element1d):
         a, b = list(element.getInterval())
         for BC in self.dirichletBoundaryConditions:
+            # print(a, b, BC)
             if BC.boundaryPoint == a:
                 return True
             if BC.boundaryPoint == b:
@@ -377,7 +378,7 @@ class GalerkinMethod1d:
 
         A = sparse.bmat(self.matrixElements)
         A = sparse.csr_matrix(A)
-
+        np.set_printoptions(precision=2, suppress=True)
         # print(A.todense())
         # print(np.hstack(self.functionalElements))
         ind = (A.getnnz(1) > 0).copy()

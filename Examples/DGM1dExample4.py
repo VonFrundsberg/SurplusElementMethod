@@ -33,14 +33,15 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
     def DGForm1(trialElement: galerkin.element.Element1d, elementTest: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentMain(
             trialElement=trialElement, testElement=elementTest, weight=lambda x: x * 0.0 - 1.0,
-            physicalBoundary=np.array([0, domainSize]), eps = eps)
+            physicalBoundary=np.array([0.0, domainSize]), eps = eps)
 
     def DGForm2(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateDG_JumpComponentSymmetry(
             trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 - 1.0,
-            physicalBoundary=np.array([0, domainSize]), eps = eps)
+            physicalBoundary=np.array([0.0, domainSize]), eps = eps)
 
-    sigma = approximationOrder ** 2 / (10.0 / amountOfElements)
+
+    sigma = 10*approximationOrder ** 2 / (10.0 / amountOfElements)
 
     def minusSignFunction(x):
         if x == 0:
@@ -80,7 +81,7 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
                                                         boundaryForm3, boundaryForm4]
                                          )
     galerkinMethodObject.setRHSFunctional([functional])
-    boundaryConditions = ['{"boundaryPoint": "1.0", "boundaryValue": 1.0}',
+    boundaryConditions = ['{"boundaryPoint": "0.0", "boundaryValue": 1.0}',
                           '{"boundaryPoint": "10.0", "boundaryValue": 1.0}']
     # boundaryConditions = []
     galerkinMethodObject.setDirichletBoundaryConditions(boundaryConditions)
@@ -104,17 +105,16 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
 
     gridSolution = galerkinMethodObject.evaluateSolution(grid)
 
-    plt.plot(grid, gridSolution, label="approximation")
+    # plt.plot(grid, gridSolution, label="approximation")
     analyticSolution = lambda x: -np.exp(-x) * \
     (-np.exp(10) * np.sin(10) +
      np.exp(10 + 2 * x) * np.sin(10) +
      np.exp(x) * np.sin(x) -
      np.exp(20 + x) * np.sin(x)) / (2 * (-1 + np.exp(20)))
+    print(approximationOrder, np.max(np.abs(gridSolution - analyticSolution(grid))))
+    # plt.plot(grid, analyticSolution(grid), label="exact solution")
+    # plt.legend()
+    # plt.show()
 
-
-    plt.plot(grid, analyticSolution(grid), label="exact solution")
-    plt.legend()
-    plt.show()
-
-
-fun(100, 1, integrationPointsAmount=10000)
+for i in range(3, 51):
+    fun(i, 2, integrationPointsAmount=10000)

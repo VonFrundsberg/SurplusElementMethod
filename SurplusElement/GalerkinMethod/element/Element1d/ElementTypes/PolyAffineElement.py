@@ -62,7 +62,7 @@ class PolyAffineElement:
         if derivative == 1:
             basisMatrix = spec.barycentricChebInterpolate(f=self.refPointDiffVal,
                                                          x=chebNodes, a=-1.0, b=1.0, axis=0) \
-                         * np.reshape(self.inverseDerivativeMap(chebNodes), (*chebNodes.shape, 1))
+                         * np.reshape(self.derivativeMap(chebNodes), (*chebNodes.shape, 1))
             evaluatedBasis = spec.barycentricChebInterpolate(basisMatrix, x, a=self.interval[0], b=self.interval[1],
                                                             axis=0)
 

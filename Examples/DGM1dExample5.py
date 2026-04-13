@@ -43,7 +43,7 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
             trialElement=trialElement, testElement=testElement, weight=lambda x: x * 0.0 - 1.0,
             physicalBoundary=np.array([0, domainSize]), eps = eps)
 
-    sigma = 100*approximationOrder ** 2 / (10.0 / amountOfElements)
+    sigma = 1e+1*approximationOrder ** 2 / (10.0 / amountOfElements)
 
     def minusSignFunction(x):
         if x == 0:
@@ -71,6 +71,7 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
     functional = lambda testElement: elem1dUtils.integrateFunctional(
         testElement=testElement, function=lambda x: (np.exp(-x) + 1.0),
             weight=lambda x: x * 0.0 + 1.0, integrationPointsAmount=integrationPointsAmount)
+
 
     boundaryFunctional0 = lambda testElement: elem1dUtils.evaluateFunctionalAtBoundaries0(
         testElement=testElement, weight=lambda x: minusSignFunction(x),
@@ -115,11 +116,29 @@ def fun(approximationOrder, amountOfElements, integrationPointsAmount = 500):
     w, grid = integr.reg_22_wn(0.0, domainSize, integrationPointsAmount)
 
     gridSolution = galerkinMethodObject.evaluateSolution(grid)
+    gridSolutionD2 = galerkinMethodObject.evaluateSolutionDerivative(grid, 2)
 
-    plt.plot(grid, gridSolution, label="approximation")
-    # plt.plot(grid, np.cos(np.pi * grid), label="exact solution")
-    plt.legend()
-    plt.show()
+    analyticSolution = lambda x: \
+    -(np.exp(-x) * (-np.exp(20.0) * x + x + 2 * np.exp(x) + 28 *np.exp(2 * x) -
+                    2 * np.exp(x + 20.0) -18.0 * np.exp(20.0) - 10.0))/ (2 * (np.exp(20.0) - 1.0))
+
+    analyticSolutionD2 = lambda x: np.exp(-x) * (12.0 - 28.0 * np.exp(2.0 * x) - x + np.exp(20.0) * (16.0 + x))/ \
+                                   (2 * (-1.0 + np.exp(20.0)))
+
+    print(i,
+          np.max(np.abs(analyticSolution(grid) - gridSolution)),
+          np.max(np.abs(analyticSolutionD2(grid) - gridSolutionD2)),
+          np.max(np.abs(-gridSolutionD2 + gridSolution - np.exp(-grid) - 1.0)))
 
 
-fun(3, 15, integrationPointsAmount=10000)
+    # print(approximationOrder, np.max(np.abs(gridSolution - analyticSolution(grid))))
+    # plt.plot(grid, g_V(grid), label="rhs")
+    # plt.show()
+    # print(galerkinMethodObject.solution[0] - 10.0, galerkinMethodObject.solution[-1] - 1.0)
+    # plt.plot(grid, gridSolution, label="approximation")
+    # plt.plot(grid, analyticSolution(grid), label="exact solution")
+    # plt.legend()
+    # plt.show()
+
+for i in range(3, 50):
+    fun(i, 10, integrationPointsAmount=10000)

@@ -1,7 +1,7 @@
 from SurplusElement.GalerkinMethod.element.Element1d.element1d import Element1d as belem
 import numpy as np
 from SurplusElement import mathematics as integr
-
+import matplotlib.pyplot as plt
 
 def integrateBilinearForm0(trialElement: belem, testElement: belem,
                            weight, integrationPointsAmount: int):
@@ -146,7 +146,6 @@ def evaluateDG_JumpComponentMain(trialElement: belem, testElement: belem,
         print("Main DG component")
         # if trialElement.interval[1] == np.inf:
         if True:
-            print("the p")
             print("Intervals for trial and test elements are: ")
             print(trialElement.interval, testElement.interval)
 
@@ -377,6 +376,9 @@ def evaluateBilinearFormAtBoundary1(trialElement: belem, testElement: belem, wei
     vX = testElement.eval(B)
     # weightX = weight(B)
     weightX = np.nan_to_num(weight(B), nan=0)
+    # print(trialElement.interval)
+    # print(testElement.interval)
+    # print(trialElement.eval(B), testElement.eval(B))
     return weightX * np.einsum("ij, ik -> jk", uX, vX)
 
 def evaluateBilinearFormAtBoundary_20(trialElement: belem, testElement: belem, weight):
@@ -403,7 +405,6 @@ def evaluateBilinearFormAtBoundary_20(trialElement: belem, testElement: belem, w
 
         leftWeight = weight(trialElement.interval[0]) #* trialElement.inverseDerivativeMap(leftBoundaryPoint)
         rightWeight = weight(trialElement.interval[1]) #* trialElement.inverseDerivativeMap(rightBoundaryPoint)
-
         leftTrialD = trialElement.evalDiff(leftBoundaryPoint)
         leftTestI = testElement.eval(leftBoundaryPoint)
 
@@ -420,7 +421,7 @@ def evaluateBilinearFormAtBoundary_20(trialElement: belem, testElement: belem, w
 
         rightRealSpacePoint = trialElement.inverseMap(rightBoundaryPoint)
 
-        rightWeight = weight(rightRealSpacePoint) * trialElement.inverseDerivativeMap(rightBoundaryPoint)
+        rightWeight = weight(rightRealSpacePoint)# * trialElement.inverseDerivativeMap(rightBoundaryPoint)
 
         rightTrialD = trialElement.evalDiff(rightBoundaryPoint)
         rightTestI = testElement.eval(rightBoundaryPoint)
@@ -433,7 +434,7 @@ def evaluateBilinearFormAtBoundary_20(trialElement: belem, testElement: belem, w
 
         leftRealSpacePoint = trialElement.inverseMap(leftBoundaryPoint)
 
-        leftWeight = weight(leftRealSpacePoint) * trialElement.inverseDerivativeMap(leftBoundaryPoint)
+        leftWeight = weight(leftRealSpacePoint)# * trialElement.inverseDerivativeMap(leftBoundaryPoint)
 
         leftTrialD = trialElement.evalDiff(leftBoundaryPoint)
         leftTestI = testElement.eval(leftBoundaryPoint)
@@ -454,19 +455,16 @@ def evaluateBilinearFormAtBoundary_21(trialElement: belem, testElement: belem, w
         Returns:
             result: evaluated differences at boundaries
     """
-    # print('in')
     if trialElement.interval.all() == testElement.interval.all():
     # if (np.max(np.abs(trialElement.interval - testElement.interval)) <= np.finfo(float).eps * 10):
-    #     print('out')
         leftBoundaryPoint = trialElement.interval[0]
         rightBoundaryPoint = trialElement.interval[1]
 
-        leftRealSpacePoint = trialElement.inverseMap(leftBoundaryPoint)
-        rightRealSpacePoint = trialElement.inverseMap(rightBoundaryPoint)
+        # leftRealSpacePoint = trialElement.inverseMap(leftBoundaryPoint)
+        # rightRealSpacePoint = trialElement.inverseMap(rightBoundaryPoint)
 
-        leftWeight = weight(leftRealSpacePoint)# * trialElement.inverseDerivativeMap(leftBoundaryPoint)
-        rightWeight = weight(rightRealSpacePoint)# * trialElement.inverseDerivativeMap(rightBoundaryPoint)
-
+        leftWeight = weight(leftBoundaryPoint)# * trialElement.inverseDerivativeMap(leftBoundaryPoint)
+        rightWeight = weight(rightBoundaryPoint)# * trialElement.inverseDerivativeMap(rightBoundaryPoint)
         leftTrialI = trialElement.eval(leftBoundaryPoint)
         leftTestD = testElement.evalDiff(leftBoundaryPoint)
 
@@ -483,7 +481,7 @@ def evaluateBilinearFormAtBoundary_21(trialElement: belem, testElement: belem, w
 
         rightRealSpacePoint = trialElement.inverseMap(rightBoundaryPoint)
 
-        rightWeight = weight(rightRealSpacePoint) * trialElement.inverseDerivativeMap(rightBoundaryPoint)
+        rightWeight = weight(rightRealSpacePoint)# * trialElement.inverseDerivativeMap(rightBoundaryPoint)
 
         rightTrialI = trialElement.eval(rightBoundaryPoint)
         rightTestD = testElement.evalDiff(rightBoundaryPoint)
@@ -497,7 +495,7 @@ def evaluateBilinearFormAtBoundary_21(trialElement: belem, testElement: belem, w
 
         leftRealSpacePoint = trialElement.inverseMap(leftBoundaryPoint)
 
-        leftWeight = weight(leftRealSpacePoint) * trialElement.inverseDerivativeMap(leftBoundaryPoint)
+        leftWeight = weight(leftRealSpacePoint)# * trialElement.inverseDerivativeMap(leftBoundaryPoint)
 
         leftTrialI = trialElement.evalDiff(leftBoundaryPoint)
         leftTestD = testElement.eval(leftBoundaryPoint)
@@ -520,14 +518,14 @@ def integrateFunctional(testElement: belem, function, weight,
             Returns:
                 result: an integral of functional
         """
-    w, x = integr.reg_22_wn(a=-1, b=1, n=integrationPointsAmount)
+    w, x = integr.reg_22_wn(a=-1.0, b=1.0, n=integrationPointsAmount)
     w = w*testElement.inverseDerivativeMap(x)
 
     x = testElement.map(x)
     I = testElement.eval(x)
+    # print(testElement.eval(0.0))
     W = np.nan_to_num(function(x)*w*weight(x))
     resultIntegrals = np.einsum('ij, i -> j', I, W)
-
     return resultIntegrals
 
 def evaluateFunctionalAtBoundaries1(testElement: belem,
@@ -537,7 +535,6 @@ def evaluateFunctionalAtBoundaries1(testElement: belem,
             g_R = rightValue, g_L = leftValue
             L = leftBoundary, R = rightBoundary
         """
-
     vL = testElement.eval(leftBoundary) * weight(leftBoundary)
     vR = testElement.eval(rightBoundary) * weight(rightBoundary)
     return vR + vL
@@ -550,7 +547,6 @@ def evaluateFunctionalAtBoundaries0(testElement: belem,
             g_R = rightValue, g_L = leftValue
             L = leftBoundary, R = rightBoundary
         """
-
     vL = testElement.evalDiff(leftBoundary) * leftValue * weight(leftBoundary)
     vR = testElement.evalDiff(rightBoundary) * rightValue * weight(rightBoundary)
     # print(testElement.interval)
@@ -574,7 +570,6 @@ def integrateTensorFunctional(testElement: belem, function, tensorShape, weight,
         """
     w, x = integr.reg_22_wn(a=-1, b=1, n=integrationPointsAmount)
     w = w*testElement.inverseDerivativeMap(x)
-
     x = testElement.map(x)
     I = testElement.eval(x)
     W = np.nan_to_num(function(x)*w*weight(x))

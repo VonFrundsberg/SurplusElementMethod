@@ -22,8 +22,10 @@ class RationalInfHalfSpaceElement:
             self.map = lambda x: (s*(1.0 + x) / (1.0 - x) + self.interval[0])
             self.inverseMap = lambda x: (-x + self.interval[0] + s) / (-x + self.interval[0] - s)
             self.derivativeMap = lambda x: (x - 1) ** 2 / (2 * s)
-            self.derivativeMap2 = lambda x: (x - 1) / (s)
+            # self.derivativeMap2 = lambda x: (x - 1) / (s)
+            self.derivativeMap2 = lambda x: (x - 1.0)**3 / (2 * s**2)
             self.inverseDerivativeMap = lambda x: 2 * s / (x - 1) ** 2
+            self.inverseDerivativeMap2 = lambda x: -4 * s / (x - 1) ** 3
 
         self.refPointVal = np.eye(self.approxOrder)
         if dirichletBoundaryConditions is not None:
@@ -65,6 +67,9 @@ class RationalInfHalfSpaceElement:
             basisMatrix = spec.barycentricChebInterpolate(f=self.refPointDiffVal,
                                 x=chebNodes, a=-1.0, b=1.0, axis=0) \
                           * np.reshape(self.derivativeMap(chebNodes), (*chebNodes.shape, 1))
+            infValues = np.isinf(x)
+            x = self.inverseMap(np.atleast_1d(x))
+            x[infValues] = 1.0
             evaluatedBasis = spec.barycentricChebInterpolate(basisMatrix, x, a=self.interval[0], b=self.interval[1],
                                                              axis=0)
             result = evaluatedBasis @ coefficients
@@ -76,10 +81,17 @@ class RationalInfHalfSpaceElement:
             basisMatrixR = spec.barycentricChebInterpolate(f=self.refPointDiffVal,
                                     x=chebNodes, a=-1.0, b=1.0, axis=0) \
                           * np.reshape(self.derivativeMap2(chebNodes), (*chebNodes.shape, 1))
-            evaluatedBasisL = spec.barycentricChebInterpolate(basisMatrixL, x, a=self.interval[0], b=self.interval[1],
+
+            infValues = np.isinf(x)
+            x = self.inverseMap(np.atleast_1d(x))
+            x[infValues] = 1.0
+            evaluatedBasisL = spec.barycentricChebInterpolate(basisMatrixL, x, a=-1.0, b=1.0,
                                                              axis=0)
-            evaluatedBasisR = spec.barycentricChebInterpolate(basisMatrixR, x, a=self.interval[0], b=self.interval[1],
+            evaluatedBasisR = spec.barycentricChebInterpolate(basisMatrixR, x, a=-1.0, b=1.0,
                                                              axis=0)
+            # print(evaluatedBasisL)
+            # print(evaluatedBasisR)
+            # time.sleep(500)
             return evaluatedBasisL @ coefficients + evaluatedBasisR @ coefficients
         if derivative >= 3:
             raise Exception("evaluateExpansionDerivatives: only derivatives up to second order are allowed")
@@ -121,6 +133,7 @@ class RationalInfHalfSpaceElement:
                 result: array with the shape:  (approximation order of element, len(x))
         """
         x = np.atleast_1d(x)
+        # print("before ", x)
         infValues = np.isinf(x)
         outOfRangeLeft = np.argwhere(x < self.interval[0])
         outOfRangeRight = np.argwhere(x > self.interval[1])
@@ -130,7 +143,9 @@ class RationalInfHalfSpaceElement:
         x[outOfRangeLeft] = -1.1 * np.ones(x[outOfRangeLeft].shape)
         x[outOfRangeRight] = 1.1 * np.ones(x[outOfRangeLeft].shape)
         derivativeBasisMatrix = self.refPointDiffVal
+        # print("after ", x)
         jacobian = self.derivativeMap(x)
+        # print("jacobian", jacobian)
         # print("jacobian", jacobian)
         # if x.size == 1:
         #     if x[0] == self.interval[0]:
