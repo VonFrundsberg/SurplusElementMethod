@@ -1,12 +1,12 @@
 import numpy as np
-import SurplusElement.GalerkinMethod.Mesh.mesh as MeshClass
-import SurplusElement.GalerkinMethod.Galerkin1d as galerkin
-import SurplusElement.GalerkinMethod.element.Element1d.element1dUtils as elem1dUtils
+import SurplusElement.Basic_Galerkin.Mesh.mesh as MeshClass
+import SurplusElement.Basic_Galerkin.Galerkin1d as galerkin
+import SurplusElement.Basic_Galerkin.element.Element1d.element1dUtils as elem1dUtils
 import time as time
 from SurplusElement.mathematics import integrate as integr
 import matplotlib.pyplot as plt
 import SurplusElement.mathematics.spectral as spec
-from SurplusElement.GalerkinMethod.element.Element1d.element1d import ElementType
+from SurplusElement.Basic_Galerkin.element.Element1d.element1d import ElementType
 import SurplusElement.optimization.GradientDescentQuadratic as GD
 import scipy.linalg as sp_lin
 import SurplusElement.mathematics.approximate as approx

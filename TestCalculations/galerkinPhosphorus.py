@@ -1,7 +1,7 @@
 import SurplusElement.mathematics.spectral as spec
-import SurplusElement.GalerkinMethod.Galerkin1d as galerkin
-import SurplusElement.GalerkinMethod.Mesh.mesh as MeshClass
-import SurplusElement.GalerkinMethod.element.Element1d.element1dUtils as elem1dUtils
+import SurplusElement.Basic_Galerkin.Galerkin1d as galerkin
+import SurplusElement.Basic_Galerkin.Mesh.mesh as MeshClass
+import SurplusElement.Basic_Galerkin.element.Element1d.element1dUtils as elem1dUtils
 
 
 import numpy as np
