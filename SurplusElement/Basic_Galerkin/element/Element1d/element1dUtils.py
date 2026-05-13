@@ -126,13 +126,9 @@ def evaluateDG_JumpComponentMain(trialElement: belem, testElement: belem,
             result: evaluated values at boundaries
     """
     leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
-    leftRef_LeftLim = trialElement.interval[0] - eps
     leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
-    leftRef_RightLim = trialElement.interval[0] + eps
     rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
-    rightRef_LeftLim = trialElement.interval[1] - eps
     rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
-    rightRef_RightLim = trialElement.interval[1] + eps
     # print(rightRef_LeftLim)
     leftWeight = 0.5 * weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
     rightWeight = 0.5 * weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
@@ -205,13 +201,9 @@ def evaluateDG_JumpComponentSymmetry(trialElement: belem, testElement: belem,
             result: evaluated differences at boundaries
     """
     leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
-    leftRef_LeftLim = trialElement.interval[0] - eps
     leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
-    leftRef_RightLim = trialElement.interval[0] + eps
     rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
-    rightRef_LeftLim = trialElement.interval[1] - eps
     rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
-    rightRef_RightLim = trialElement.interval[1] + eps
 
 
     leftWeight = 0.5 * weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
@@ -256,13 +248,9 @@ def evaluateDG_ErrorComponent(trialElement: belem, testElement: belem,
             result: evaluated values at boundaries
     """
     leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
-    leftRef_LeftLim = trialElement.interval[0] - eps
     leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
-    leftRef_RightLim = trialElement.interval[0] + eps
     rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
-    rightRef_LeftLim = trialElement.interval[1] - eps
     rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
-    rightRef_RightLim = trialElement.interval[1] + eps
 
     leftWeight = weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
     rightWeight = weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
@@ -289,134 +277,6 @@ def evaluateDG_ErrorComponent(trialElement: belem, testElement: belem,
     result = rightEvaluation + leftEvaluation
     return result
 
-# def evaluateDG_flux(trialElement: belem, testElement: belem,
-#                                  weight, physicalBoundary: np.ndarray, eps: float = 1e-16):
-#     """Evaluates bilinear form of the type
-#         a(u, v) = weight(R) [u(R-) * v(R-) - u(R+) * v(R+))] +
-#          +weight(L) [(u(L-) * v(L-)  - (u(L+) * v(L+)],
-#         where u(x)  are basis functions of trialElement
-#         and v(x)  are basis functions of testElement
-#         L and R are left and right (in inner limit) boundary of elementU interval.
-#
-#         Arguments:
-#             trialElement:
-#             testElement:
-#             weight:
-#         Returns:
-#             result: evaluated values at boundaries
-#     """
-#     leftRef_LeftLim = trialElement.interval[0] - eps
-#     leftRef_RightLim = trialElement.interval[0] + eps
-#     rightRef_LeftLim = trialElement.interval[1] - eps
-#     rightRef_RightLim = trialElement.interval[1] + eps
-#
-#     leftWeight = weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
-#     rightWeight = weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
-#     if trialElement.interval[0] in physicalBoundary:
-#         leftWeight *= 0
-#     if trialElement.interval[1] in physicalBoundary:
-#         rightWeight *= 0
-#
-#     leftUVLeftLim = np.einsum("ij, ik -> jk",
-#                                             trialElement.eval(leftRef_LeftLim), testElement.eval(leftRef_LeftLim))
-#     leftUVRightLim = np.einsum("ij, ik -> jk",
-#                                trialElement.eval(leftRef_RightLim), testElement.eval(leftRef_RightLim))
-#
-#     rightUVLeftLim = np.einsum("ij, ik -> jk",
-#                                trialElement.eval(rightRef_LeftLim), testElement.eval(rightRef_LeftLim))
-#     rightUVRightLim = np.einsum("ij, ik -> jk",
-#                                 trialElement.eval(rightRef_RightLim), testElement.eval(rightRef_RightLim))
-#
-#     leftEvaluation = leftWeight * (leftUVLeftLim - leftUVRightLim)
-#     rightEvaluation = rightWeight * (rightUVLeftLim - rightUVRightLim)
-#
-#     nansLeft = np.isnan(leftEvaluation)
-#     leftEvaluation[nansLeft] = 0.0
-#
-#     nansRight = np.isnan(rightEvaluation)
-#     rightEvaluation[nansRight] = 0.0
-#     result = rightEvaluation + leftEvaluation
-#     return result
-def evaluateDG_centralSymmetricFlux(trialElement: belem, testElement: belem,
-                                 weight, physicalBoundary: np.ndarray, eps: float = 1e-16):
-    """Evaluates bilinear form of the type
-        a(u, v) = weight(R) 0.5 * [u(R-) + u(R+)] * [v(R-) - v(R+))] +
-         + weight(L) 0.5 * [u(L-) + u(L+)] * [v(L-) - v(L+))] +
-         weight(R) 0.5 * [u(R-) - u(R+)] * [v(R-) + v(R+))] +
-         + weight(L) 0.5 * [u(L-) - u(L+)] * [v(L-) + v(L+))],
-        where u(x)  are basis functions of trialElement
-        and v(x)  are basis functions of testElement
-        L and R are left and right (in inner limit) boundary of elementU interval.
-
-        Arguments:
-            trialElement:
-            testElement:
-            weight:
-        Returns:
-            result: evaluated values at boundaries
-    """
-    # leftRef_LeftLim = trialElement.interval[0] - eps
-    # leftRef_RightLim = trialElement.interval[0] + eps
-    # rightRef_LeftLim = trialElement.interval[1] - eps
-    # rightRef_RightLim = trialElement.interval[1] + eps
-
-    leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
-    leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
-    rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
-    rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
-
-    leftWeight = 0.5 * weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
-    rightWeight = 0.5 * weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
-    if trialElement.interval[0] in physicalBoundary:
-        leftWeight *= 0
-    if trialElement.interval[1] in physicalBoundary:
-        rightWeight *= 0
-
-    leftTrialI = trialElement.eval(leftRef_LeftLim) + trialElement.eval(leftRef_RightLim)
-    leftTestI = testElement.eval(leftRef_LeftLim) - testElement.eval(leftRef_RightLim)
-
-    rightTrialI = trialElement.eval(rightRef_LeftLim) + trialElement.eval(rightRef_RightLim)
-    rightTestI = testElement.eval(rightRef_LeftLim) - testElement.eval(rightRef_RightLim)
-
-    leftEvaluation = leftWeight * np.einsum("ij, ik -> jk", leftTrialI, leftTestI)
-    rightEvaluation = rightWeight * np.einsum("ij, ik -> jk", rightTrialI, rightTestI)
-
-    nansLeft = np.isnan(leftEvaluation)
-    leftEvaluation[nansLeft] = 0.0
-
-    nansRight = np.isnan(rightEvaluation)
-    rightEvaluation[nansRight] = 0.0
-    result = rightEvaluation + leftEvaluation
-
-    leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
-    leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)
-    rightRef_LeftLim = np.nextafter(trialElement.interval[1], -np.inf)
-    rightRef_RightLim = np.nextafter(trialElement.interval[1], np.inf)
-
-    leftWeight = 0.5 * weight(trialElement.interval[0])  # * trialElement.inverseDerivativeMap(leftBoundaryPoint)
-    rightWeight = 0.5 * weight(trialElement.interval[1])  # * trialElement.inverseDerivativeMap(rightBoundaryPoint)
-    if trialElement.interval[0] in physicalBoundary:
-        leftWeight *= 0
-    if trialElement.interval[1] in physicalBoundary:
-        rightWeight *= 0
-
-    leftTrialI = trialElement.eval(leftRef_LeftLim) - trialElement.eval(leftRef_RightLim)
-    leftTestI = testElement.eval(leftRef_LeftLim) + testElement.eval(leftRef_RightLim)
-
-    rightTrialI = trialElement.eval(rightRef_LeftLim) - trialElement.eval(rightRef_RightLim)
-    rightTestI = testElement.eval(rightRef_LeftLim) + testElement.eval(rightRef_RightLim)
-
-    leftEvaluation = leftWeight * np.einsum("ij, ik -> jk", leftTrialI, leftTestI)
-    rightEvaluation = rightWeight * np.einsum("ij, ik -> jk", rightTrialI, rightTestI)
-
-    nansLeft = np.isnan(leftEvaluation)
-    leftEvaluation[nansLeft] = 0.0
-
-    nansRight = np.isnan(rightEvaluation)
-    rightEvaluation[nansRight] = 0.0
-    result += rightEvaluation + leftEvaluation
-    return result
-
 def evaluateDG_centralFlux(trialElement: belem, testElement: belem,
                                  weight, physicalBoundary: np.ndarray, eps: float = 1e-16):
     """Evaluates bilinear form of the type
@@ -433,10 +293,6 @@ def evaluateDG_centralFlux(trialElement: belem, testElement: belem,
         Returns:
             result: evaluated values at boundaries
     """
-    # leftRef_LeftLim = trialElement.interval[0] - eps
-    # leftRef_RightLim = trialElement.interval[0] + eps
-    # rightRef_LeftLim = trialElement.interval[1] - eps
-    # rightRef_RightLim = trialElement.interval[1] + eps
 
     leftRef_LeftLim = np.nextafter(trialElement.interval[0], -np.inf)
     leftRef_RightLim = np.nextafter(trialElement.interval[0], np.inf)

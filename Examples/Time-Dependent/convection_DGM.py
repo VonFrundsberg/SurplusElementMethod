@@ -17,15 +17,22 @@ u(x, 0) = sin(x)
 and BC
 u(0, t) = 0
 """
-def fun(approximationOrder, integrationPointsAmount = 500):
+def fun(approximationOrder, amount_of_elements, integrationPointsAmount = 500):
 
     fluxForm = lambda trialElement, testElement: elem1dUtils.integrateBilinearForm2(
         trialElement, testElement, lambda x: np.nan_to_num(x=x * 0.0, nan=0.0) + 1.0, integrationPointsAmount)
+
+    def fluxDGForm(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
+        return elem1dUtils.evaluateDG_centralFlux(
+            trialElement=trialElement, testElement=testElement, weight=lambda x: 0 * x - 1.0,
+            physicalBoundary=np.array([0.0, np.pi]))
 
     def fluxBoundaryForm(trialElement: galerkin.element.Element1d, testElement: galerkin.element.Element1d):
         return elem1dUtils.evaluateBilinearFormAtBoundary1(
             trialElement=trialElement, testElement=testElement, weight=lambda x: 0.0 * x - 1.0,
             B=np.pi)
+
+
     functional = lambda testElement: elem1dUtils.integrateFunctional(
         testElement=testElement, function=lambda x: x * 0.0 + 0.0,
         weight=lambda x: x * 0.0 + 1.0, integrationPointsAmount=integrationPointsAmount)
@@ -33,7 +40,7 @@ def fun(approximationOrder, integrationPointsAmount = 500):
                           '{"boundaryPoint": "np.pi", "boundaryValue": 1.0}']
     mesh = MeshClass.mesh(1)
     mesh.generateUniformMeshOnRectange([0.0, np.pi],
-                                       [1],
+                                       [amount_of_elements],
                                        [approximationOrder])
 
     mesh.establishNeighbours()
@@ -45,21 +52,21 @@ def fun(approximationOrder, integrationPointsAmount = 500):
 
     t_start = 0.0
     t_finish = 1.0
-    time_step = 0.001
+    time_step = 0.00001
 
     numericalPDE = bilinTDP(t_start=t_start, t_finish=t_finish,
                             spatial_integration_points_amount=integrationPointsAmount)
     numericalPDE.set_bilinear_form(inner_forms=[fluxForm], boundary_forms=[fluxBoundaryForm],
-                                   discontinuity_forms=[],functionals=[functional])
+                                   discontinuity_forms=[fluxDGForm],functionals=[functional])
     numericalPDE.set_dirichlet_boundary_conditions(boundary_conditions=boundaryConditions)
     numericalPDE.set_mesh(mesh=mesh)
     numericalPDE.set_initial_condition(initial_condition=initial_condition)
     numericalPDE.initialize_elements()
     numericalPDE.run_implicit_euler(time_step=time_step)
 
-    w, grid = integr.reg_22_wn(0.0, np.pi, int((t_finish - t_start) / time_step))
+    w, grid = integr.reg_22_wn(0.0, np.pi, 1000)
     evaluated_solution = numericalPDE.evaluate_solution_on_grid_over_time_interval(0.0, 1.0, points=grid)
-    plt.plot(grid, evaluated_solution[-1, :])
+    # plt.plot(grid, evaluated_solution[-1, :])
     def analyticSolution(x):
         x = np.atleast_1d(x)
         result = np.zeros(x.shape)
@@ -75,10 +82,14 @@ def fun(approximationOrder, integrationPointsAmount = 500):
     """
     print("maximum absolute error at t = " + str(t_finish) + ": ",
           np.max(np.abs(evaluated_solution[-1, :] - analyticSolution(grid - t_finish))))
-    plt.plot(grid, evaluated_solution[0, : ], label="initial condition")
-    plt.plot(grid, evaluated_solution[int((t_finish - t_start) / time_step /2.0), :], label="numerical solution at half time")
-    plt.plot(grid, evaluated_solution[-1, :], label="numerical solution at t_finish")
-    plt.plot(grid, analyticSolution(grid - t_finish), label="analytic solution at t_finish")
+    # plt.plot(grid, evaluated_solution[0, : ], label="initial condition")
+    # plt.plot(grid, evaluated_solution[int((t_finish - t_start) / time_step /2.0), :], label="numerical solution at half time")
+    # plt.plot(grid, evaluated_solution[-1, :], label="numerical solution at t_finish")
+    # plt.plot(grid, analyticSolution(grid - t_finish), label="analytic solution at t_finish")
+    # plt.legend()
+    # plt.show()
+
+    plt.plot(grid, evaluated_solution[-1, :] - analyticSolution(grid - t_finish), label="difference of analytic and numerical solution at t_finish")
     plt.legend()
     plt.show()
 
@@ -91,5 +102,5 @@ def fun(approximationOrder, integrationPointsAmount = 500):
 
 
 
-for i in range(50, 51):
-    fun(i,  integrationPointsAmount=10000)
+for i in range(10, 11):
+    fun(i, amount_of_elements=10, integrationPointsAmount=10000)

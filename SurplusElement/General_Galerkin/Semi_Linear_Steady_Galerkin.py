@@ -55,6 +55,32 @@ class Semi_Linear_Steady_Galerkin:
             trialElement, testElement, lambda x: nonlinear_weight(solution(x), x),
             self.__spatial_integration_points_amount)
 
+    def central_flux_form(self, nonlinear_weight: Callable, solution: Callable, physical_boundary):
+
+        return lambda trialElement, testElement: elem1dUtils.evaluateDG_centralFlux(
+            trialElement=trialElement, testElement=testElement, weight= lambda x: nonlinear_weight(solution(x), x),
+            physicalBoundary=physical_boundary)
+
+    def boundary_flux_form(self, nonlinear_weight: Callable, solution: Callable, boundary):
+        return lambda trialElement, testElement: elem1dUtils.evaluateBilinearFormAtBoundary1(
+            trialElement=trialElement, testElement=testElement, weight=lambda x: nonlinear_weight(solution(x), x),
+            B=boundary)
+
+    def diffusion_main_discontinuity_form(self, nonlinear_weight: Callable, solution: Callable, physical_boundary):
+        return lambda trialElement, testElement: elem1dUtils.evaluateDG_JumpComponentMain(
+            trialElement=trialElement, testElement=testElement, weight= lambda x: nonlinear_weight(solution(x), x),
+            physicalBoundary=physical_boundary)
+
+    def diffusion_symmetry_discontinuity_form(self, nonlinear_weight: Callable, solution: Callable, physical_boundary):
+        return lambda trialElement, testElement: elem1dUtils.evaluateDG_JumpComponentSymmetry(
+            trialElement=trialElement, testElement=testElement, weight=lambda x: nonlinear_weight(solution(x), x),
+            physicalBoundary=physical_boundary)
+
+    def penalty_discontinuity_form(self, nonlinear_weight: Callable, solution: Callable, physical_boundary):
+        return lambda trialElement, testElement: elem1dUtils.evaluateDG_ErrorComponent(
+            trialElement=trialElement, testElement=testElement, weight=lambda x: nonlinear_weight(solution(x), x),
+            physicalBoundary=physical_boundary)
+
     def set_dirichlet_boundary_conditions(self, boundary_conditions: list = []) -> None:
         self.__boundary_conditions = boundary_conditions
 
@@ -103,13 +129,15 @@ class Semi_Linear_Steady_Galerkin:
             ind = (M.getnnz(1) > 0).copy()
             M = M[M.getnnz(1) > 0, :][:, M.getnnz(0) > 0]
             solution = sparse_linalg.spsolve(M, self.rhs[ind])
-            # print(i, np.max(np.abs(self.__galerkin_method.solution[ind] - solution)))
+            print(i, np.max(np.abs(self.__galerkin_method.solution[ind] - solution)))
             if np.max(np.abs(self.__galerkin_method.solution[ind] - solution)) < absolute_error:
                 self.__galerkin_method.solution[ind] = solution
                 self.__galerkin_method.solution[~ind] *= 0.0
-                break
+                print("solved in ", i, " iterations")
+                return
             else:
                 self.__galerkin_method.solution[ind] = solution
                 self.__galerkin_method.solution[~ind] *= 0.0
                 self.__galerkin_method.calculateElements()
+        print("limit of ", max_iteration, " has been reached")
 
